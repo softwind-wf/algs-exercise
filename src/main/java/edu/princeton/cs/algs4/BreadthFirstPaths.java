@@ -84,6 +84,10 @@ public class BreadthFirstPaths {
         assert check(graph, s);
     }
 
+    public boolean marked(int v){
+        return marked[v];
+    }
+
     /**
      * Computes the shortest path between any one of the source vertices in {@code sources}
      * and every other vertex in {@code graph}.
