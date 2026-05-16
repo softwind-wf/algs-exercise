@@ -27,43 +27,55 @@ public class DirectedCycle {
     private void dfs(Digraph G, int v) {
         onStack[v] = true;
         marked[v] = true;
-
-        // 遍历所有邻接节点
         for (int w : G.adj(v)) {
-            if (hasCycle) return; // 已经找到环，直接返回
+            if (hasCycle()) return; // 已经找到环，直接返回
 
             if (!marked[w]) {
+                edgeTo[w] = v;
                 dfs(G, w);
             } else if (onStack[w]) {
-                // 邻接节点在当前栈中，说明有环
-                hasCycle = true;
+                // 找到了环：从v出发，回到了栈中的w
+                cycle = new Stack<>();
+                for (int x = v; x != w; x = edgeTo[x]) {
+                    cycle.push(x);
+                }
+                cycle.push(w);
+                cycle.push(v);
             }
         }
-
-        // 回溯，将当前节点移出递归栈
-        onStack[v] = false;
+        onStack[v] = false; // 回溯，移出递归栈
     }
 
+    // 是否存在有向环
     public boolean hasCycle() {
-        return hasCycle;
+        return cycle != null;
+    }
+
+    // 返回有向环上的所有顶点（如果不存在则返回null）
+    public Iterable<Integer> cycle() {
+        return cycle;
     }
 
     // 测试
     public static void main(String[] args) {
-        // 测试1：有环图（0->1, 1->2, 2->0）
-        Digraph cyclicGraph = new Digraph(3);
-        cyclicGraph.addEdge(0, 1);
-        cyclicGraph.addEdge(1, 2);
-        cyclicGraph.addEdge(2, 0);
-        DirectedCycle cycle1 = new DirectedCycle(cyclicGraph);
-        System.out.println("有环图是否存在环？" + cycle1.hasCycle()); // true
+        // 示例1：有环图（和书上的例子类似：0→1→2→0）
+        Digraph cyclicG = new Digraph(new In("tinyDG.txt"));
+        DirectedCycle cycle1 = new DirectedCycle(cyclicG);
+        System.out.println("图1是否有环？" + cycle1.hasCycle());
+        if (cycle1.hasCycle()) {
+            System.out.print("环上的顶点：");
+            for (int v : cycle1.cycle()) {
+                System.out.print(v + " ");
+            }
+            System.out.println();
+        }
 
-        // 测试2：无环有向图（DAG）
-        Digraph acyclicGraph = new Digraph(4);
-        acyclicGraph.addEdge(0, 1);
-        acyclicGraph.addEdge(1, 2);
-        acyclicGraph.addEdge(2, 3);
-        DirectedCycle cycle2 = new DirectedCycle(acyclicGraph);
-        System.out.println("无环图是否存在环？" + cycle2.hasCycle()); // false
+        // 示例2：无环有向图（DAG）
+        Digraph acyclicG = new Digraph(4);
+        acyclicG.addEdge(0,1);
+        acyclicG.addEdge(1,2);
+        acyclicG.addEdge(2,3);
+        DirectedCycle cycle2 = new DirectedCycle(acyclicG);
+        System.out.println("图2是否有环？" + cycle2.hasCycle());
     }
 }
