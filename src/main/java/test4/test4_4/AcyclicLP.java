@@ -2,55 +2,51 @@ package test4.test4_4;
 
 import java.util.Stack;
 
-public class AcyclicLP {
-    private DirectedEdge[] edgeTo;   // 记录最长路径上的边
-    private double[] distTo;         // 记录从起点到每个顶点的最长路径长度
+// 修正后的 AcyclicLP（最长路径）
+class AcyclicLP {
+    private double[] distTo;          // 从源点到各顶点的最长路径长度
+    private DirectedEdge[] edgeTo;    // 最长路径的最后一条边
 
-    // 构造方法：计算从s出发的所有点的最长路径
     public AcyclicLP(EdgeWeightedDigraph G, int s) {
-        edgeTo = new DirectedEdge[G.V()];
         distTo = new double[G.V()];
+        edgeTo = new DirectedEdge[G.V()];
 
-        // 初始化：距离设为负无穷（和最短路径相反）
-        for (int v = 0; v < G.V(); v++) {
+        // 初始化：所有距离设为 -Infinity，源点设为 0
+        for (int v = 0; v < G.V(); v++)
             distTo[v] = Double.NEGATIVE_INFINITY;
-        }
-        distTo[s] = 0.0;  // 起点到自己的距离为0
+        distTo[s] = 0.0;
 
-        // 按拓扑顺序处理顶点
-        Topological top = new Topological(G);
-        for (int v : top.order()) {
-            relax(G, v);
-        }
-    }
+        // 生成拓扑序（核心：确保按拓扑序松弛）
+        Topological topological = new Topological(G);
+        if (!topological.hasOrder())
+            throw new IllegalArgumentException("Digraph is not acyclic");
 
-    // 松弛操作（和最短路径方向相反，求更大值）
-    private void relax(EdgeWeightedDigraph G, int v) {
-        for (DirectedEdge e : G.adj(v)) {
-            int w = e.to();
-            // 如果经过v到w的路径比当前已知的更长，就更新
-            if (distTo[w] < distTo[v] + e.weight()) {
-                distTo[w] = distTo[v] + e.weight();
-                edgeTo[w] = e;
-            }
+        // 按拓扑序松弛边
+        for (int v : topological.order()) {
+            for (DirectedEdge e : G.adj(v))
+                relax(e);
         }
     }
 
-    // 查询API
-    public double distTo(int v) {
-        return distTo[v];
+    private void relax(DirectedEdge e) {
+        int v = e.from(), w = e.to();
+        if (distTo[w] < distTo[v] + e.weight()) {
+            distTo[w] = distTo[v] + e.weight();
+            edgeTo[w] = e;
+        }
     }
 
-    public boolean hasPathTo(int v) {
-        return distTo[v] > Double.NEGATIVE_INFINITY;
+    public double distTo(int v) { return distTo[v]; }
+
+    public boolean hasPathTo(int t) {
+        return distTo[t]>Double.NEGATIVE_INFINITY;
     }
 
-    public Iterable<DirectedEdge> pathTo(int v) {
-        if (!hasPathTo(v)) return null;
-        Stack<DirectedEdge> path = new Stack<>();
-        for (DirectedEdge e = edgeTo[v]; e != null; e = edgeTo[e.from()]) {
+    public Iterable<DirectedEdge> pathTo(int t) {
+        if (!hasPathTo(t)) return null;
+        Stack<DirectedEdge> path = new Stack<DirectedEdge>();
+        for (DirectedEdge e = edgeTo[t]; e != null; e = edgeTo[e.from()])
             path.push(e);
-        }
         return path;
     }
 }
