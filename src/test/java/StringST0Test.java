@@ -3,7 +3,7 @@
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.BeforeEach;
-import test5.StringST;
+import test5.StringST0;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,13 +14,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * StringST 单词查找树符号表的单元测试
  */
 @DisplayName("StringST 单词查找树符号表测试")
-class StringSTTest {
+class StringST0Test {
 
-    private StringST<Integer> st;
+    private StringST0<Integer> st;
 
     @BeforeEach
     void setUp() {
-        st = new StringST<>();
+        st = new StringST0<>();
     }
 
     // ==================== 基础功能测试 ====================
@@ -252,6 +252,7 @@ class StringSTTest {
         assertEquals("byes", st.longestPrefixOf("byeser"));
         assertEquals("bye", st.longestPrefixOf("byeee"));
         assertEquals("by", st.longestPrefixOf("byzzz"));
+        System.out.println(st.longestPrefixOf("b"));
     }
 
     @Test
