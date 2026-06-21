@@ -14,6 +14,7 @@
 package edu.princeton.cs.algs4;
 
 import java.io.BufferedOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 
 /**
@@ -279,6 +280,22 @@ public final class BinaryStdOut {
     public static void write(String s, int r) {
         for (int i = 0; i < s.length(); i++)
             write(s.charAt(i), r);
+    }
+
+    public static void setFile(String filePath) {
+        try {
+            if (out != null){
+                out.flush();
+                out.close();
+            }
+
+            out = new BufferedOutputStream(new FileOutputStream(filePath));
+            buffer = 0;
+            n = 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        isInitialized=true;
     }
 
    /**

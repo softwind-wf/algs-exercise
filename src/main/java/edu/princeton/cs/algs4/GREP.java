@@ -1,7 +1,7 @@
 /******************************************************************************
  *  Compilation:  javac GREP.java
  *  Execution:    java GREP regexp < input.txt
- *  Dependencies: NFA.java StdOut.java
+ *  Dependencies: NFA0.java StdOut.java
  *  Data files:   https://algs4.cs.princeton.edu/54regexp/tinyL.txt
  *
  *  This program takes an RE as a command-line argument and prints

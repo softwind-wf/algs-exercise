@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Compilation:  javac NFA.java
+ *  Compilation:  javac NFA0.java
  *  Execution:    java NFA regexp text
  *  Dependencies: Stack.java Bag.java Digraph.java DirectedDFS.java
  *

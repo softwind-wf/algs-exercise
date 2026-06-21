@@ -13,6 +13,7 @@
 package edu.princeton.cs.algs4;
 
 import java.io.BufferedInputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.NoSuchElementException;
 
@@ -43,6 +44,7 @@ public final class BinaryStdIn {
     private static int buffer;              // one character buffer
     private static int n;                   // number of bits left in buffer
     private static boolean isInitialized;   // has BinaryStdIn been called for first time?
+    private static String filePath;
 
     // don't instantiate
     private BinaryStdIn() { }
@@ -282,6 +284,19 @@ public final class BinaryStdIn {
         return (byte) (c & 0xff);
     }
 
+    // 指定文件输入
+    public static void setFile(String path) {
+        filePath = path;
+        try {
+            if (in != null) in.close();
+            in = new BufferedInputStream(new FileInputStream(path));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        fillBuffer();
+        isInitialized = true;
+    }
+
    /**
      * Test client. Reads in a binary input file from standard input and writes
      * it to standard output.
@@ -296,6 +311,15 @@ public final class BinaryStdIn {
             BinaryStdOut.write(c);
         }
         BinaryStdOut.flush();
+    }
+
+    // 一次性读取整个文件字符串（不会无限阻塞）
+    public static String readAllString() {
+        StringBuilder sb = new StringBuilder();
+        while (!isEmpty()) {
+            sb.append((char) readChar(8));
+        }
+        return sb.toString();
     }
 }
 
