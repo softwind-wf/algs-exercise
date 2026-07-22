@@ -1,21 +1,27 @@
 package com.ds.linked;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 /**
- * 跳跃表（Skip List）—— 基于多层索引链表的概率型数据结构
+ * 跳跃表（Skip List）—— 基于多层索引链表的概率型数据结构（带 LRU 缓存）
  *
  * 核心思想：
  * 在有序链表的基础上增加多层"快速通道"索引。
  * 底层（第 0 层）包含所有元素，每向上一层节点数约减半。
  * 查找时从顶层开始，逐层下降，每次跳过大量节点，实现 O(log n) 的平均时间复杂度。
  *
+ * LRU 缓存层：
+ * 在跳表之上增加一个基于 HashMap + 双向链表的 LRU 缓存。
+ * 热点 key 的重复查询可直接 O(1) 命中缓存，跳过 O(log n) 的跳表遍历。
+ * 缓存与跳表保持一致性：put/remove 操作会自动失效对应缓存条目。
+ *
  * 特点：
- *   - 平均时间复杂度：查找/插入/删除均为 O(log n)
+ *   - 平均时间复杂度：查找(有缓存命中时 O(1)) / 插入/删除均为 O(log n)
  *   - 最坏时间复杂度：O(n)（概率极低）
- *   - 空间复杂度：O(n)（期望值约为 2n 个指针）
- *   - 实现比平衡树（AVL/红黑树）简单得多
- *   - 天然支持范围查询
+ *   - 空间复杂度：O(n + cacheSize)
+ *   - 缓存一致性：写操作自动失效缓存，保证数据正确
  *
  * @param <K> 键类型（必须可比较）
  * @param <V> 值类型
@@ -53,23 +59,69 @@ public class MySkipList<K extends Comparable<K>, V> {
 
     }
 
+    // ==================== LRU 缓存节点 ====================
+
+    /**
+     * LRU 缓存双向链表节点
+     * head ↔ ... ↔ tail: head 端 = 最近使用，tail 端 = 最久未使用
+     */
+    private static class CacheNode<K, V> {
+        K key;
+        V value;
+        CacheNode<K, V> prev;
+        CacheNode<K, V> next;
+
+        CacheNode(K key, V value) {
+            this.key = key;
+            this.value = value;
+        }
+    }
+
     // ==================== 常量与成员变量 ====================
 
-    private static final int MAX_LEVEL = 16;      // 最大层数（支持约 2^16 = 65536 个元素）
-    private static final double P = 0.5;           // 升级概率
+    private static final int MAX_LEVEL = 16;        // 最大层数（支持约 2^16 = 65536 个元素）
+    private static final double P = 0.5;             // 升级概率
+    private static final int DEFAULT_CACHE_SIZE = 64; // 默认缓存容量
 
-    private final Node<K, V> head;                 // 头节点（哨兵，持有 MAX_LEVEL 层指针）
-    private int level;                             // 当前实际最大层数
-    private int size;                              // 元素个数
-    private final Random random;                   // 随机数生成器
+    // ==== 跳表核心 ====
+    private final Node<K, V> head;       // 头节点（哨兵，持有 MAX_LEVEL 层指针）
+    private int level;                   // 当前实际最大层数
+    private int size;                    // 元素个数
+    private final Random random;         // 随机数生成器
+
+    // ==== LRU 缓存 ====
+    private final int cacheCapacity;                         // 缓存容量上限
+    private final Map<K, CacheNode<K, V>> cacheMap;          // key → 缓存节点（O(1) 查找）
+    private CacheNode<K, V> cacheHead;                       // 哨兵头（最近使用端）
+    private CacheNode<K, V> cacheTail;                       // 哨兵尾（最久未使用端）
+    private long cacheHits;                                  // 缓存命中次数
+    private long cacheMisses;                                // 缓存未命中次数
 
     // ==================== 构造方法 ====================
 
     public MySkipList() {
+        this(DEFAULT_CACHE_SIZE);
+    }
+
+    /**
+     * @param cacheCapacity LRU 缓存容量，0 表示禁用缓存
+     */
+    public MySkipList(int cacheCapacity) {
         this.head = new Node<>(null, null, MAX_LEVEL);
         this.level = 0;
         this.size = 0;
         this.random = new Random();
+        this.cacheCapacity = cacheCapacity;
+        this.cacheMap = cacheCapacity > 0 ? new HashMap<>() : null;
+        if (cacheCapacity > 0) {
+            // 哨兵节点简化边界处理
+            this.cacheHead = new CacheNode<>(null, null);
+            this.cacheTail = new CacheNode<>(null, null);
+            cacheHead.next = cacheTail;
+            cacheTail.prev = cacheHead;
+        }
+        this.cacheHits = 0;
+        this.cacheMisses = 0;
     }
 
     // ==================== 基础查询 ====================
@@ -92,7 +144,7 @@ public class MySkipList<K extends Comparable<K>, V> {
     // ==================== 查找操作 ====================
 
     /**
-     * 根据 key 查找对应的 value
+     * 根据 key 查找对应的 value（优先查询 LRU 缓存）
      *
      * @param key 要查找的键
      * @return 对应的值，不存在返回 null
@@ -102,15 +154,33 @@ public class MySkipList<K extends Comparable<K>, V> {
             throw new IllegalArgumentException("key 不能为 null");
         }
 
+        // ==== 1. 查缓存 ====
+        V cached = cacheGet(key);
+        if (cached != null) {
+            return cached;  // 缓存命中，O(1)
+        }
+        // 缓存未命中计数在 cacheGet 内部累加
+
+        // ==== 2. 查跳表 ====
         Node<K, V> node = findNode(key);
-        return node != null ? node.value : null;
+        V value = node != null ? node.value : null;
+
+        // ==== 3. 写入缓存 ====
+        if (node != null) {
+            cachePut(key, value);
+        }
+
+        return value;
     }
 
     /**
      * 判断是否包含指定 key
      */
     public boolean containsKey(K key) {
-        return findNode(key) != null;
+        if (key == null) {
+            return false;
+        }
+        return get(key) != null;  // 通过 get() 复用缓存
     }
 
     /**
@@ -169,8 +239,9 @@ public class MySkipList<K extends Comparable<K>, V> {
         current = current.forward[0];
 
         if (current != null && current.key.compareTo(key) == 0) {
-            // key 已存在，更新 value
+            // key 已存在，更新 value，同时更新缓存
             current.value = value;
+            cachePut(key, value);  // 直接更新缓存，避免脏读
             return;
         }
 
@@ -195,6 +266,7 @@ public class MySkipList<K extends Comparable<K>, V> {
         }
 
         size++;
+        cachePut(key, value);  // 新 key 也放入缓存
     }
 
     // ==================== 删除操作 ====================
@@ -251,7 +323,159 @@ public class MySkipList<K extends Comparable<K>, V> {
         }
 
         size--;
+        cacheRemove(key);  // 删除缓存中的条目
         return current.value;
+    }
+
+    // ==================== LRU 缓存操作 ====================
+
+    /**
+     * 从缓存中获取值，不存在返回 null。
+     * 命中时将该节点移到链表头部（标记为最近使用）。
+     */
+    private V cacheGet(K key) {
+        if (cacheMap == null) {
+            cacheMisses++;
+            return null;
+        }
+
+        CacheNode<K, V> node = cacheMap.get(key);
+        if (node == null) {
+            cacheMisses++;
+            return null;
+        }
+
+        // 命中：移到头部
+        cacheHits++;
+        moveToHead(node);
+        return node.value;
+    }
+
+    /**
+     * 将键值对写入缓存。
+     * 若 key 已存在则更新并移到头部；若缓存已满则淘汰 LRU 条目。
+     */
+    private void cachePut(K key, V value) {
+        if (cacheMap == null || cacheCapacity <= 0) {
+            return;
+        }
+
+        CacheNode<K, V> node = cacheMap.get(key);
+        if (node != null) {
+            // key 已存在：更新值并移到头部
+            node.value = value;
+            moveToHead(node);
+        } else {
+            // 新 key：创建节点
+            CacheNode<K, V> newNode = new CacheNode<>(key, value);
+            cacheMap.put(key, newNode);
+            addToHead(newNode);
+
+            // 超容淘汰 LRU
+            if (cacheMap.size() > cacheCapacity) {
+                CacheNode<K, V> lru = removeTail();
+                cacheMap.remove(lru.key);
+            }
+        }
+    }
+
+    /**
+     * 从缓存中删除指定 key
+     */
+    private void cacheRemove(K key) {
+        if (cacheMap == null) {
+            return;
+        }
+        CacheNode<K, V> node = cacheMap.remove(key);
+        if (node != null) {
+            removeNode(node);
+        }
+    }
+
+    /**
+     * 清空所有缓存
+     */
+    public void cacheClear() {
+        if (cacheMap == null) {
+            return;
+        }
+        cacheMap.clear();
+        cacheHead.next = cacheTail;
+        cacheTail.prev = cacheHead;
+    }
+
+    // ---- 双向链表操作 ----
+
+    /** 将节点移到链表头部（最近使用端） */
+    private void moveToHead(CacheNode<K, V> node) {
+        removeNode(node);
+        addToHead(node);
+    }
+
+    /** 在头部插入节点 */
+    private void addToHead(CacheNode<K, V> node) {
+        node.prev = cacheHead;
+        node.next = cacheHead.next;
+        cacheHead.next.prev = node;
+        cacheHead.next = node;
+    }
+
+    /** 从链表中摘除节点 */
+    private void removeNode(CacheNode<K, V> node) {
+        node.prev.next = node.next;
+        node.next.prev = node.prev;
+    }
+
+    /** 移除并返回尾部节点（LRU 淘汰目标） */
+    private CacheNode<K, V> removeTail() {
+        CacheNode<K, V> lru = cacheTail.prev;
+        removeNode(lru);
+        return lru;
+    }
+
+    // ---- 缓存统计 ----
+
+    /**
+     * 获取缓存命中次数
+     */
+    public long cacheHits() {
+        return cacheHits;
+    }
+
+    /**
+     * 获取缓存未命中次数
+     */
+    public long cacheMisses() {
+        return cacheMisses;
+    }
+
+    /**
+     * 获取缓存命中率
+     * @return 命中率（0.0 ~ 1.0），无任何查询时返回 0
+     */
+    public double cacheHitRate() {
+        long total = cacheHits + cacheMisses;
+        return total == 0 ? 0.0 : (double) cacheHits / total;
+    }
+
+    /**
+     * 获取当前缓存中的条目数
+     */
+    public int cacheSize() {
+        return cacheMap != null ? cacheMap.size() : 0;
+    }
+
+    /**
+     * 获取缓存统计报告
+     */
+    public String cacheStats() {
+        if (cacheMap == null) {
+            return "缓存已禁用";
+        }
+        return String.format(
+            "缓存: 容量=%d, 当前=%d, 命中=%d, 未命中=%d, 命中率=%.1f%%",
+            cacheCapacity, cacheMap.size(), cacheHits, cacheMisses, cacheHitRate() * 100
+        );
     }
 
     // ==================== 获取首尾元素 ====================
@@ -537,6 +761,114 @@ public class MySkipList<K extends Comparable<K>, V> {
         } catch (IllegalArgumentException e) {
             System.out.println("预期异常: " + e.getMessage());
         }
+
+        // 13. LRU 缓存测试
+        System.out.println("\n========== LRU 缓存测试 ==========\n");
+
+        // 13.1 基本缓存命中
+        System.out.println("--- 13.1 缓存命中测试 ---");
+        MySkipList<Integer, String> cacheList = new MySkipList<>(4);  // 缓存容量=4
+        for (int i = 1; i <= 100; i++) {
+            cacheList.put(i, "Val" + i);
+        }
+        System.out.println("put 100 个元素");
+
+        // 第一次查询 → 未命中
+        String v1 = cacheList.get(50);
+        System.out.println("第1次 get(50): " + v1);
+        System.out.println("  " + cacheList.cacheStats());
+
+        // 重复查询 → 应命中
+        for (int i = 0; i < 5; i++) {
+            cacheList.get(50);
+        }
+        System.out.println("再 get(50) 5 次后: " + cacheList.cacheStats());
+
+        // 查询不存在的 key → 计为 miss
+        System.out.println("get(999): " + cacheList.get(999));
+        System.out.println("  " + cacheList.cacheStats());
+        System.out.println();
+
+        // 13.2 缓存淘汰
+        System.out.println("--- 13.2 LRU 淘汰测试 ---");
+        MySkipList<Integer, String> evictList = new MySkipList<>(3);  // 容量=3
+        evictList.put(1, "A");
+        evictList.put(2, "B");
+        evictList.put(3, "C");
+        evictList.put(4, "D");
+
+        evictList.get(1);  // hit: 1 现在在缓存头
+        evictList.get(2);  // hit: 2 在头, 1 被挤到下面
+        evictList.get(3);  // hit: 3 在头, 2 在下面
+        evictList.get(4);  // 淘汰最久未用的（1）, 4 入缓存
+
+        // 再次查询 1 → 应从跳表重新加载到缓存（淘汰 2）
+        evictList.get(1);
+        System.out.println("经过淘汰后: " + evictList.cacheStats());
+        System.out.println("缓存大小: " + evictList.cacheSize());
+        System.out.println();
+
+        // 13.3 put 更新 → 缓存同步
+        System.out.println("--- 13.3 put 更新 → 缓存同步 ---");
+        MySkipList<String, Integer> syncList = new MySkipList<>(8);
+        syncList.put("hot", 100);
+        syncList.get("hot");  // 缓存加载
+        System.out.println("get(hot) 后: " + syncList.cacheStats());
+
+        syncList.put("hot", 200);  // 更新应同步到缓存
+        Integer newVal = syncList.get("hot");  // 应缓存命中且值为 200
+        System.out.println("put(hot,200) 后 get(hot): " + newVal);
+        System.out.println("  " + syncList.cacheStats());
+        System.out.println();
+
+        // 13.4 remove → 缓存失效
+        System.out.println("--- 13.4 remove → 缓存失效 ---");
+        syncList.put("del", 888);
+        syncList.get("del");  // 加载到缓存
+        System.out.println("get(del) 后: " + syncList.cacheStats());
+
+        syncList.remove("del");  // 删除
+        System.out.println("remove(del) 后 get(del): " + syncList.get("del"));
+        System.out.println("  " + syncList.cacheStats());
+        System.out.println();
+
+        // 13.5 缓存性能对比
+        System.out.println("--- 13.5 缓存性能对比 ---");
+        int totalKeys = 50000;
+        int hotKeys = 100;  // 热点 key 数量
+
+        // 无缓存版本
+        MySkipList<Integer, String> noCache = new MySkipList<>(0);  // 禁用缓存
+        for (int i = 1; i <= totalKeys; i++) {
+            noCache.put(i, "V" + i);
+        }
+        long t1 = System.nanoTime();
+        for (int round = 0; round < 10; round++) {
+            for (int k = 1; k <= hotKeys; k++) {
+                noCache.get(k);
+            }
+        }
+        long noCacheTime = System.nanoTime() - t1;
+
+        // 有缓存版本
+        MySkipList<Integer, String> withCache = new MySkipList<>(hotKeys);
+        for (int i = 1; i <= totalKeys; i++) {
+            withCache.put(i, "V" + i);
+        }
+        long t2 = System.nanoTime();
+        for (int round = 0; round < 10; round++) {
+            for (int k = 1; k <= hotKeys; k++) {
+                withCache.get(k);
+            }
+        }
+        long withCacheTime = System.nanoTime() - t2;
+
+        System.out.println("热点查询 100 key × 10 轮 = 1000 次:");
+        System.out.printf("  无缓存: %.2f ms\n", noCacheTime / 1e6);
+        System.out.printf("  有缓存: %.2f ms\n", withCacheTime / 1e6);
+        System.out.printf("  加速比: %.1fx\n", (double) noCacheTime / withCacheTime);
+        System.out.println("  缓存统计: " + withCache.cacheStats());
+        System.out.println();
 
         System.out.println();
         System.out.println("========== 测试完成 ==========");
