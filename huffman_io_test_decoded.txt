@@ -1,0 +1,2 @@
+Hello, 哈夫曼编码! This is a test of file I/O for Huffman coding. The quick brown fox jumps over the lazy dog. 哈夫曼编码是一种无损压缩算法，它基于字符出现的频率构建最优前缀码。
+1234567890 !@#$%^&*() 测试 Test 测试。
