@@ -31,6 +31,8 @@ package com.ds.twothreefourtree;
 
 import edu.princeton.cs.algs4.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.NoSuchElementException;
 
 /**
@@ -84,6 +86,10 @@ public class RedBlackBST<Key extends Comparable<Key>, Value> {
     private static final boolean BLACK = false;
 
     private Node root;     // root of the BST
+
+    // 操作过程跟踪(供可视化,默认关闭):trace != null 时逐帧记录
+    private List<TraceStep<Key>> trace;
+    private final List<Integer> curPath = new ArrayList<>();   // 当前下潜路径(0=左,1=右)
 
     // BST helper node data type
     private class Node {
@@ -199,8 +205,15 @@ public class RedBlackBST<Key extends Comparable<Key>, Value> {
             return;
         }
 
+        boolean emptyTree = (root == null);
         root = put(root, key, val);
-        root.color = BLACK;
+        if (emptyTree) {
+            record("空树:创建红节点 " + key + " 作为根", new Hl(HlKind.INSERT, new int[0]));
+        }
+        if (isRed(root)) {
+            root.color = BLACK;
+            record("根置黑:红黑树根必须为黑, " + key + " 由红变黑", new Hl(HlKind.ROOT, new int[0]));
+        }
         // assert check();
     }
 
@@ -209,9 +222,27 @@ public class RedBlackBST<Key extends Comparable<Key>, Value> {
         if (h == null) return new Node(key, val, RED, 1);
 
         int cmp = key.compareTo(h.key);
-        if      (cmp < 0) h.left  = put(h.left,  key, val);
-        else if (cmp > 0) h.right = put(h.right, key, val);
-        else              h.val   = val;
+        if (cmp < 0) {
+            boolean wasNull = (h.left == null);
+            curPath.add(0);
+            h.left = put(h.left, key, val);
+            curPath.remove(curPath.size() - 1);
+            if (wasNull) {
+                record("红节点 " + key + " 挂到 " + h.key + " 的左子树(新键先为红)",
+                        new Hl(HlKind.INSERT, hlPath(0)));
+            }
+        } else if (cmp > 0) {
+            boolean wasNull = (h.right == null);
+            curPath.add(1);
+            h.right = put(h.right, key, val);
+            curPath.remove(curPath.size() - 1);
+            if (wasNull) {
+                record("红节点 " + key + " 挂到 " + h.key + " 的右子树(新键先为红)",
+                        new Hl(HlKind.INSERT, hlPath(1)));
+            }
+        } else {
+            h.val = val;
+        }
 
         // fix-up any right-leaning links
         if (isRed(h.right) && !isRed(h.left))      h = rotateLeft(h);
@@ -244,13 +275,17 @@ public class RedBlackBST<Key extends Comparable<Key>, Value> {
 
     // delete the key-value pair with the minimum key rooted at h
     private Node deleteMin(Node h) {
-        if (h.left == null)
+        if (h.left == null) {
+            record("删除最小键 " + h.key + "(该节点无左孩子, 直接摘除)", new Hl(HlKind.DELETE, hlPath()));
             return null;
+        }
 
         if (!isRed(h.left) && !isRed(h.left.left))
             h = moveRedLeft(h);
 
+        curPath.add(0);
         h.left = deleteMin(h.left);
+        curPath.remove(curPath.size() - 1);
         return balance(h);
     }
 
@@ -276,13 +311,17 @@ public class RedBlackBST<Key extends Comparable<Key>, Value> {
         if (isRed(h.left))
             h = rotateRight(h);
 
-        if (h.right == null)
+        if (h.right == null) {
+            record("删除最大键 " + h.key + "(该节点无右孩子, 直接摘除)", new Hl(HlKind.DELETE, hlPath()));
             return null;
+        }
 
         if (!isRed(h.right) && !isRed(h.right.left))
             h = moveRedRight(h);
 
+        curPath.add(1);
         h.right = deleteMax(h.right);
+        curPath.remove(curPath.size() - 1);
 
         return balance(h);
     }
@@ -296,14 +335,22 @@ public class RedBlackBST<Key extends Comparable<Key>, Value> {
      */
     public void delete(Key key) {
         if (key == null) throw new IllegalArgumentException("argument to delete() is null");
-        if (!contains(key)) return;
+        if (!contains(key)) {
+            record("键 " + key + " 不存在, 删除失败");
+            return;
+        }
 
         // if both children of root are black, set root to red
-        if (!isRed(root.left) && !isRed(root.right))
+        if (!isRed(root.left) && !isRed(root.right)) {
             root.color = RED;
+            record("根临时置红(删除时让根可参与颜色翻转)", new Hl(HlKind.ROOT, new int[0]));
+        }
 
         root = delete(root, key);
-        if (!isEmpty()) root.color = BLACK;
+        if (!isEmpty() && isRed(root)) {
+            root.color = BLACK;
+            record("根置黑", new Hl(HlKind.ROOT, new int[0]));
+        }
         // assert check();
     }
 
@@ -314,24 +361,37 @@ public class RedBlackBST<Key extends Comparable<Key>, Value> {
         if (key.compareTo(h.key) < 0)  {
             if (!isRed(h.left) && !isRed(h.left.left))
                 h = moveRedLeft(h);
+            curPath.add(0);
             h.left = delete(h.left, key);
+            curPath.remove(curPath.size() - 1);
         }
         else {
             if (isRed(h.left))
                 h = rotateRight(h);
-            if (key.compareTo(h.key) == 0 && (h.right == null))
+            if (key.compareTo(h.key) == 0 && (h.right == null)) {
+                record("删除键 " + h.key + "(无右子树, 直接摘除)", new Hl(HlKind.DELETE, hlPath()));
                 return null;
+            }
             if (!isRed(h.right) && !isRed(h.right.left))
                 h = moveRedRight(h);
             if (key.compareTo(h.key) == 0) {
                 Node x = min(h.right);
+                record("用右子树最小键 " + x.key + " 替换被删键 " + h.key
+                                + "(再删掉右子树最小键, 保持 BST 中序不变)",
+                        new Hl(HlKind.SUCCESSOR, hlPath()));
                 h.key = x.key;
                 h.val = x.val;
                 // h.val = get(h.right, min(h.right).key);
                 // h.key = min(h.right).key;
+                curPath.add(1);
                 h.right = deleteMin(h.right);
+                curPath.remove(curPath.size() - 1);
             }
-            else h.right = delete(h.right, key);
+            else {
+                curPath.add(1);
+                h.right = delete(h.right, key);
+                curPath.remove(curPath.size() - 1);
+            }
         }
         return balance(h);
     }
@@ -345,12 +405,19 @@ public class RedBlackBST<Key extends Comparable<Key>, Value> {
         assert (h != null) && isRed(h.left);
         // assert (h != null) && isRed(h.left) &&  !isRed(h.right);  // for insertion only
         Node x = h.left;
+        boolean hWasRed = isRed(h);
+        record("右旋前: " + h.key + "(" + colorName(h) + ") 与其红左孩子 " + x.key + " 形成连续红链,需右旋",
+                new Hl(HlKind.ROTATE, hlPath()), new Hl(HlKind.ROTATE, hlPath(0)));
         h.left = x.right;
         x.right = h;
         x.color = h.color;
         h.color = RED;
         x.size = h.size;
         h.size = size(h.left) + size(h.right) + 1;
+        relinkAfterRotate(x);                          // 父指针就地修正,保证快照完整
+        record("右旋完成: " + x.key + " 上移为子树根(继承原 " + h.key + " 的" + (hWasRed ? "红" : "黑")
+                        + "色), " + h.key + " 变为红",
+                new Hl(HlKind.ROTATE, hlPath()), new Hl(HlKind.ROTATE, hlPath(1)));
         return x;
     }
 
@@ -359,13 +426,42 @@ public class RedBlackBST<Key extends Comparable<Key>, Value> {
         assert (h != null) && isRed(h.right);
         // assert (h != null) && isRed(h.right) && !isRed(h.left);  // for insertion only
         Node x = h.right;
+        boolean hWasRed = isRed(h);
+        record("左旋前: " + h.key + "(" + colorName(h) + ") 与其红右孩子 " + x.key + " 构成右倾红链,需左旋",
+                new Hl(HlKind.ROTATE, hlPath()), new Hl(HlKind.ROTATE, hlPath(1)));
         h.right = x.left;
         x.left = h;
         x.color = h.color;
         h.color = RED;
         x.size = h.size;
         h.size = size(h.left) + size(h.right) + 1;
+        relinkAfterRotate(x);                          // 父指针就地修正,保证快照完整
+        record("左旋完成: " + x.key + " 上移为子树根(继承原 " + h.key + " 的" + (hWasRed ? "红" : "黑")
+                        + "色), " + h.key + " 变为红",
+                new Hl(HlKind.ROTATE, hlPath()), new Hl(HlKind.ROTATE, hlPath(0)));
         return x;
+    }
+
+    /**
+     * 旋转把子树根换成了 newRoot,但调用方要到递归返回后才会重新挂接父指针。
+     * 这里按 curPath 就地修正:根则更新 root,否则把父节点的孩子指针指向 newRoot,
+     * 让随后 record() 的快照从根出发就完整。调用方之后赋的是同一个值,无副作用。
+     */
+    private void relinkAfterRotate(Node newRoot) {
+        if (curPath.isEmpty()) {
+            root = newRoot;
+            return;
+        }
+        Node parent = root;
+        for (int i = 0; i < curPath.size() - 1; i++) {
+            parent = curPath.get(i) == 0 ? parent.left : parent.right;
+        }
+        int dir = curPath.get(curPath.size() - 1);
+        if (dir == 0) {
+            parent.left = newRoot;
+        } else {
+            parent.right = newRoot;
+        }
     }
 
     // flip the colors of a node and its two children
@@ -374,9 +470,16 @@ public class RedBlackBST<Key extends Comparable<Key>, Value> {
         // assert (h != null) && (h.left != null) && (h.right != null);
         // assert (!isRed(h) &&  isRed(h.left) &&  isRed(h.right))
         //    || (isRed(h)  && !isRed(h.left) && !isRed(h.right));
+        record("颜色翻转前: " + h.key + "=" + colorName(h) + ", 左 " + keyStr(h.left) + "=" + colorName(h.left)
+                        + ", 右 " + keyStr(h.right) + "=" + colorName(h.right)
+                        + " (两个红孩子压在同一层, 相当于 4-节点, 拆分并上推)",
+                new Hl(HlKind.FLIP, hlPath()), new Hl(HlKind.FLIP, hlPath(0)), new Hl(HlKind.FLIP, hlPath(1)));
         h.color = !h.color;
         h.left.color = !h.left.color;
         h.right.color = !h.right.color;
+        record("颜色翻转完成: " + h.key + " 变为 " + colorName(h) + ", 左孩子变为 " + colorName(h.left)
+                        + ", 右孩子变为 " + colorName(h.right),
+                new Hl(HlKind.FLIP, hlPath()), new Hl(HlKind.FLIP, hlPath(0)), new Hl(HlKind.FLIP, hlPath(1)));
     }
 
     // Assuming that h is red and both h.left and h.left.left
@@ -385,12 +488,17 @@ public class RedBlackBST<Key extends Comparable<Key>, Value> {
         // assert (h != null);
         // assert isRed(h) && !isRed(h.left) && !isRed(h.left.left);
 
+        record("moveRedLeft: 左子树两个孩子都黑, 下潜前先腾出一个红节点",
+                new Hl(HlKind.TARGET, hlPath()));
         flipColors(h);
         if (isRed(h.right.left)) {
+            curPath.add(1);                       // 让 rotateRight 的记录指向 h.right 而非 h
             h.right = rotateRight(h.right);
+            curPath.remove(curPath.size() - 1);
             h = rotateLeft(h);
             flipColors(h);
         }
+        record("moveRedLeft 完成: 左子树获得一个红节点, 可继续下潜", new Hl(HlKind.TARGET, hlPath()));
         return h;
     }
 
@@ -399,11 +507,14 @@ public class RedBlackBST<Key extends Comparable<Key>, Value> {
     private Node moveRedRight(Node h) {
         // assert (h != null);
         // assert isRed(h) && !isRed(h.right) && !isRed(h.right.left);
+        record("moveRedRight: 右子树两个孩子都黑, 下潜前先腾出一个红节点",
+                new Hl(HlKind.TARGET, hlPath()));
         flipColors(h);
         if (isRed(h.left.left)) {
             h = rotateRight(h);
             flipColors(h);
         }
+        record("moveRedRight 完成: 右子树获得一个红节点, 可继续下潜", new Hl(HlKind.TARGET, hlPath()));
         return h;
     }
 
@@ -639,6 +750,127 @@ public class RedBlackBST<Key extends Comparable<Key>, Value> {
         if (lo.compareTo(hi) > 0) return 0;
         if (contains(hi)) return rank(hi) - rank(lo) + 1;
         else              return rank(hi) - rank(lo);
+    }
+
+
+   /***************************************************************************
+    *  Operation trace (for visualization, disabled by default).
+    *  Only active when trace != null (via putTraced / deleteTraced);
+    *  normal put()/delete() are completely unaffected.
+    ***************************************************************************/
+
+    /** 树快照节点:key + 颜色 + 左右孩子,供可视化只读绘制。 */
+    public static class NodeView<K> {
+        public K key;
+        public boolean red;
+        public NodeView<K> left, right;
+
+        public NodeView(K key, boolean red) {
+            this.key = key;
+            this.red = red;
+        }
+    }
+
+    /** 高亮类型 */
+    public enum HlKind { ROTATE, FLIP, INSERT, DELETE, TARGET, SUCCESSOR, ROOT }
+
+    /** 一条高亮:path 从根到目标节点(0=左孩子, 1=右孩子) */
+    public static class Hl {
+        public final HlKind kind;
+        public final int[] path;
+
+        public Hl(HlKind kind, int[] path) {
+            this.kind = kind;
+            this.path = path;
+        }
+    }
+
+    /** 操作过程中的一步:树快照 + 中文说明 + 高亮列表 */
+    public static class TraceStep<K> {
+        public final String desc;
+        public final NodeView<K> root;
+        public final List<Hl> hl;
+
+        public TraceStep(String desc, NodeView<K> root, List<Hl> hl) {
+            this.desc = desc;
+            this.root = root;
+            this.hl = hl;
+        }
+    }
+
+    /** 深拷贝整棵树(供快照) */
+    public NodeView<Key> snapshot() {
+        return copyView(root);
+    }
+
+    private NodeView<Key> copyView(Node n) {
+        if (n == null) {
+            return null;
+        }
+        NodeView<Key> v = new NodeView<>(n.key, isRed(n));
+        v.left = copyView(n.left);
+        v.right = copyView(n.right);
+        return v;
+    }
+
+    /** 插入并记录全过程步骤(可视化用) */
+    public List<TraceStep<Key>> putTraced(Key key, Value val) {
+        trace = new ArrayList<>();
+        curPath.clear();
+        put(key, val);
+        record("插入完成: " + key + " 已就位, 红黑树重新平衡, size=" + size());
+        List<TraceStep<Key>> out = trace;
+        trace = null;
+        return out;
+    }
+
+    /** 删除并记录全过程步骤(可视化用) */
+    public List<TraceStep<Key>> deleteTraced(Key key) {
+        trace = new ArrayList<>();
+        curPath.clear();
+        delete(key);
+        record("删除完成: " + key + (contains(key) ? " 未删除(不存在)" : " 已删除")
+                + ", 红黑树重新平衡, size=" + size());
+        List<TraceStep<Key>> out = trace;
+        trace = null;
+        return out;
+    }
+
+    /** 记录一步:深拷贝当前树作为快照。trace 为 null 时直接返回。 */
+    private void record(String desc, Hl... hls) {
+        if (trace == null) {
+            return;
+        }
+        List<Hl> list = new ArrayList<>();
+        for (Hl h : hls) {
+            if (h != null) {
+                list.add(h);
+            }
+        }
+        trace.add(new TraceStep<>(desc, snapshot(), list));
+    }
+
+    /** 把 curPath 与 tail 拼成一条从根出发的高亮路径(0=左 1=右) */
+    private int[] hlPath(int... tail) {
+        int[] p = new int[curPath.size() + tail.length];
+        for (int k = 0; k < curPath.size(); k++) {
+            p[k] = curPath.get(k);
+        }
+        System.arraycopy(tail, 0, p, curPath.size(), tail.length);
+        return p;
+    }
+
+    /** 节点颜色描述(防 null) */
+    private String colorName(Node n) {
+        if (n == null) {
+            return "null";
+        }
+        return n.color == RED ? "红" : "黑";
+    }
+
+    /** 节点键描述(防 null) */
+    private String keyStr(Node n) {
+        return n == null ? "null" : String.valueOf(n.key);
     }
 
 

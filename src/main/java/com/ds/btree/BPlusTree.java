@@ -37,6 +37,10 @@ public class BPlusTree {
     private Node root;
     private int size;
 
+    // 删除过程跟踪(供可视化,默认关闭):trace != null 时每完成一步删除操作就记录一次快照
+    private List<TraceStep> trace;
+    private final List<Integer> curPath = new ArrayList<>();   // 当前下潜路径(根到当前节点的孩子下标)
+
     public BPlusTree() {
         this(2);
     }
@@ -72,13 +76,26 @@ public class BPlusTree {
             root.keys[0] = key;
             root.n = 1;
             size++;
+            if (trace != null) {
+                record("插入 " + key + " 到空树,创建新根叶子",
+                        new Hl(HlKind.INSERTED, new int[0], 0));
+            }
             return true;
         }
         // 根满:先单独分裂(根无父节点可承接上浮的分隔键)
         if (root.n == maxKeys) {
+            if (trace != null) {
+                record("根已满,分裂根节点",
+                        new Hl(HlKind.SPLITTING, new int[0], -1));
+            }
             splitRoot();
+            if (trace != null) {
+                record("根分裂完成,新根包含分隔键",
+                        new Hl(HlKind.MODIFIED, new int[0], -1));
+            }
         }
 
+        curPath.clear();
         Node cur = root;
         while (true) {
             if (cur.isLeaf) {
@@ -87,19 +104,40 @@ public class BPlusTree {
                     i++;
                 }
                 if (i < cur.n && key == cur.keys[i]) {
-                    return false;               // 重复键
+                    if (trace != null) {
+                        record("键 " + key + " 已存在,插入失败",
+                                new Hl(HlKind.TARGET, hlPath(), i));
+                    }
+                    return false;
                 }
-                insertKey(cur, i, key);         // 叶子:下行时已保证不满,直接插入
+                insertKey(cur, i, key);
                 size++;
+                if (trace != null) {
+                    record("插入键 " + key + " 到叶子 " + keysStr(cur) + " (位置 " + i + ")",
+                            new Hl(HlKind.INSERTED, hlPath(), i));
+                }
                 return true;
             }
-            // 内部节点:路由到孩子,分隔键 keys[i] = 右子树最小键
             int i = 0;
             while (i < cur.n && key >= cur.keys[i]) {
                 i++;
             }
+            curPath.add(i);
+            if (trace != null) {
+                record("内部节点 " + keysStr(cur) + " 路由键 " + key + " → 第 " + i + " 个孩子",
+                        new Hl(HlKind.TARGET, hlPath(), -1));
+            }
             if (cur.children[i].n == maxKeys) {
-                splitChild(cur, i);             // 下行孩子已满:先分裂,再重新定位
+                if (trace != null) {
+                    record("第 " + i + " 个孩子已满(键数=" + cur.children[i].n + "),分裂节点",
+                            new Hl(HlKind.SPLITTING, hlPath(), -1));
+                }
+                splitChild(cur, i);
+                curPath.remove(curPath.size() - 1);
+                if (trace != null) {
+                    record("分裂完成,重新从当前节点定位",
+                            new Hl(HlKind.MODIFIED, hlPath(), -1));
+                }
                 continue;
             }
             cur = cur.children[i];
@@ -113,13 +151,23 @@ public class BPlusTree {
     /** 查找指定键,不存在返回 null */
     public Integer get(int key) {
         if (root == null) {
+            if (trace != null) {
+                record("树为空,查找 " + key + " 失败",
+                        new Hl(HlKind.TARGET, new int[0], -1));
+            }
             return null;
         }
+        curPath.clear();
         Node cur = root;
         while (!cur.isLeaf) {
             int i = 0;
             while (i < cur.n && key >= cur.keys[i]) {
                 i++;
+            }
+            curPath.add(i);
+            if (trace != null) {
+                record("内部节点 " + keysStr(cur) + " 查找键 " + key + " → 路由到第 " + i + " 个孩子",
+                        new Hl(HlKind.TARGET, hlPath(), -1));
             }
             cur = cur.children[i];
         }
@@ -127,7 +175,17 @@ public class BPlusTree {
         while (i < cur.n && key > cur.keys[i]) {
             i++;
         }
-        return (i < cur.n && key == cur.keys[i]) ? cur.keys[i] : null;
+        boolean found = (i < cur.n && key == cur.keys[i]);
+        if (trace != null) {
+            if (found) {
+                record("在叶子 " + keysStr(cur) + " 中找到键 " + key,
+                        new Hl(HlKind.TARGET, hlPath(), i));
+            } else {
+                record("在叶子 " + keysStr(cur) + " 中未找到键 " + key,
+                        new Hl(HlKind.TARGET, hlPath(), -1));
+            }
+        }
+        return found ? cur.keys[i] : null;
     }
 
     // ==================== 范围查询(B+ 树签名特性:沿叶子链表扫) ====================
@@ -369,6 +427,7 @@ public class BPlusTree {
     /** 删除指定键。返回 true 表示键存在且已删除;false 表示键不存在。 */
     public boolean remove(int key) {
         if (root == null) {
+            record("树为空,删除失败");
             return false;
         }
         DelResult r = removeRec(root, key);
@@ -376,6 +435,7 @@ public class BPlusTree {
             size--;
             if (root.n == 0) {
                 root = null;                // 根是叶子且被删空
+                record("根叶子被删空 → 树变为空");
             }
         }
         return r.found;
@@ -407,9 +467,26 @@ public class BPlusTree {
             }
             if (i < node.n && key == node.keys[i]) {
                 boolean minChanged = (i == 0);           // 删的是叶子最小键?
+                record("叶子 " + keysStr(node) + " 中定位到键 " + key + "(第 " + i + " 个)",
+                        new Hl(HlKind.DELETED, hlPath(), i));
                 removeKeyAt(node, i);
+                if (minChanged) {
+                    if (node.n == 0) {
+                        record("删除键 " + key + " → 叶子被删空",
+                                new Hl(HlKind.MODIFIED, hlPath(), -1));
+                    } else {
+                        record("删除键 " + key + " → 叶子最小键 " + key + " 变为 " + node.keys[0]
+                                        + ",minChanged=true 向上传播",
+                                new Hl(HlKind.MODIFIED, hlPath(), -1));
+                    }
+                } else {
+                    record("删除键 " + key + ",叶子最小键未变(minChanged=false)",
+                            new Hl(HlKind.MODIFIED, hlPath(), -1));
+                }
                 return new DelResult(true, minChanged, node.n > 0 ? node.keys[0] : 0);
             }
+            record("叶子 " + keysStr(node) + " 中未找到键 " + key,
+                    new Hl(HlKind.TARGET, hlPath(), -1));
             return new DelResult(false, false, 0);
         }
 
@@ -418,19 +495,34 @@ public class BPlusTree {
         while (i < node.n && key >= node.keys[i]) {
             i++;
         }
+        record("内部节点 " + keysStr(node) + " 路由键 " + key + " → 第 " + i + " 个孩子" + childRangeStr(node, i),
+                new Hl(HlKind.TARGET, hlPath(), -1), new Hl(HlKind.TARGET, hlPath(i), -1));
+        Node oldRoot = root;                             // 检测 fixChild 是否合并掉了根
         if (node.children[i].n < t) {
             i = fixChild(node, i);                       // 保证目标孩子 >= t 键
         }
+        if (root != oldRoot) {                           // 根被合并替换:目标孩子已成为新根
+            curPath.clear();                             // 新根路径为空,重置下潜路径
+            return removeRec(root, key);                 // 以空路径重新从新根下潜
+        }
+        curPath.add(i);
         DelResult r = removeRec(node.children[i], key);
+        curPath.remove(curPath.size() - 1);
         if (!r.found) {
             return r;
         }
         // 维护分隔键:若右子树最小键变了,更新 keys[i-1]
         if (i >= 1 && r.minChanged) {
+            int oldSep = node.keys[i - 1];
             node.keys[i - 1] = r.newMin;
+            record("分隔键 keys[" + (i - 1) + "] 更新:右子树最小键 " + oldSep + " → " + r.newMin,
+                    new Hl(HlKind.MOVED, hlPath(), i - 1));
+            return new DelResult(true, false, 0);        // 就地修复,停止向上传播
         }
         // 本节点最小键 = children[0] 的最小键;只有下潜目标是 children[0] 时才可能变
         if (i == 0 && r.minChanged) {
+            record("子树最小键变化向上传播:→ " + r.newMin + "(下潜目标是最左孩子,本节点无分隔键可修,继续上传)",
+                    new Hl(HlKind.MODIFIED, hlPath(), -1));
             return r;                                    // newMin 即本节点新最小键,继续上传
         }
         return new DelResult(true, false, 0);
@@ -444,26 +536,48 @@ public class BPlusTree {
             return i;
         }
         boolean leaf = parent.children[0].isLeaf;
+        String type = leaf ? "叶" : "内部";
         // 左兄弟有富余:右旋借一个
         if (i > 0 && parent.children[i - 1].n >= t) {
+            record("下溢:第 " + i + " 个" + type + "孩子键数 " + child.n + " < t=" + t
+                            + ",左兄弟 " + keysStr(parent.children[i - 1]) + " 有富余,借一个键",
+                    new Hl(HlKind.MODIFIED, hlPath(i), -1), new Hl(HlKind.TARGET, hlPath(i - 1), -1));
             if (leaf) {
                 leafBorrowFromLeft(parent, i);
+                record("左借完成:借来 " + parent.children[i].keys[0] + " 成为孩子 #" + i
+                                + " 的新最小键,分隔键 keys[" + (i - 1) + "] 同步更新为 " + parent.children[i].keys[0],
+                        new Hl(HlKind.MODIFIED, hlPath(i), -1));
             } else {
                 rotateRight(parent, i);
+                record("右旋完成:分隔键下沉到孩子 #" + i + " 开头,左兄弟最大键 " + parent.keys[i - 1]
+                                + " 上浮为新的分隔键 keys[" + (i - 1) + "]",
+                        new Hl(HlKind.MODIFIED, hlPath(i), -1));
             }
             return i;
         }
         // 右兄弟有富余:左旋借一个
         if (i < parent.n && parent.children[i + 1].n >= t) {
+            record("下溢:第 " + i + " 个" + type + "孩子键数 " + child.n + " < t=" + t
+                            + ",右兄弟 " + keysStr(parent.children[i + 1]) + " 有富余,借一个键",
+                    new Hl(HlKind.MODIFIED, hlPath(i), -1), new Hl(HlKind.TARGET, hlPath(i + 1), -1));
             if (leaf) {
                 leafBorrowFromRight(parent, i);
+                record("右借完成:右兄弟最小键移走,其新最小键 " + parent.children[i + 1].keys[0]
+                                + " 成为分隔键 keys[" + i + "]",
+                        new Hl(HlKind.MODIFIED, hlPath(i), -1));
             } else {
                 rotateLeft(parent, i);
+                record("左旋完成:分隔键下沉到孩子 #" + i + " 末尾,右兄弟最小键 " + parent.keys[i]
+                                + " 上浮为新的分隔键 keys[" + i + "]",
+                        new Hl(HlKind.MODIFIED, hlPath(i), -1));
             }
             return i;
         }
         // 兄弟也都不足:合并
         if (i > 0) {
+            record("下溢:第 " + i + " 个" + type + "孩子键数 " + child.n + " < t=" + t
+                            + ",左右兄弟均不足,与左兄弟 " + keysStr(parent.children[i - 1]) + " 合并",
+                    new Hl(HlKind.MODIFIED, hlPath(i - 1), -1), new Hl(HlKind.MODIFIED, hlPath(i), -1));
             if (leaf) {
                 leafMerge(parent, i - 1);
             } else {
@@ -471,9 +585,17 @@ public class BPlusTree {
             }
             if (parent == root && parent.n == 0) {
                 root = parent.children[0];
+                record("合并后根键数归零 → 树高降低,合并节点成为新根",
+                        new Hl(HlKind.MODIFIED, new int[0], -1));
+            } else {
+                record("合并完成:分隔键 keys[" + (i - 1) + "] 被并入,孩子 #" + (i - 1) + " 与 #" + i + " 合为一体",
+                        new Hl(HlKind.MODIFIED, hlPath(i - 1), -1));
             }
             return i - 1;
         } else {
+            record("下溢:第 0 个" + type + "孩子键数 " + child.n + " < t=" + t
+                            + ",左右兄弟均不足,与右兄弟 " + keysStr(parent.children[1]) + " 合并",
+                    new Hl(HlKind.MODIFIED, hlPath(0), -1), new Hl(HlKind.MODIFIED, hlPath(1), -1));
             if (leaf) {
                 leafMerge(parent, 0);
             } else {
@@ -481,6 +603,11 @@ public class BPlusTree {
             }
             if (parent == root && parent.n == 0) {
                 root = parent.children[0];
+                record("合并后根键数归零 → 树高降低,合并节点成为新根",
+                        new Hl(HlKind.MODIFIED, new int[0], -1));
+            } else {
+                record("合并完成:分隔键 keys[0] 被并入,孩子 #0 与 #1 合为一体",
+                        new Hl(HlKind.MODIFIED, hlPath(0), -1));
             }
             return 0;
         }
@@ -620,6 +747,163 @@ public class BPlusTree {
             node = node.children[0];
         }
         return node.keys[0];
+    }
+
+    // ==================== 删除过程跟踪(供可视化,默认关闭) ====================
+    // 仅当 trace 非 null(通过 removeTraced)时才会记录;正常 remove() 完全不受影响。
+
+    /** 树快照节点:与 Node 一一对应,供可视化只读绘制(不暴露私有 Node)。 */
+    public static class NodeView {
+        public boolean isLeaf;
+        public int[] keys;
+        public NodeView[] children;   // 内部节点长度 = 键数+1;叶子为 null
+        public NodeView next;         // 叶子链表(已按中序重连)
+
+        public NodeView(boolean isLeaf) {
+            this.isLeaf = isLeaf;
+        }
+    }
+
+    /** 高亮类型:下潜目标 / 被修改 / 被删除 / 移动中的键 / 新插入 / 正在分裂 */
+    public enum HlKind { TARGET, MODIFIED, DELETED, MOVED, INSERTED, SPLITTING }
+
+    /** 一条高亮:path 是从根到目标节点的孩子下标序列;slot=-1 高亮整个节点,否则高亮 keys[slot]。 */
+    public static class Hl {
+        public final HlKind kind;
+        public final int[] path;
+        public final int slot;
+
+        public Hl(HlKind kind, int[] path, int slot) {
+            this.kind = kind;
+            this.path = path;
+            this.slot = slot;
+        }
+    }
+
+    /** 删除过程中的一步:一次操作完成后的树快照 + 中文说明 + 高亮列表。 */
+    public static class TraceStep {
+        public final String desc;
+        public final NodeView root;
+        public final List<Hl> hl;
+
+        public TraceStep(String desc, NodeView root, List<Hl> hl) {
+            this.desc = desc;
+            this.root = root;
+            this.hl = hl;
+        }
+    }
+
+    /** 深拷贝整棵树(含叶子 next 链重连),供快照。root 为 null 时返回 null。 */
+    public NodeView snapshot() {
+        if (root == null) {
+            return null;
+        }
+        NodeView view = copyView(root);
+        List<NodeView> leaves = new ArrayList<>();
+        collectLeaves(view, leaves);
+        for (int j = 0; j + 1 < leaves.size(); j++) {
+            leaves.get(j).next = leaves.get(j + 1);
+        }
+        return view;
+    }
+
+    private NodeView copyView(Node n) {
+        NodeView v = new NodeView(n.isLeaf);
+        v.keys = Arrays.copyOf(n.keys, n.n);
+        if (!n.isLeaf) {
+            v.children = new NodeView[n.n + 1];
+            for (int c = 0; c <= n.n; c++) {
+                v.children[c] = copyView(n.children[c]);
+            }
+        }
+        return v;
+    }
+
+    private void collectLeaves(NodeView v, List<NodeView> out) {
+        if (v.isLeaf) {
+            out.add(v);
+        } else {
+            for (NodeView c : v.children) {
+                collectLeaves(c, out);
+            }
+        }
+    }
+
+    /** 插入并记录全过程步骤(可视化用)。返回每一步的快照+描述+高亮。 */
+    public List<TraceStep> insertTraced(int key) {
+        trace = new ArrayList<>();
+        curPath.clear();
+        insert(key);
+        List<TraceStep> out = trace;
+        trace = null;
+        return out;
+    }
+
+    /** 查找并记录全过程步骤(可视化用)。返回每一步的快照+描述+高亮。 */
+    public List<TraceStep> getTraced(int key) {
+        trace = new ArrayList<>();
+        curPath.clear();
+        get(key);
+        List<TraceStep> out = trace;
+        trace = null;
+        return out;
+    }
+
+    /** 删除并记录全过程步骤(可视化用)。返回每一步的快照+描述+高亮。 */
+    public List<TraceStep> removeTraced(int key) {
+        trace = new ArrayList<>();
+        curPath.clear();
+        remove(key);
+        List<TraceStep> out = trace;
+        trace = null;
+        return out;
+    }
+
+    /** 记录一步:深拷贝当前树作为快照。trace 为 null 时直接返回(零开销)。 */
+    private void record(String desc, Hl... hls) {
+        if (trace == null) {
+            return;
+        }
+        List<Hl> list = new ArrayList<>();
+        for (Hl h : hls) {
+            if (h != null) {
+                list.add(h);
+            }
+        }
+        trace.add(new TraceStep(desc, snapshot(), list));
+    }
+
+    /** 把 curPath 与 tail 拼成一条从当前根出发的高亮路径。 */
+    private int[] hlPath(int... tail) {
+        int[] p = new int[curPath.size() + tail.length];
+        for (int k = 0; k < curPath.size(); k++) {
+            p[k] = curPath.get(k);
+        }
+        System.arraycopy(tail, 0, p, curPath.size(), tail.length);
+        return p;
+    }
+
+    /** 把节点 keys 格式化成 "[a, b, c]" */
+    private static String keysStr(Node n) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < n.n; i++) {
+            if (i > 0) {
+                sb.append(", ");
+            }
+            sb.append(n.keys[i]);
+        }
+        return sb.append("]").toString();
+    }
+
+    /** 路由目标孩子 #i 对应的键区间描述 */
+    private static String childRangeStr(Node node, int i) {
+        if (i == 0) {
+            return "(区间 (−∞, " + node.keys[0] + "))";
+        }
+        if (i == node.n) {
+            return "(区间 [" + node.keys[node.n - 1] + ", +∞))";
+        }
+        return "(区间 [" + node.keys[i - 1] + ", " + node.keys[i] + "))";
     }
 
     // ==================== 结构校验(供测试与排错使用) ====================
