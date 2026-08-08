@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+
+    <!-- 加载数据库连接配置（db.properties: user / password / port） -->
+    <properties resource="db.properties"/>
+
+    <environments default="development">
+        <environment id="development">
+            <!-- JDBC 事务管理：提交/回滚由 SqlSession 手动控制 -->
+            <transactionManager type="JDBC"/>
+            <!-- 连接池：MyBatis 自带 PooledDataSource -->
+            <dataSource type="POOLED">
+                <property name="driver" value="com.mysql.cj.jdbc.Driver"/>
+                <property name="url"
+                          value="jdbc:mysql://localhost:${port}/huffman_demo?useUnicode=true&amp;characterEncoding=UTF-8&amp;serverTimezone=Asia/Shanghai&amp;useSSL=false&amp;allowPublicKeyRetrieval=true"/>
+                <property name="username" value="${user}"/>
+                <property name="password" value="${password}"/>
+            </dataSource>
+        </environment>
+    </environments>
+
+    <mappers>
+        <mapper resource="mapper/DocumentMapper.xml"/>
+        <mapper resource="mapper/CodeEntryMapper.xml"/>
+    </mappers>
+
+</configuration>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ds.huffman.db.DocumentMapper">
+
+    <!-- 下划线列名 → 驼峰字段名 的显式映射 -->
+    <resultMap id="documentMap" type="com.ds.huffman.db.Document">
+        <id property="id" column="id"/>
+        <result property="docName" column="doc_name"/>
+        <result property="originalText" column="original_text"/>
+        <result property="encodedBits" column="encoded_bits"/>
+        <result property="treeBlob" column="tree_blob"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <!-- useGeneratedKeys 回填自增主键到 doc.id -->
+    <insert id="insert" parameterType="com.ds.huffman.db.Document"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO documents (doc_name, original_text, encoded_bits, tree_blob)
+        VALUES (#{docName}, #{originalText}, #{encodedBits}, #{treeBlob})
+    </insert>
+
+    <select id="selectById" parameterType="int" resultMap="documentMap">
+        SELECT id, doc_name, original_text, encoded_bits, tree_blob, created_at
+        FROM documents
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectAll" resultMap="documentMap">
+        SELECT id, doc_name, original_text, encoded_bits, tree_blob, created_at
+        FROM documents
+        ORDER BY id
+    </select>
+
+</mapper>

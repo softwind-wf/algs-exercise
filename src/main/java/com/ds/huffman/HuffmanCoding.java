@@ -336,6 +336,42 @@ public class HuffmanCoding {
         }
     }
 
+    // ====================== 树 ↔ 字节数组（持久化桥接） ======================
+
+    /**
+     * 将哈夫曼树序列化为字节数组，便于持久化到数据库或文件。
+     * <p>格式与 {@link #encodeFile(String, String)} 中写入 .huf 的树部分完全一致。</p>
+     *
+     * @param root 哈夫曼树根
+     * @return 序列化后的字节数组
+     * @throws IOException 序列化异常
+     * @see #bytesToTree(byte[])
+     */
+    public static byte[] treeToBytes(HuffmanNode root) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream(256);
+        try (DataOutputStream dos = new DataOutputStream(baos)) {
+            serializeTree(root, dos);
+        }
+        return baos.toByteArray();
+    }
+
+    /**
+     * 从字节数组反序列化哈夫曼树，与 {@link #treeToBytes(HuffmanNode)} 配对使用。
+     *
+     * @param data 序列化后的字节数组
+     * @return 重建的哈夫曼树根节点（频率字段为 0）
+     * @throws IOException 数据为空或格式错误时抛出
+     * @see #treeToBytes(HuffmanNode)
+     */
+    public static HuffmanNode bytesToTree(byte[] data) throws IOException {
+        if (data == null || data.length == 0) {
+            throw new IOException("树数据为空");
+        }
+        try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(data))) {
+            return deserializeTree(in);
+        }
+    }
+
     // ====================== 文件 I/O（对外API） ======================
 
     /** 文件魔数，用于识别哈夫曼编码文件 */
