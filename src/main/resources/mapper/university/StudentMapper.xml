@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ds.university.mapper.StudentMapper">
+
+    <select id="selectById" resultType="com.ds.university.entity.Student">
+        SELECT ID AS id, name, dept_name, tot_cred
+        FROM student
+        WHERE ID = #{id}
+    </select>
+
+    <!-- 学生导师姓名 -->
+    <select id="selectAdvisorName" resultType="string">
+        SELECT i.name
+        FROM advisor a
+        JOIN instructor i ON a.i_id = i.ID
+        WHERE a.s_id = #{id}
+    </select>
+
+    <select id="count" resultType="int">
+        SELECT COUNT(*) FROM student
+    </select>
+
+</mapper>

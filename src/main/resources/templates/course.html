@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('课程详情')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <h1 th:text="${detail.course.courseId} + ' ' + ${detail.course.title}">课程</h1>
+    <p>所属系：<a th:href="@{/departments/{name}(name=${detail.course.deptName})}"
+                  th:text="${detail.course.deptName}">系</a> · 学分：<span th:text="${detail.course.credits}">学分</span></p>
+
+    <h2>先修课程</h2>
+    <ul th:if="${!#lists.isEmpty(detail.prereqs)}">
+        <li th:each="p : ${detail.prereqs}">
+            <a th:href="@{/courses/{id}(id=${p.courseId})}" th:text="${p.courseId}">课程号</a>
+            <span th:text="' - ' + ${p.title}">课程名</span>
+        </li>
+    </ul>
+    <p class="hint" th:unless="${!#lists.isEmpty(detail.prereqs)}">无先修课程。</p>
+
+    <h2>开课班（<span th:text="${detail.sections.size()}">0</span>）</h2>
+    <table>
+        <thead>
+        <tr><th>开课号</th><th>学期</th><th>年份</th><th>教室</th><th>教师</th><th>选课/容量</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="s : ${detail.sections}">
+            <td th:text="${s.secId}">开课号</td>
+            <td th:text="${s.semester}">学期</td>
+            <td th:text="${s.year}">年份</td>
+            <td th:text="${s.building + ' ' + s.roomNumber}">教室</td>
+            <td th:text="${s.instructorNames}">教师</td>
+            <td class="num" th:text="${s.enrolled} + '/' + ${s.capacity}">选课/容量</td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

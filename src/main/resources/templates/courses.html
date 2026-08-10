@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('课程列表')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <h1>课程列表</h1>
+    <form method="get" th:action="@{/courses}" class="filter">
+        <label>院系
+            <select name="deptName">
+                <option value="">全部</option>
+                <option th:each="d : ${departments}" th:value="${d.deptName}"
+                        th:selected="${deptName == d.deptName}" th:text="${d.deptName}">系</option>
+            </select>
+        </label>
+        <label>关键字
+            <input type="text" name="keyword" th:value="${keyword}" placeholder="课程号 / 课程名">
+        </label>
+        <button type="submit">查询</button>
+    </form>
+
+    <table>
+        <thead>
+        <tr><th>课程号</th><th>课程名</th><th>所属系</th><th>学分</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="c : ${courses}">
+            <td><a th:href="@{/courses/{id}(id=${c.courseId})}" th:text="${c.courseId}">课程号</a></td>
+            <td th:text="${c.title}">课程名</td>
+            <td><a th:href="@{/departments/{name}(name=${c.deptName})}" th:text="${c.deptName}">系</a></td>
+            <td class="num" th:text="${c.credits}">学分</td>
+        </tr>
+        </tbody>
+    </table>
+    <p class="hint" th:if="${#lists.isEmpty(courses)}">没有符合条件的课程。</p>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

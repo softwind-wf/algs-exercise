@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('系详情')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <h1 th:text="${detail.department.deptName}">系名</h1>
+    <p>教学楼：<span th:text="${detail.department.building}">楼</span> ·
+       预算：<span th:text="${detail.department.budget}">预算</span></p>
+
+    <h2>教师（<span th:text="${detail.instructors.size()}">0</span>）</h2>
+    <table>
+        <thead>
+        <tr><th>编号</th><th>姓名</th><th>工资</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="i : ${detail.instructors}">
+            <td><a th:href="@{/instructors/{id}(id=${i.id})}" th:text="${i.id}">编号</a></td>
+            <td th:text="${i.name}">姓名</td>
+            <td class="num" th:text="${i.salary}">工资</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h2>课程（<span th:text="${detail.courses.size()}">0</span>）</h2>
+    <table>
+        <thead>
+        <tr><th>课程号</th><th>课程名</th><th>学分</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="c : ${detail.courses}">
+            <td><a th:href="@{/courses/{id}(id=${c.courseId})}" th:text="${c.courseId}">课程号</a></td>
+            <td th:text="${c.title}">课程名</td>
+            <td class="num" th:text="${c.credits}">学分</td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

@@ -1,147 +1,85 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>2.7.18</version>
+		<relativePath/>
+	</parent>
+
 	<groupId>edu.princeton.cs</groupId>
 	<artifactId>algs4</artifactId>
 	<packaging>jar</packaging>
 	<version>1.0.0.0</version>
-	<name>algs4</name>
+	<name>algs4 - university-web</name>
+	<description>大学网站（Spring Boot + Spring MVC + MyBatis），基于 algs4 根工程</description>
+
 	<licenses>
 		<license>
 			<name>GNU GENERAL PUBLIC LICENSE</name>
 			<url>http://www.gnu.org/licenses/gpl-3.0.en.html</url>
 		</license>
 	</licenses>
-	<developers>
-		<developer>
-			<id>kevin</id>
-			<name>Kevin Wayne</name>
-			<email>wayne@CS.Princeton.EDU</email>
-			<url>https://www.cs.princeton.edu/~wayne/contact/</url>
-			<organization>Princeton University </organization>
-			<organizationUrl>https://www.cs.princeton.edu</organizationUrl>
-			<roles>
-				<role>author</role>
-				<role>developer</role>
-			</roles>
-			<timezone>UTC/GMT -4:00 hours</timezone>
-			<properties>
-				<picUrl>https://www.cs.princeton.edu/~wayne/contact/KevinWayne.jpg</picUrl>
-			</properties>
-		</developer>
-		<developer>
-			<id>robert</id>
-			<name>Robert Sedgewick</name>
-			<roles>
-				<role>author</role>
-			</roles>
-		</developer>
-	</developers>
-	<issueManagement>
-		<system>github.com</system>
-		<url>https://github.com/kevin-wayne/algs4/issues</url>
-	</issueManagement>
+
 	<properties>
+		<java.version>1.8</java.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<maven.compiler.source>1.8</maven.compiler.source>
-		<maven.compiler.target>1.8</maven.compiler.target>
 	</properties>
-	<profiles>
-		<profile>
-			<id>main-build</id>
-				<activation>
-					<activeByDefault>true</activeByDefault>
-				</activation>
-			<build>
-				<plugins>
-					<plugin>
-						<groupId>org.apache.maven.plugins</groupId>
-						<artifactId>maven-compiler-plugin</artifactId>
-						<version>3.13.0</version>
-						<configuration>
-							<source>1.8</source>
-							<target>1.8</target>
-						</configuration>
-					</plugin>
-					<plugin>
-						<groupId>org.apache.maven.plugins</groupId>
-						<artifactId>maven-source-plugin</artifactId>
-						<version>3.0.1</version>
-						<executions>
-							<execution>
-								<id>attach-sources</id>
-								<goals>
-									<goal>jar</goal>
-								</goals>
-							</execution>
-						</executions>
-					</plugin>
-				</plugins>
-			</build>
-			<repositories>
-			</repositories>
-		</profile>
-	</profiles>
+
 	<dependencies>
-
-		<!-- JUnit 5 API -->
+		<!-- Web 层：Spring MVC + 内嵌 Tomcat -->
 		<dependency>
-			<groupId>org.junit.jupiter</groupId>
-			<artifactId>junit-jupiter-api</artifactId>
-			<version>5.9.2</version>
-			<scope>test</scope>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
-		<!-- JUnit 5 引擎，用于执行测试 -->
+		<!-- 服务端渲染模板 -->
 		<dependency>
-			<groupId>org.junit.jupiter</groupId>
-			<artifactId>junit-jupiter-engine</artifactId>
-			<version>5.9.2</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.junit.jupiter</groupId>
-			<artifactId>junit-jupiter</artifactId>
-			<version>RELEASE</version>
-			<scope>test</scope>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-thymeleaf</artifactId>
 		</dependency>
 
-		<!-- MySQL Connector/J (JDBC 驱动)，用于数据持久化演示 -->
+		<!-- MyBatis 与 Spring Boot 集成 -->
+		<dependency>
+			<groupId>org.mybatis.spring.boot</groupId>
+			<artifactId>mybatis-spring-boot-starter</artifactId>
+			<version>2.3.2</version>
+		</dependency>
+
+		<!-- MySQL 驱动 -->
 		<dependency>
 			<groupId>com.mysql</groupId>
 			<artifactId>mysql-connector-j</artifactId>
-			<version>8.0.33</version>
+			<scope>runtime</scope>
 		</dependency>
 
-		<!-- MyBatis ORM 框架，用于数据持久化演示 -->
+		<!-- 仅使用 BCrypt 密码校验（不引入 Spring Security 过滤器链） -->
 		<dependency>
-			<groupId>org.mybatis</groupId>
-			<artifactId>mybatis</artifactId>
-			<version>3.5.19</version>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-crypto</artifactId>
 		</dependency>
 
+		<!-- 测试：JUnit 5 + Mockito + AssertJ -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
 		<plugins>
 			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.13.0</version>
-				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
-				</configuration>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
-			<!-- Maven Surefire 插件，用于在构建时运行测试 -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>3.1.2</version>
 			</plugin>
 		</plugins>
 	</build>
-
-
-
 </project>

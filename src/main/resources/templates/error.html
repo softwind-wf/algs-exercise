@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('出错了')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container narrow">
+    <h1>出错了</h1>
+    <p class="alert" th:if="${message}" th:text="${message}">错误信息</p>
+    <p class="alert" th:unless="${message}" th:text="${error ?: '页面不存在或发生未知错误'}">错误信息</p>
+    <p><a th:href="@{/}">返回首页</a></p>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('开课班')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <h1>开课班</h1>
+    <form method="get" th:action="@{/sections}" class="filter">
+        <label>学期
+            <select name="semester">
+                <option value="">全部</option>
+                <option value="Fall" th:selected="${semester == 'Fall'}">Fall</option>
+                <option value="Spring" th:selected="${semester == 'Spring'}">Spring</option>
+                <option value="Summer" th:selected="${semester == 'Summer'}">Summer</option>
+            </select>
+        </label>
+        <label>年份
+            <input type="number" name="year" th:value="${year}" placeholder="如 2010" min="1900" max="2100">
+        </label>
+        <label>课程
+            <select name="courseId">
+                <option value="">全部</option>
+                <option th:each="c : ${courses}" th:value="${c.courseId}"
+                        th:selected="${courseId == c.courseId}"
+                        th:text="${c.courseId} + ' ' + ${c.title}">课程</option>
+            </select>
+        </label>
+        <button type="submit">查询</button>
+    </form>
+
+    <table>
+        <thead>
+        <tr>
+            <th>课程</th><th>开课号</th><th>学期</th><th>年份</th><th>教室</th><th>时间段</th><th>教师</th><th>选课/容量</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="s : ${sections}">
+            <td>
+                <a th:href="@{/courses/{id}(id=${s.courseId})}" th:text="${s.courseId}">课程号</a>
+                <span class="dim" th:text="s.title">课程名</span>
+            </td>
+            <td th:text="${s.secId}">开课号</td>
+            <td th:text="${s.semester}">学期</td>
+            <td th:text="${s.year}">年份</td>
+            <td th:text="${s.building + ' ' + s.roomNumber}">教室</td>
+            <td th:text="${s.timeSlotId}">时间段</td>
+            <td th:text="${s.instructorNames}">教师</td>
+            <td class="num" th:text="${s.enrolled} + '/' + ${s.capacity}">选课/容量</td>
+        </tr>
+        </tbody>
+    </table>
+    <p class="hint" th:if="${#lists.isEmpty(sections)}">没有符合条件的开课班。</p>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

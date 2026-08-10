@@ -180,7 +180,7 @@ public class MySkipList<K extends Comparable<K>, V> {
         if (key == null) {
             return false;
         }
-        return get(key) != null;  // 通过 get() 复用缓存
+        return findNode(key) != null;  // 按节点存在性判断，支持存储 null 值
     }
 
     /**

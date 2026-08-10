@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title}">大学网站</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+<nav th:fragment="nav">
+    <div class="nav-inner">
+        <a class="brand" th:href="@{/}">大学网站</a>
+        <a th:href="@{/departments}">院系</a>
+        <a th:href="@{/courses}">课程</a>
+        <a th:href="@{/sections}">开课班</a>
+        <a th:href="@{/instructors}">教师</a>
+        <span class="nav-right" th:if="${session.loginUser != null}">
+            <span th:text="'欢迎，' + ${session.loginUser.userId}">欢迎</span>
+            <a th:href="@{/logout}">退出</a>
+        </span>
+        <span class="nav-right" th:unless="${session.loginUser != null}">
+            <a th:href="@{/login}">登录</a>
+        </span>
+    </div>
+</nav>
+
+<footer th:fragment="footer">
+    <p>大学教务信息网站 · Spring Boot + Spring MVC + MyBatis</p>
+</footer>
+
+</body>
+</html>

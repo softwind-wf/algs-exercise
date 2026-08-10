@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('院系列表')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <h1>院系列表</h1>
+    <table>
+        <thead>
+        <tr>
+            <th>系名称</th>
+            <th>教学楼</th>
+            <th>预算</th>
+            <th>教师数</th>
+            <th>课程数</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="d : ${departments}">
+            <td><a th:href="@{/departments/{name}(name=${d.deptName})}" th:text="${d.deptName}">系名</a></td>
+            <td th:text="${d.building}">楼</td>
+            <td class="num" th:text="${d.budget}">预算</td>
+            <td class="num" th:text="${d.teacherCount}">0</td>
+            <td class="num" th:text="${d.courseCount}">0</td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

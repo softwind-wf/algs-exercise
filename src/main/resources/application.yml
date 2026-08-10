@@ -1,0 +1,24 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: university-web
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/university?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:root}
+  thymeleaf:
+    cache: false
+    encoding: UTF-8
+
+mybatis:
+  mapper-locations: classpath:mapper/university/*.xml
+  type-aliases-package: com.ds.university.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
+logging:
+  level:
+    com.ds.university.mapper: debug

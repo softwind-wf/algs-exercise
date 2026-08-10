@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ds.university.mapper.CourseMapper">
+
+    <!-- 课程列表：按系 / 关键字筛选（均可选） -->
+    <select id="selectAll" resultType="com.ds.university.entity.Course">
+        SELECT course_id, title, dept_name, credits
+        FROM course
+        <where>
+            <if test="deptName != null and deptName != ''">
+                AND dept_name = #{deptName}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (title LIKE CONCAT('%', #{keyword}, '%')
+                     OR course_id LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY course_id
+    </select>
+
+    <select id="selectById" resultType="com.ds.university.entity.Course">
+        SELECT course_id, title, dept_name, credits
+        FROM course
+        WHERE course_id = #{courseId}
+    </select>
+
+    <!-- 某课程的先修课程 -->
+    <select id="selectPrereqs" resultType="com.ds.university.entity.Course">
+        SELECT c.course_id, c.title, c.dept_name, c.credits
+        FROM prereq p
+        JOIN course c ON p.prereq_id = c.course_id
+        WHERE p.course_id = #{courseId}
+        ORDER BY c.course_id
+    </select>
+
+    <!-- 某课程的后续课程（被作为先修） -->
+    <select id="selectDependents" resultType="com.ds.university.entity.Course">
+        SELECT c.course_id, c.title, c.dept_name, c.credits
+        FROM prereq p
+        JOIN course c ON p.course_id = c.course_id
+        WHERE p.prereq_id = #{courseId}
+        ORDER BY c.course_id
+    </select>
+
+    <select id="count" resultType="int">
+        SELECT COUNT(*) FROM course
+    </select>
+
+</mapper>

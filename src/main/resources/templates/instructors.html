@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('教师列表')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <h1>教师列表</h1>
+    <form method="get" th:action="@{/instructors}" class="filter">
+        <label>院系
+            <select name="deptName">
+                <option value="">全部</option>
+                <option th:each="d : ${departments}" th:value="${d.deptName}"
+                        th:selected="${deptName == d.deptName}" th:text="${d.deptName}">系</option>
+            </select>
+        </label>
+        <button type="submit">查询</button>
+    </form>
+
+    <table>
+        <thead>
+        <tr><th>编号</th><th>姓名</th><th>所属系</th><th>工资</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="i : ${instructors}">
+            <td><a th:href="@{/instructors/{id}(id=${i.id})}" th:text="${i.id}">编号</a></td>
+            <td th:text="${i.name}">姓名</td>
+            <td><a th:href="@{/departments/{name}(name=${i.deptName})}" th:text="${i.deptName}">系</a></td>
+            <td class="num" th:text="${i.salary}">工资</td>
+        </tr>
+        </tbody>
+    </table>
+    <p class="hint" th:if="${#lists.isEmpty(instructors)}">没有符合条件的教师。</p>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

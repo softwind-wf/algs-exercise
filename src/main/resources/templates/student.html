@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('学生信息')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <h1 th:text="${profile.student.name}">学生名</h1>
+    <p>学号：<span th:text="${profile.student.id}">学号</span> ·
+       主修系：<a th:href="@{/departments/{name}(name=${profile.student.deptName})}"
+                 th:text="${profile.student.deptName}">系</a> ·
+       已修学分：<span th:text="${profile.student.totCred}">学分</span> ·
+       导师：<span th:text="${profile.advisorName ?: '未分配'}">导师</span></p>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

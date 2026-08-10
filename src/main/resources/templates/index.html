@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('首页')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <h1>大学教务信息网站</h1>
+    <p class="subtitle">基于 university 数据库（11 张业务表 + 5 张权限表）的教学演示系统</p>
+
+    <div class="cards">
+        <div class="card">
+            <div class="num" th:text="${stats != null ? stats.departmentCount : 0}">0</div>
+            <div class="label">院系</div>
+            <a th:href="@{/departments}">查看</a>
+        </div>
+        <div class="card">
+            <div class="num" th:text="${stats != null ? stats.courseCount : 0}">0</div>
+            <div class="label">课程</div>
+            <a th:href="@{/courses}">查看</a>
+        </div>
+        <div class="card">
+            <div class="num" th:text="${stats != null ? stats.instructorCount : 0}">0</div>
+            <div class="label">教师</div>
+            <a th:href="@{/instructors}">查看</a>
+        </div>
+        <div class="card">
+            <div class="num" th:text="${stats != null ? stats.sectionCount : 0}">0</div>
+            <div class="label">开课班</div>
+            <a th:href="@{/sections}">查看</a>
+        </div>
+    </div>
+
+    <div class="notice">
+        <p>演示账号：<code>zhang</code>（学生）/ <code>katz</code>（教师）/ <code>admin</code>（管理员），密码均为 <code>password</code>。</p>
+    </div>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

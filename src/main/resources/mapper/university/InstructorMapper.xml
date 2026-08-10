@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ds.university.mapper.InstructorMapper">
+
+    <!-- 教师列表：按系筛选（可选） -->
+    <select id="selectAll" resultType="com.ds.university.entity.Instructor">
+        SELECT ID AS id, name, dept_name, salary
+        FROM instructor
+        <where>
+            <if test="deptName != null and deptName != ''">
+                AND dept_name = #{deptName}
+            </if>
+        </where>
+        ORDER BY ID
+    </select>
+
+    <select id="selectById" resultType="com.ds.university.entity.Instructor">
+        SELECT ID AS id, name, dept_name, salary
+        FROM instructor
+        WHERE ID = #{id}
+    </select>
+
+    <!-- 教师授课的开课班 -->
+    <select id="selectSectionsByInstructor" resultType="com.ds.university.vo.SectionVO">
+        SELECT s.course_id, s.sec_id, s.semester, s.year,
+               s.building, s.room_number, s.time_slot_id,
+               c.title AS course_title,
+               (SELECT COUNT(*) FROM takes k
+                WHERE k.course_id = s.course_id AND k.sec_id = s.sec_id
+                  AND k.semester = s.semester AND k.year = s.year) AS enrolled,
+               cl.capacity
+        FROM teaches t
+        JOIN section s ON t.course_id = s.course_id AND t.sec_id = s.sec_id
+            AND t.semester = s.semester AND t.year = s.year
+        LEFT JOIN course c ON s.course_id = c.course_id
+        LEFT JOIN classroom cl ON s.building = cl.building AND s.room_number = cl.room_number
+        WHERE t.ID = #{id}
+        ORDER BY s.year DESC, s.semester
+    </select>
+
+    <select id="count" resultType="int">
+        SELECT COUNT(*) FROM instructor
+    </select>
+
+</mapper>

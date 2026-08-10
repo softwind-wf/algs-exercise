@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ds.university.mapper.DepartmentMapper">
+
+    <!-- 系列表：含教师数 / 课程数 -->
+    <select id="selectAllWithStats" resultType="com.ds.university.vo.DepartmentVO">
+        SELECT d.dept_name, d.building, d.budget,
+               COUNT(DISTINCT i.ID) AS teacher_count,
+               COUNT(DISTINCT c.course_id) AS course_count
+        FROM department d
+        LEFT JOIN instructor i ON i.dept_name = d.dept_name
+        LEFT JOIN course c ON c.dept_name = d.dept_name
+        GROUP BY d.dept_name, d.building, d.budget
+        ORDER BY d.dept_name
+    </select>
+
+    <select id="selectAllSimple" resultType="com.ds.university.entity.Department">
+        SELECT dept_name, building, budget
+        FROM department
+        ORDER BY dept_name
+    </select>
+
+    <select id="selectById" resultType="com.ds.university.entity.Department">
+        SELECT dept_name, building, budget
+        FROM department
+        WHERE dept_name = #{deptName}
+    </select>
+
+    <select id="count" resultType="int">
+        SELECT COUNT(*) FROM department
+    </select>
+
+    <select id="selectInstructorsByDept" resultType="com.ds.university.entity.Instructor">
+        SELECT ID AS id, name, dept_name, salary
+        FROM instructor
+        WHERE dept_name = #{deptName}
+        ORDER BY ID
+    </select>
+
+    <select id="selectCoursesByDept" resultType="com.ds.university.entity.Course">
+        SELECT course_id, title, dept_name, credits
+        FROM course
+        WHERE dept_name = #{deptName}
+        ORDER BY course_id
+    </select>
+
+</mapper>

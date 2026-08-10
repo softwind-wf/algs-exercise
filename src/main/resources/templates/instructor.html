@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('教师详情')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <h1 th:text="${detail.instructor.name}">教师名</h1>
+    <p>编号：<span th:text="${detail.instructor.id}">编号</span> ·
+       所属系：<a th:href="@{/departments/{name}(name=${detail.instructor.deptName})}"
+                 th:text="${detail.instructor.deptName}">系</a> ·
+       工资：<span th:text="${detail.instructor.salary}">工资</span></p>
+
+    <h2>授课开课班（<span th:text="${detail.sections.size()}">0</span>）</h2>
+    <table>
+        <thead>
+        <tr><th>课程</th><th>开课号</th><th>学期</th><th>年份</th><th>教室</th><th>选课/容量</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="s : ${detail.sections}">
+            <td>
+                <a th:href="@{/courses/{id}(id=${s.courseId})}" th:text="${s.courseId}">课程号</a>
+                <span class="dim" th:text="${s.courseTitle}">课程名</span>
+            </td>
+            <td th:text="${s.secId}">开课号</td>
+            <td th:text="${s.semester}">学期</td>
+            <td th:text="${s.year}">年份</td>
+            <td th:text="${s.building + ' ' + s.roomNumber}">教室</td>
+            <td class="num" th:text="${s.enrolled} + '/' + ${s.capacity}">选课/容量</td>
+        </tr>
+        </tbody>
+    </table>
+    <p class="hint" th:if="${#lists.isEmpty(detail.sections)}">暂无授课记录。</p>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

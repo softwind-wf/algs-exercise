@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ds.university.mapper.SysUserMapper">
+
+    <select id="selectByUserId" resultType="com.ds.university.entity.SysUser">
+        SELECT user_id, password, user_type, ref_id, enabled, create_time, update_time
+        FROM sys_user
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 账号的角色集合 -->
+    <select id="selectRoleIds" resultType="string">
+        SELECT r.role_id
+        FROM sys_user_role ur
+        JOIN sys_role r ON ur.role_id = r.role_id
+        WHERE ur.user_id = #{userId}
+    </select>
+
+    <!-- 账号的权限集合（经角色-权限关联去重） -->
+    <select id="selectPermissions" resultType="string">
+        SELECT DISTINCT p.perm_code
+        FROM sys_user_role ur
+        JOIN sys_role_permission rp ON ur.role_id = rp.role_id
+        JOIN sys_permission p ON rp.permission_id = p.permission_id
+        WHERE ur.user_id = #{userId}
+    </select>
+
+</mapper>

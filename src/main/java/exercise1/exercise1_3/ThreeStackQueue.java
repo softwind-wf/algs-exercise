@@ -47,16 +47,26 @@ public class ThreeStackQueue<Item> {
 
     // 处理 shuffling 逻辑
     private void handleShuffling() {
-        if (isShuffling && !bufStack.isEmpty()) {
-            inStack.push(bufStack.pop());
-            shuffleSteps--;
+        if (isShuffling) {
+            if (!bufStack.isEmpty()) {
+                inStack.push(bufStack.pop());
+                shuffleSteps--;
+            }
             if (shuffleSteps == 0) {
                 isShuffling = false;
-                // 将 tempStack 中的元素推入 inStack
-                while (!tempStack.isEmpty()) {
-                    inStack.push(tempStack.pop());
-                }
+                mergeTempStack();
             }
+        }
+    }
+
+    // 将迁移期间入队的元素按原顺序并入 inStack（保持 FIFO 顺序）
+    private void mergeTempStack() {
+        Stack<Item> reversed = new Stack<>();
+        while (!tempStack.isEmpty()) {
+            reversed.push(tempStack.pop());
+        }
+        while (!reversed.isEmpty()) {
+            inStack.push(reversed.pop());
         }
     }
 
