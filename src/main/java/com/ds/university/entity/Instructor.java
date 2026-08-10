@@ -10,7 +10,16 @@ public class Instructor {
     private String deptName;
     private BigDecimal salary;
 
-    public String getId() {
+
+    public Instructor() {
+    }
+
+    public Instructor(String id, String name, String deptName, BigDecimal salary) {
+        this.id = id;
+        this.name = name;
+        this.deptName = deptName;
+        this.salary = salary;
+    }    public String getId() {
         return id;
     }
 

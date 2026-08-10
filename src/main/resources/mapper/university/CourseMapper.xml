@@ -2,10 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.ds.university.mapper.CourseMapper">
 
-    <!-- 课程列表：按系 / 关键字筛选（均可选） -->
-    <select id="selectAll" resultType="com.ds.university.entity.Course">
-        SELECT course_id, title, dept_name, credits
-        FROM course
+    <sql id="courseFilter">
         <where>
             <if test="deptName != null and deptName != ''">
                 AND dept_name = #{deptName}
@@ -15,7 +12,30 @@
                      OR course_id LIKE CONCAT('%', #{keyword}, '%'))
             </if>
         </where>
+    </sql>
+
+    <!-- 课程列表：按系 / 关键字筛选（均可选） -->
+    <select id="selectAll" resultType="com.ds.university.entity.Course">
+        SELECT course_id, title, dept_name, credits
+        FROM course
+        <include refid="courseFilter"/>
         ORDER BY course_id
+    </select>
+
+    <!-- 课程分页列表 -->
+    <select id="selectPage" resultType="com.ds.university.entity.Course">
+        SELECT course_id, title, dept_name, credits
+        FROM course
+        <include refid="courseFilter"/>
+        ORDER BY course_id
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 课程总数（按筛选条件） -->
+    <select id="countByFilter" resultType="long">
+        SELECT COUNT(*)
+        FROM course
+        <include refid="courseFilter"/>
     </select>
 
     <select id="selectById" resultType="com.ds.university.entity.Course">
@@ -42,8 +62,34 @@
         ORDER BY c.course_id
     </select>
 
+    <!-- 热门课程：按累计选课人数降序（首页展示） -->
+    <select id="selectHotCourses" resultType="com.ds.university.vo.CourseStatVO">
+        SELECT c.course_id, c.title, c.dept_name, c.credits,
+               COUNT(t.course_id) AS enrollment_count
+        FROM course c
+        LEFT JOIN takes t ON t.course_id = c.course_id
+        GROUP BY c.course_id, c.title, c.dept_name, c.credits
+        ORDER BY enrollment_count DESC, c.course_id
+        LIMIT #{limit}
+    </select>
+
     <select id="count" resultType="int">
         SELECT COUNT(*) FROM course
     </select>
 
+
+    <insert id="insert">
+        INSERT INTO course (course_id, title, dept_name, credits)
+        VALUES (#{courseId}, #{title}, #{deptName}, #{credits})
+    </insert>
+
+    <update id="update">
+        UPDATE course
+        SET title = #{title}, dept_name = #{deptName}, credits = #{credits}
+        WHERE course_id = #{courseId}
+    </update>
+
+    <delete id="delete">
+        DELETE FROM course WHERE course_id = #{courseId}
+    </delete>
 </mapper>

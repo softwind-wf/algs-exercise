@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ds.university.mapper.TeacherMapper">
+
+    <!-- 班级名单：某开课班的学生选课记录（含成绩） -->
+    <select id="selectRoster" resultType="com.ds.university.vo.RosterRowVO">
+        SELECT t.ID AS student_id, s.name, s.dept_name, s.tot_cred, t.grade
+        FROM takes t
+        JOIN student s ON t.ID = s.ID
+        WHERE t.course_id = #{courseId} AND t.sec_id = #{secId}
+          AND t.semester = #{semester} AND t.year = #{year}
+        ORDER BY s.ID
+    </select>
+
+    <!-- 教师是否讲授该开课班（权限校验） -->
+    <select id="countTeaches" resultType="int">
+        SELECT COUNT(*)
+        FROM teaches
+        WHERE ID = #{instructorId} AND course_id = #{courseId}
+          AND sec_id = #{secId} AND semester = #{semester} AND year = #{year}
+    </select>
+
+    <!-- 录入/修改成绩 -->
+    <update id="updateGrade">
+        UPDATE takes
+        SET grade = #{grade}
+        WHERE ID = #{studentId} AND course_id = #{courseId}
+          AND sec_id = #{secId} AND semester = #{semester} AND year = #{year}
+    </update>
+
+    <!-- 教师名下所有开课班的在修学生总数 -->
+    <select id="countTeachingStudents" resultType="long">
+        SELECT COUNT(*)
+        FROM teaches t
+        JOIN takes k ON k.course_id = t.course_id AND k.sec_id = t.sec_id
+            AND k.semester = t.semester AND k.year = t.year
+        WHERE t.ID = #{instructorId}
+    </select>
+
+    <!-- 教师名下已录成绩的学生数 -->
+    <select id="countGradedStudents" resultType="long">
+        SELECT COUNT(*)
+        FROM teaches t
+        JOIN takes k ON k.course_id = t.course_id AND k.sec_id = t.sec_id
+            AND k.semester = t.semester AND k.year = t.year
+        WHERE t.ID = #{instructorId}
+          AND k.grade IS NOT NULL AND k.grade != ''
+    </select>
+
+</mapper>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('教师中心')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <h1 class="page-title mb-0">教师中心</h1>
+        <div class="btn-group btn-group-sm" role="group" aria-label="教师中心导航">
+            <a class="btn btn-primary" th:href="@{/instructor}">首页</a>
+            <a class="btn btn-outline-primary" th:href="@{/instructor/sections}">授课列表</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mt-3">
+        <div class="card-body">
+            <h2 class="h5 mb-3" th:text="${dashboard.instructor.name}">教师姓名</h2>
+            <p class="text-secondary mb-0">
+                工号：<span th:text="${dashboard.instructor.id}">工号</span> ·
+                院系：<span th:text="${dashboard.instructor.deptName}">院系</span>
+            </p>
+        </div>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-3 g-4 mt-1">
+        <div class="col">
+            <div class="card stat-card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="num" th:text="${dashboard.sectionCount}">0</div>
+                    <div class="label">授课门数</div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card stat-card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="num" th:text="${dashboard.studentCount}">0</div>
+                    <div class="label">在修学生数</div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card stat-card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="num" th:text="${dashboard.gradedCount}">0</div>
+                    <div class="label">已录成绩数</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

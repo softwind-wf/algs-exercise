@@ -2,6 +2,7 @@ package com.ds.university.service;
 
 import com.ds.university.common.BusinessException;
 import com.ds.university.common.ErrorCode;
+import com.ds.university.common.PageResult;
 import com.ds.university.entity.Department;
 import com.ds.university.mapper.DepartmentMapper;
 import com.ds.university.vo.DepartmentDetailVO;
@@ -22,6 +23,15 @@ public class DepartmentService {
 
     public List<DepartmentVO> listWithStats() {
         return departmentMapper.selectAllWithStats();
+    }
+
+    /** 系列表分页（含教师数/课程数） */
+    public PageResult<DepartmentVO> page(int page, int size) {
+        size = PageResult.normalizeSize(size);
+        long total = departmentMapper.count();
+        int safePage = PageResult.clampPage(page, size, total);
+        List<DepartmentVO> records = departmentMapper.selectPageWithStats((safePage - 1) * size, size);
+        return new PageResult<>(records, safePage, size, total);
     }
 
     public List<Department> listAll() {

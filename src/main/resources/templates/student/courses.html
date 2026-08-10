@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('选课 / 退课')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <h1 class="page-title mb-0">选课 / 退课</h1>
+        <div class="btn-group btn-group-sm" role="group" aria-label="学生中心导航">
+            <a class="btn btn-outline-primary" th:href="@{/student}">首页</a>
+            <a class="btn btn-primary" th:href="@{/student/courses}">选课 / 退课</a>
+            <a class="btn btn-outline-primary" th:href="@{/student/transcript}">成绩单</a>
+            <a class="btn btn-outline-primary" th:href="@{/student/advisor}">导师</a>
+        </div>
+    </div>
+
+    <div class="alert alert-success py-2 mt-3" th:if="${success}" th:text="${success}">成功提示</div>
+    <div class="alert alert-danger py-2 mt-3" th:if="${error}" th:text="${error}">错误提示</div>
+
+    <h2 class="h5 mt-4">我的选课</h2>
+    <div class="table-responsive bg-white border rounded-3 shadow-sm">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+            <tr>
+                <th>课程</th><th>学期</th><th>年份</th><th>教室</th><th>教师</th><th>选课/容量</th><th>成绩</th><th class="text-end">操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="e : ${enrollments}">
+                <td>
+                    <a th:href="@{/courses/{id}(id=${e.courseId})}" th:text="${e.courseId}">课程号</a>
+                    <span class="dim" th:text="${e.title}">课程名</span>
+                </td>
+                <td th:text="${e.semester}">学期</td>
+                <td th:text="${e.year}">年份</td>
+                <td th:text="${e.building + ' ' + e.roomNumber}">教室</td>
+                <td th:text="${e.instructorNames}">教师</td>
+                <td class="text-end" th:text="${e.enrolled} + '/' + ${e.capacity}">选课/容量</td>
+                <td>
+                    <span class="badge text-bg-secondary" th:if="${e.grade == null or e.grade.isEmpty()}" th:text="'在读'">在读</span>
+                    <span class="badge text-bg-success" th:unless="${e.grade == null or e.grade.isEmpty()}" th:text="${e.grade}">成绩</span>
+                </td>
+                <td class="text-end">
+                    <form method="post" th:action="@{/student/drop}"
+                          th:if="${e.grade == null or e.grade.isEmpty()}">
+                        <input type="hidden" name="courseId" th:value="${e.courseId}">
+                        <input type="hidden" name="secId" th:value="${e.secId}">
+                        <input type="hidden" name="semester" th:value="${e.semester}">
+                        <input type="hidden" name="year" th:value="${e.year}">
+                        <input type="hidden" name="page" th:value="${page}">
+                        <input type="hidden" name="size" th:value="${size}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                onclick="return confirm('确定退选该课程吗？');">退课</button>
+                    </form>
+                    <span class="dim" th:unless="${e.grade == null or e.grade.isEmpty()}">已出成绩</span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="hint mt-2" th:if="${#lists.isEmpty(enrollments)}">还没有选课记录，请从下方目录中选课。</p>
+
+    <h2 class="h5 mt-5">选课目录</h2>
+    <form method="get" th:action="@{/student/courses}" class="filter-card p-3 mt-3 mb-4">
+        <div class="row g-3 align-items-end">
+            <div class="col-auto">
+                <label class="form-label mb-1" for="semester">学期</label>
+                <select class="form-select" id="semester" name="semester">
+                    <option value="Fall" th:selected="${semester == 'Fall'}">Fall</option>
+                    <option value="Spring" th:selected="${semester == 'Spring'}">Spring</option>
+                    <option value="Summer" th:selected="${semester == 'Summer'}">Summer</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <label class="form-label mb-1" for="year">年份</label>
+                <select class="form-select" id="year" name="year">
+                    <option th:each="y : ${years}" th:value="${y}" th:selected="${y == year}" th:text="${y}">2010</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <label class="form-label mb-1" for="courseId">课程</label>
+                <select class="form-select" id="courseId" name="courseId">
+                    <option value="">全部</option>
+                    <option th:each="c : ${courses}" th:value="${c.courseId}"
+                            th:selected="${courseId == c.courseId}"
+                            th:text="${c.courseId} + ' ' + ${c.title}">课程</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">查询</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="table-responsive bg-white border rounded-3 shadow-sm">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+            <tr>
+                <th>课程</th><th>开课号</th><th>学期</th><th>年份</th><th>教室</th><th>时间段</th><th>教师</th><th class="text-end">选课/容量</th><th class="text-end">操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="s : ${catalogPage.records}">
+                <td>
+                    <a th:href="@{/courses/{id}(id=${s.courseId})}" th:text="${s.courseId}">课程号</a>
+                    <span class="dim" th:text="${s.courseTitle}">课程名</span>
+                </td>
+                <td th:text="${s.secId}">开课号</td>
+                <td th:text="${s.semester}">学期</td>
+                <td th:text="${s.year}">年份</td>
+                <td th:text="${s.building + ' ' + s.roomNumber}">教室</td>
+                <td th:text="${s.timeSlotId}">时间段</td>
+                <td th:text="${s.instructorNames}">教师</td>
+                <td class="text-end" th:text="${s.enrolled} + '/' + ${s.capacity}">选课/容量</td>
+                <td class="text-end">
+                    <form method="post" th:action="@{/student/enroll}" th:if="${!s.selected}">
+                        <input type="hidden" name="courseId" th:value="${s.courseId}">
+                        <input type="hidden" name="secId" th:value="${s.secId}">
+                        <input type="hidden" name="semester" th:value="${s.semester}">
+                        <input type="hidden" name="year" th:value="${s.year}">
+                        <input type="hidden" name="courseIdFilter" th:value="${courseId}">
+                        <input type="hidden" name="page" th:value="${page}">
+                        <input type="hidden" name="size" th:value="${size}">
+                        <button type="submit" class="btn btn-sm btn-outline-success">选课</button>
+                    </form>
+                    <span class="badge text-bg-secondary" th:unless="${!s.selected}">已选</span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center justify-content-between mt-3 gap-2">
+        <p class="hint mb-0" th:if="${catalogPage.total > 0}">
+            共 <span th:text="${catalogPage.total}">0</span> 条，第 <span th:text="${catalogPage.page}">1</span> / <span th:text="${catalogPage.totalPages}">1</span> 页
+        </p>
+        <nav th:if="${catalogPage.totalPages > 1}" aria-label="分页">
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item" th:classappend="${!catalogPage.hasPrev} ? 'disabled'">
+                    <a class="page-link" th:href="@{/student/courses(semester=${semester}, year=${year}, courseId=${courseId}, page=${catalogPage.prevPage}, size=${size})}">上一页</a>
+                </li>
+                <li class="page-item" th:each="n : ${catalogPage.pageNumbers}"
+                    th:classappend="${n == 0 ? 'disabled' : (n == catalogPage.page ? 'active' : '')}">
+                    <span class="page-link" th:if="${n == 0}">…</span>
+                    <a class="page-link" th:unless="${n == 0}"
+                       th:href="@{/student/courses(semester=${semester}, year=${year}, courseId=${courseId}, page=${n}, size=${size})}"
+                       th:text="${n}">1</a>
+                </li>
+                <li class="page-item" th:classappend="${!catalogPage.hasNext} ? 'disabled'">
+                    <a class="page-link" th:href="@{/student/courses(semester=${semester}, year=${year}, courseId=${courseId}, page=${catalogPage.nextPage}, size=${size})}">下一页</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <p class="hint mt-2" th:if="${#lists.isEmpty(catalogPage.records)}">该学期暂无开课班。</p>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

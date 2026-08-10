@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ds.university.mapper.StatsMapper">
+
+    <!-- 系经费与教师数（按预算降序） -->
+    <select id="selectDeptBudget" resultType="com.ds.university.vo.DeptBudgetVO">
+        SELECT d.dept_name AS deptName, d.building, d.budget,
+               (SELECT COUNT(*) FROM instructor i WHERE i.dept_name = d.dept_name) AS instructorCount
+        FROM department d
+        ORDER BY d.budget DESC
+    </select>
+
+    <!-- 各系教师平均工资（按平均工资降序） -->
+    <select id="selectSalaryByDept" resultType="com.ds.university.vo.DeptSalaryVO">
+        SELECT i.dept_name AS deptName,
+               COUNT(*) AS instructorCount,
+               ROUND(AVG(i.salary), 2) AS avgSalary,
+               MAX(i.salary) AS maxSalary,
+               MIN(i.salary) AS minSalary
+        FROM instructor i
+        GROUP BY i.dept_name
+        ORDER BY avgSalary DESC
+    </select>
+
+    <!-- 选课人数 vs 容量 -->
+    <select id="selectEnrollment" resultType="com.ds.university.vo.EnrollmentReportVO">
+        SELECT s.course_id, s.sec_id, s.semester, s.year,
+               c.title AS courseTitle,
+               s.building, s.room_number, s.time_slot_id,
+               cl.capacity,
+               (SELECT COUNT(*) FROM takes k
+                WHERE k.course_id = s.course_id AND k.sec_id = s.sec_id
+                  AND k.semester = s.semester AND k.year = s.year) AS enrolled
+        FROM section s
+        JOIN course c ON s.course_id = c.course_id
+        LEFT JOIN classroom cl ON s.building = cl.building AND s.room_number = cl.room_number
+        <where>
+            <if test="semester != null and semester != ''">
+                AND s.semester = #{semester}
+            </if>
+            <if test="year != null">
+                AND s.year = #{year}
+            </if>
+            <if test="courseId != null and courseId != ''">
+                AND s.course_id = #{courseId}
+            </if>
+        </where>
+        ORDER BY s.year DESC, s.semester, s.course_id, s.sec_id
+    </select>
+
+    <!-- 某课程成绩分布（跨学期汇总，未出分归为“未出分”并排在最后） -->
+    <select id="selectGradeDistribution" resultType="com.ds.university.vo.GradeCountVO">
+        SELECT COALESCE(t.grade, '未出分') AS grade, COUNT(*) AS count
+        FROM takes t
+        WHERE t.course_id = #{courseId}
+        GROUP BY t.grade
+        ORDER BY (t.grade IS NULL), COUNT(*) DESC, t.grade
+    </select>
+
+</mapper>

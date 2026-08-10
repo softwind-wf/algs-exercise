@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('教务管理')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container-fluid admin-shell px-0">
+    <div class="row g-0">
+        <div class="col-md-3 col-lg-2">
+            <aside th:replace="admin/_fragments :: adminNav('home')"></aside>
+        </div>
+        <div class="col-md-9 col-lg-10">
+            <div class="admin-content p-4">
+                <h1 class="page-title">教务管理</h1>
+                <p class="text-secondary">基础数据维护、排课、先修管理（UC-07/08）</p>
+
+                <div class="alert alert-success py-2 mt-3" th:if="${success}" th:text="${success}">成功提示</div>
+                <div class="alert alert-danger py-2 mt-3" th:if="${error}" th:text="${error}">错误提示</div>
+
+                <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-4 mt-1 mb-4">
+                    <div class="col">
+                        <div class="card stat-card h-100 shadow-sm">
+                            <div class="card-body text-center">
+                                <div class="num" th:text="${departmentCount}">0</div>
+                                <div class="label">院系</div>
+                                <a class="stretched-link" th:href="@{/admin/departments}">管理</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card stat-card h-100 shadow-sm">
+                            <div class="card-body text-center">
+                                <div class="num" th:text="${courseCount}">0</div>
+                                <div class="label">课程</div>
+                                <a class="stretched-link" th:href="@{/admin/courses}">管理</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card stat-card h-100 shadow-sm">
+                            <div class="card-body text-center">
+                                <div class="num" th:text="${instructorCount}">0</div>
+                                <div class="label">教师</div>
+                                <a class="stretched-link" th:href="@{/admin/instructors}">管理</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card stat-card h-100 shadow-sm">
+                            <div class="card-body text-center">
+                                <div class="num" th:text="${studentCount}">0</div>
+                                <div class="label">学生</div>
+                                <a class="stretched-link" th:href="@{/admin/students}">管理</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card stat-card h-100 shadow-sm">
+                            <div class="card-body text-center">
+                                <div class="num" th:text="${classroomCount}">0</div>
+                                <div class="label">教室</div>
+                                <a class="stretched-link" th:href="@{/admin/classrooms}">管理</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card stat-card h-100 shadow-sm">
+                            <div class="card-body text-center">
+                                <div class="num" th:text="${sectionCount}">0</div>
+                                <div class="label">开课班</div>
+                                <a class="stretched-link" th:href="@{/admin/sections}">排课</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card stat-card h-100 shadow-sm">
+                            <div class="card-body text-center">
+                                <div class="num" th:text="${prereqCount}">0</div>
+                                <div class="label">先修关系</div>
+                                <a class="stretched-link" th:href="@{/admin/prereqs}">管理</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

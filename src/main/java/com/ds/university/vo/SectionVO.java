@@ -12,6 +12,7 @@ public class SectionVO {
     private String timeSlotId;
     private String courseTitle;
     private String instructorNames;
+    private String instructorId;
     private Integer enrolled;
     private Integer capacity;
 
@@ -85,6 +86,14 @@ public class SectionVO {
 
     public void setInstructorNames(String instructorNames) {
         this.instructorNames = instructorNames;
+    }
+
+    public String getInstructorId() {
+        return instructorId;
+    }
+
+    public void setInstructorId(String instructorId) {
+        this.instructorId = instructorId;
     }
 
     public Integer getEnrolled() {

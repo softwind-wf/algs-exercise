@@ -56,6 +56,14 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- 开发期热重载：类路径变更自动重启，模板/静态资源即时生效（打包时自动排除） -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-devtools</artifactId>
+			<scope>runtime</scope>
+			<optional>true</optional>
+		</dependency>
+
 		<!-- 仅使用 BCrypt 密码校验（不引入 Spring Security 过滤器链） -->
 		<dependency>
 			<groupId>org.springframework.security</groupId>

@@ -4,37 +4,207 @@
 <body>
 <nav th:replace="fragments/layout :: nav"></nav>
 
-<main class="container">
-    <h1>大学教务信息网站</h1>
-    <p class="subtitle">基于 university 数据库（11 张业务表 + 5 张权限表）的教学演示系统</p>
-
-    <div class="cards">
-        <div class="card">
-            <div class="num" th:text="${stats != null ? stats.departmentCount : 0}">0</div>
-            <div class="label">院系</div>
-            <a th:href="@{/departments}">查看</a>
-        </div>
-        <div class="card">
-            <div class="num" th:text="${stats != null ? stats.courseCount : 0}">0</div>
-            <div class="label">课程</div>
-            <a th:href="@{/courses}">查看</a>
-        </div>
-        <div class="card">
-            <div class="num" th:text="${stats != null ? stats.instructorCount : 0}">0</div>
-            <div class="label">教师</div>
-            <a th:href="@{/instructors}">查看</a>
-        </div>
-        <div class="card">
-            <div class="num" th:text="${stats != null ? stats.sectionCount : 0}">0</div>
-            <div class="label">开课班</div>
-            <a th:href="@{/sections}">查看</a>
+<!-- ===== 顶部主视觉 ===== -->
+<section class="home-hero">
+    <div class="container position-relative">
+        <div class="hero-deco hero-deco-1"></div>
+        <div class="hero-deco hero-deco-2"></div>
+        <div class="row align-items-center g-4">
+            <div class="col-lg-7">
+                <span class="hero-slogan">数据驱动的大学教学演示系统</span>
+                <h1 class="hero-title mt-3 mb-3">大学教务信息网站</h1>
+                <p class="hero-desc mb-4">
+                    基于 university 数据库（11 张业务表 + 5 张权限表），提供院系、课程、开课班、
+                    排课看板、选课退课、成绩管理、统计报表等一体化教学服务。
+                </p>
+                <div class="d-flex flex-wrap gap-2">
+                    <a th:href="@{/courses}" class="btn btn-light btn-lg fw-semibold">浏览课程</a>
+                    <a th:href="@{/sections}" class="btn btn-outline-light btn-lg">查看开课班</a>
+                    <a th:href="@{/login}" class="btn btn-outline-light btn-lg" th:if="${session.loginUser == null}">登录系统</a>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <a class="hero-stat" th:href="@{/departments}">
+                            <div class="hero-stat-num" th:text="${stats != null ? stats.departmentCount : 0}">0</div>
+                            <div class="hero-stat-label">院系机构</div>
+                            <small>点击查看</small>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a class="hero-stat" th:href="@{/courses}">
+                            <div class="hero-stat-num" th:text="${stats != null ? stats.courseCount : 0}">0</div>
+                            <div class="hero-stat-label">课程总数</div>
+                            <small>点击查看</small>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a class="hero-stat" th:href="@{/instructors}">
+                            <div class="hero-stat-num" th:text="${stats != null ? stats.instructorCount : 0}">0</div>
+                            <div class="hero-stat-label">授课教师</div>
+                            <small>点击查看</small>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a class="hero-stat" th:href="@{/sections}">
+                            <div class="hero-stat-num" th:text="${stats != null ? stats.sectionCount : 0}">0</div>
+                            <div class="hero-stat-label">开课班次</div>
+                            <small>点击查看</small>
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+</section>
 
-    <div class="notice">
-        <p>演示账号：<code>zhang</code>（学生）/ <code>katz</code>（教师）/ <code>admin</code>（管理员），密码均为 <code>password</code>。</p>
+<!-- ===== 快捷服务 ===== -->
+<section class="container py-4" th:with="isAdmin=${session.loginUser != null and #lists.contains(session.loginUser.roles, 'ADMIN')}">
+    <div class="d-flex align-items-end justify-content-between mb-3">
+        <h2 class="section-title mb-0">快捷服务</h2>
+        <a th:href="@{/login}" class="text-decoration-none small text-muted" th:if="${session.loginUser == null}">登录后可进入学生 / 教师 / 教务中心 →</a>
+        <span class="small text-muted" th:if="${session.loginUser != null}">欢迎回来，<span th:text="${session.loginUser.userId}">用户</span></span>
     </div>
-</main>
+    <div class="row g-3">
+        <div class="col-6 col-md-4 col-lg-2" th:if="${!isAdmin}">
+            <a class="quick-card" th:href="@{/departments}">
+                <span class="quick-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="1"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/></svg>
+                </span>
+                <span class="quick-name">院系一览</span>
+                <span class="quick-sub">机构 · 教师 · 课程</span>
+            </a>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2" th:if="${!isAdmin}">
+            <a class="quick-card" th:href="@{/courses}">
+                <span class="quick-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                </span>
+                <span class="quick-name">课程查询</span>
+                <span class="quick-sub">培养方案 · 学分</span>
+            </a>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2" th:if="${!isAdmin}">
+            <a class="quick-card" th:href="@{/sections}">
+                <span class="quick-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                </span>
+                <span class="quick-name">开课班查询</span>
+                <span class="quick-sub">学期 · 教室 · 教师</span>
+            </a>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <a class="quick-card" th:href="@{/student}">
+                <span class="quick-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
+                </span>
+                <span class="quick-name">学生中心</span>
+                <span class="quick-sub" th:text="(${session.loginUser != null and #lists.contains(session.loginUser.roles, 'STUDENT')}) ? '选课 / 成绩 / 导师' : '需学生账号登录'">需学生账号登录</span>
+            </a>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <a class="quick-card" th:href="@{/instructor}">
+                <span class="quick-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </span>
+                <span class="quick-name">教师中心</span>
+                <span class="quick-sub" th:text="(${session.loginUser != null and #lists.contains(session.loginUser.roles, 'INSTRUCTOR')}) ? '授课 / 名单 / 成绩' : '需教师账号登录'">需教师账号登录</span>
+            </a>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <a class="quick-card" th:href="@{/admin}">
+                <span class="quick-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                </span>
+                <span class="quick-name">教务管理</span>
+                <span class="quick-sub" th:text="(${session.loginUser != null and #lists.contains(session.loginUser.roles, 'ADMIN')}) ? '基础数据 / 排课' : '需管理员账号登录'">需管理员账号登录</span>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- ===== 栏目聚合区 ===== -->
+<section class="container pb-5">
+    <div class="row g-4">
+        <!-- 热门课程 -->
+        <div class="col-lg-4">
+            <div class="home-panel h-100">
+                <div class="home-panel-header">
+                    <span>热门课程</span>
+                    <a th:href="@{/courses}" class="small text-decoration-none">更多 →</a>
+                </div>
+                <ul class="list-unstyled mb-0">
+                    <li class="home-list-item" th:each="c, s : ${hotCourses}">
+                        <span class="rank-badge" th:classappend="${s.count <= 3 ? ' rank-' + s.count : ''}" th:text="${s.count}">1</span>
+                        <div class="flex-grow-1 overflow-hidden me-2">
+                            <a th:href="@{/courses/{id}(id=${c.courseId})}" class="fw-semibold text-truncate d-block" th:text="${c.title}">课程名称</a>
+                            <small class="text-muted" th:text="${c.courseId} + ' · ' + ${c.credits} + ' 学分'">CS-101 · 4 学分</small>
+                        </div>
+                        <span class="badge rounded-pill text-bg-primary-subtle text-primary flex-shrink-0" th:text="'选课 ' + ${c.enrollmentCount}">选课 12</span>
+                    </li>
+                    <li class="home-list-item text-muted" th:if="${#lists.isEmpty(hotCourses)}">暂无课程数据</li>
+                </ul>
+            </div>
+        </div>
+        <!-- 最新开课班 -->
+        <div class="col-lg-4">
+            <div class="home-panel h-100">
+                <div class="home-panel-header">
+                    <span>最新开课班</span>
+                    <a th:href="@{/sections}" class="small text-decoration-none">更多 →</a>
+                </div>
+                <ul class="list-unstyled mb-0">
+                    <li class="home-list-item align-items-start" th:each="s : ${latestSections}">
+                        <div class="flex-grow-1 overflow-hidden me-2">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <a th:href="@{/sections(courseId=${s.courseId}, year=${s.year}, semester=${s.semester})}"
+                                   class="fw-semibold text-truncate d-block" th:text="${s.courseTitle}">课程名称</a>
+                                <span class="badge text-bg-secondary flex-shrink-0"
+                                      th:text="${s.year} + ' ' + ${s.semester}">2010 Spring</span>
+                            </div>
+                            <small class="text-muted d-block" th:text="'教师：' + ${s.instructorNames != null ? s.instructorNames : '待定'}">教师：待定</small>
+                            <small class="text-muted d-block" th:text="'教室：' + ${s.building} + ' ' + ${s.roomNumber} + ' · 已选 ' + ${s.enrolled} + ' / ' + ${s.capacity}">教室：一教 A101 · 已选 12 / 30</small>
+                        </div>
+                    </li>
+                    <li class="home-list-item text-muted" th:if="${#lists.isEmpty(latestSections)}">暂无开课班数据</li>
+                </ul>
+            </div>
+        </div>
+        <!-- 院系一览 + 系统公告 -->
+        <div class="col-lg-4">
+            <div class="home-panel mb-4">
+                <div class="home-panel-header">
+                    <span>院系一览</span>
+                    <a th:href="@{/departments}" class="small text-decoration-none">更多 →</a>
+                </div>
+                <ul class="list-unstyled mb-0">
+                    <li class="home-list-item" th:each="d : ${departments}">
+                        <div class="flex-grow-1 overflow-hidden me-2">
+                            <a th:href="@{/departments/{name}(name=${d.deptName})}" class="fw-semibold text-truncate d-block" th:text="${d.deptName}">计算机系</a>
+                            <small class="text-muted" th:text="${d.building}">实验楼</small>
+                        </div>
+                        <span class="small text-muted flex-shrink-0" th:text="'教师 ' + ${d.teacherCount} + ' · 课程 ' + ${d.courseCount}">教师 5 · 课程 6</span>
+                    </li>
+                    <li class="home-list-item text-muted" th:if="${#lists.isEmpty(departments)}">暂无院系数据</li>
+                </ul>
+            </div>
+            <div class="home-panel">
+                <div class="home-panel-header">
+                    <span>系统公告</span>
+                    <span class="badge rounded-pill text-bg-warning">NEW</span>
+                </div>
+                <ul class="notice-list list-unstyled mb-0 p-3">
+                    <li>演示账号：<code>zhang</code>（学生）/ <code>katz</code>（教师）/ <code>admin</code>（管理员），密码均为 <code>password</code>。</li>
+                    <li>学生中心支持在线选课 / 退课、成绩单查询与导师查看。</li>
+                    <li>教师中心支持授课列表、班级名单与成绩录入。</li>
+                    <li>教务管理提供基础数据维护、排课看板（拖拽排课）、先修管理与统计报表。</li>
+                    <li>建议使用 Chrome / Edge 浏览器获得最佳体验。</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
 
 <footer th:replace="fragments/layout :: footer"></footer>
 </body>

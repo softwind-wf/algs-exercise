@@ -8,7 +8,16 @@ public class Student {
     private String deptName;
     private Integer totCred;
 
-    public String getId() {
+
+    public Student() {
+    }
+
+    public Student(String id, String name, String deptName, Integer totCred) {
+        this.id = id;
+        this.name = name;
+        this.deptName = deptName;
+        this.totCred = totCred;
+    }    public String getId() {
         return id;
     }
 

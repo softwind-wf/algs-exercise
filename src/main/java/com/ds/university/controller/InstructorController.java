@@ -23,8 +23,11 @@ public class InstructorController {
     }
 
     @GetMapping
-    public String list(@RequestParam(required = false) String deptName, Model model) {
-        model.addAttribute("instructors", instructorService.list(deptName));
+    public String list(@RequestParam(required = false) String deptName,
+                       @RequestParam(defaultValue = "1") int page,
+                       @RequestParam(defaultValue = "10") int size,
+                       Model model) {
+        model.addAttribute("instructors", instructorService.page(deptName, page, size));
         model.addAttribute("departments", departmentService.listAll());
         model.addAttribute("deptName", deptName);
         return "instructors";

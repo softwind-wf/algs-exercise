@@ -1,5 +1,6 @@
 package com.ds.university.controller;
 
+import com.ds.university.service.HomeService;
 import com.ds.university.service.StatsService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -10,14 +11,19 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class HomeController {
 
     private final StatsService statsService;
+    private final HomeService homeService;
 
-    public HomeController(StatsService statsService) {
+    public HomeController(StatsService statsService, HomeService homeService) {
         this.statsService = statsService;
+        this.homeService = homeService;
     }
 
     @GetMapping("/")
     public String index(Model model) {
         model.addAttribute("stats", statsService.summary());
+        model.addAttribute("hotCourses", homeService.hotCourses());
+        model.addAttribute("latestSections", homeService.latestSections());
+        model.addAttribute("departments", homeService.departments());
         return "index";
     }
 }

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('排课管理')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container-fluid admin-shell px-0">
+    <div class="row g-0">
+        <div class="col-md-3 col-lg-2">
+            <aside th:replace="admin/_fragments :: adminNav('sections')"></aside>
+        </div>
+        <div class="col-md-9 col-lg-10">
+            <div class="admin-content p-4">
+                <h1 class="page-title">排课管理</h1>
+                <p class="text-secondary">新增/编辑开课班：课程、学期、教室、时间段与授课教师</p>
+
+                <div class="alert alert-success py-2 mt-3" th:if="${success}" th:text="${success}">成功提示</div>
+                <div class="alert alert-danger py-2 mt-3" th:if="${error}" th:text="${error}">错误提示</div>
+
+                <div class="alert alert-info py-2 mt-3">
+                    排课自动校验：同一教室、同一授课教师在同一时间段（含时间重叠）不允许冲突；教室容量不得小于该开课班已选人数。
+                </div>
+
+                <div class="card shadow-sm mt-3">
+                    <div class="card-body">
+                        <h2 class="h5" th:text="${editSection != null} ? '编辑开课班' : '新增开课班'">新增开课班</h2>
+                        <form method="post" th:action="@{${editSection != null} ? '/admin/sections/update' : '/admin/sections'}">
+                            <div class="row g-3 align-items-end">
+                                <div class="col-auto">
+                                    <label class="form-label mb-1" for="courseId">课程</label>
+                                    <select class="form-select" id="courseId" name="courseId" required>
+                                        <option th:each="c : ${courses}" th:value="${c.courseId}"
+                                                th:text="${c.courseId} + ' - ' + ${c.title}"
+                                                th:selected="${editSection != null and editSection.courseId == c.courseId}">课程</option>
+                                    </select>
+                                </div>
+                                <div class="col-auto">
+                                    <label class="form-label mb-1" for="secId">开课号</label>
+                                    <input class="form-control" type="text" id="secId" name="secId"
+                                           th:value="${editSection != null} ? ${editSection.secId}"
+                                           th:readonly="${editSection != null}" required>
+                                </div>
+                                <div class="col-auto">
+                                    <label class="form-label mb-1" for="semester">学期</label>
+                                    <select class="form-select" id="semester" name="semester">
+                                        <option value="Fall" th:selected="${editSection != null and editSection.semester == 'Fall'}">Fall</option>
+                                        <option value="Spring" th:selected="${editSection != null and editSection.semester == 'Spring'}">Spring</option>
+                                        <option value="Summer" th:selected="${editSection != null and editSection.semester == 'Summer'}">Summer</option>
+                                    </select>
+                                </div>
+                                <div class="col-auto">
+                                    <label class="form-label mb-1" for="year">年份</label>
+                                    <input class="form-control" type="number" min="2000" max="2100" id="year" name="year"
+                                           th:value="${editSection != null} ? ${editSection.year}" required>
+                                </div>
+                                <div class="col-auto">
+                                    <label class="form-label mb-1" for="building">教学楼</label>
+                                    <select class="form-select" id="building" name="building">
+                                        <option th:each="b : ${buildingNames}" th:value="${b}" th:text="${b}"
+                                                th:selected="${editSection != null and editSection.building == b}">楼</option>
+                                    </select>
+                                </div>
+                                <div class="col-auto">
+                                    <label class="form-label mb-1" for="roomNumber">教室号</label>
+                                    <select class="form-select" id="roomNumber" name="roomNumber">
+                                        <option th:each="r : ${classrooms}" th:value="${r.roomNumber}"
+                                                th:attr="data-building=${r.building}"
+                                                th:text="${r.roomNumber + '（容量 ' + r.capacity + '）'}"
+                                                th:selected="${editSection != null and editSection.roomNumber == r.roomNumber and editSection.building == r.building}">教室号</option>
+                                    </select>
+                                </div>
+                                <div class="col-auto">
+                                    <label class="form-label mb-1" for="timeSlotId">时间段</label>
+                                    <select class="form-select" id="timeSlotId" name="timeSlotId" style="min-width: 16rem;">
+                                        <option th:each="t : ${timeSlots}" th:value="${t.timeSlotId}" th:text="${t.label}"
+                                                th:selected="${editSection != null and editSection.timeSlotId == t.timeSlotId}">时间段</option>
+                                    </select>
+                                </div>
+                                <div class="col-auto">
+                                    <label class="form-label mb-1" for="instructorId">授课教师</label>
+                                    <select class="form-select" id="instructorId" name="instructorId">
+                                        <option value="">（不指定）</option>
+                                        <option th:each="i : ${instructors}" th:value="${i.id}"
+                                                th:text="${i.id} + ' - ' + ${i.name}"
+                                                th:selected="${editInstructorId == i.id}">教师</option>
+                                    </select>
+                                </div>
+                                <div class="col-auto">
+                                    <button type="submit" class="btn btn-primary"
+                                            th:text="${editSection != null} ? '保存修改' : '创建'">创建</button>
+                                    <a class="btn btn-outline-secondary" th:if="${editSection != null}"
+                                       th:href="@{/admin/sections}">取消</a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="table-responsive bg-white border rounded-3 shadow-sm mt-4">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                        <tr>
+                            <th>课程</th><th>开课号</th><th>学期</th><th>年份</th><th>教室</th><th>时间段</th><th>教师</th><th class="text-end">选课/容量</th><th class="text-end">操作</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="s : ${sections}">
+                            <td>
+                                <span th:text="${s.courseId}">课程号</span>
+                                <span class="dim" th:text="${s.courseTitle}">课程名</span>
+                            </td>
+                            <td th:text="${s.secId}">开课号</td>
+                            <td th:text="${s.semester}">学期</td>
+                            <td th:text="${s.year}">年份</td>
+                            <td th:text="${s.building + ' ' + s.roomNumber}">教室</td>
+                            <td th:text="${s.timeSlotId}">时间段</td>
+                            <td th:text="${s.instructorNames}">教师</td>
+                            <td class="text-end" th:text="${s.enrolled} + '/' + ${s.capacity}">选课/容量</td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-secondary"
+                                   th:href="@{/admin/sections(editCourseId=${s.courseId}, editSecId=${s.secId}, editSemester=${s.semester}, editYear=${s.year})}">编辑</a>
+                                <form class="d-inline" method="post" th:action="@{/admin/sections/delete}"
+                                      onsubmit="return confirm('确定删除该开课班吗？');">
+                                    <input type="hidden" name="courseId" th:value="${s.courseId}">
+                                    <input type="hidden" name="secId" th:value="${s.secId}">
+                                    <input type="hidden" name="semester" th:value="${s.semester}">
+                                    <input type="hidden" name="year" th:value="${s.year}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="hint mt-2" th:if="${#lists.isEmpty(sections)}">暂无开课班，请先新增。</p>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var building = document.getElementById('building');
+        var room = document.getElementById('roomNumber');
+        if (!building || !room) {
+            return;
+        }
+        function filterRooms() {
+            var b = building.value;
+            for (var i = 0; i < room.options.length; i++) {
+                var opt = room.options[i];
+                opt.hidden = opt.getAttribute('data-building') !== b;
+            }
+        }
+        building.addEventListener('change', filterRooms);
+        filterRooms();
+    });
+</script>
+</body>
+</html>

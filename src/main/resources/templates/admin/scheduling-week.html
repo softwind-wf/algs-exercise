@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- 周课表视图（按 星期 x 时段，可筛选教室/教师） -->
+<div id="schedWeek" th:fragment="week">
+    <form class="card shadow-sm" id="weekForm">
+        <div class="card-body py-3">
+            <div class="row g-2 align-items-end">
+                <div class="col-auto">
+                    <label class="form-label mb-1" for="weekType">筛选</label>
+                    <select class="form-select" id="weekType" name="type">
+                        <option value="all" th:selected="${week.filterType == 'all'}">全部</option>
+                        <option value="room" th:selected="${week.filterType == 'room'}">按教室</option>
+                        <option value="instructor" th:selected="${week.filterType == 'instructor'}">按教师</option>
+                    </select>
+                </div>
+                <div class="col-auto" id="weekKeyCol"
+                     th:style="${week.filterType == 'all'} ? 'display:none' : ''">
+                    <label class="form-label mb-1" for="weekKey">选择</label>
+                    <select class="form-select" id="weekKey" name="key">
+                        <option th:each="r : ${week.classrooms}"
+                                th:value="${r.building + '|' + r.roomNumber}"
+                                th:text="${r.building + ' ' + r.roomNumber} + '（容量 ' + ${r.capacity} + '）'"
+                                th:selected="${week.filterType == 'room' and (r.building + '|' + r.roomNumber) == week.filterKey}">教室</option>
+                        <option th:each="i : ${week.instructors}"
+                                th:value="${i.id}"
+                                th:text="${i.id} + ' - ' + ${i.name}"
+                                th:selected="${week.filterType == 'instructor' and i.id == week.filterKey}">教师</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">查询</button>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <div class="card shadow-sm mt-3">
+        <div class="card-header bg-white fw-bold">
+            周课表（<span th:text="${week.semester}">Spring</span> <span th:text="${week.year}">2010</span>
+            · <span th:text="${week.filterLabel}">全部</span>）
+        </div>
+        <div class="table-responsive">
+            <table class="table week-table mb-0">
+                <thead>
+                <tr>
+                    <th class="week-corner">时段 \ 星期</th>
+                    <th class="week-day-head" th:each="d : ${week.days}">
+                        <span th:text="${week.dayLabels.get(d)}">周一</span>
+                        <small class="text-secondary" th:text="'（' + ${d} + '）'">(M)</small>
+                    </th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="p : ${week.periods}">
+                    <th class="week-period-head" th:text="${p}">08:00-08:50</th>
+                    <td class="week-cell" th:each="d : ${week.days}"
+                        th:with="list=${week.cells[d + '|' + p]}">
+                        <div class="week-block"
+                             th:each="s : ${list}"
+                             th:classappend="${list != null and list.size() > 1} ? 'stacked'">
+                            <div class="week-block-title" th:text="${s.courseId} + '·' + ${s.courseTitle}">CS-101·课程</div>
+                            <div class="week-block-meta">
+                                <span th:text="'班 ' + ${s.secId}">班 1</span>
+                                <span th:text="${s.building + ' ' + s.roomNumber}">Packard 101</span>
+                            </div>
+                            <div class="week-block-foot" th:text="${s.instructorNames}">教师</div>
+                        </div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer bg-white small text-secondary">
+            提示：同一格可能同时有多门课程（不同教室）；筛选到具体教室或教师后更直观。
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

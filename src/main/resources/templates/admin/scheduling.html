@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('排课看板')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container-fluid admin-shell px-0">
+    <div class="row g-0">
+        <div class="col-md-3 col-lg-2">
+            <aside th:replace="admin/_fragments :: adminNav('scheduling')"></aside>
+        </div>
+        <div class="col-md-9 col-lg-10">
+            <div class="admin-content p-4">
+                <h1 class="page-title">排课看板</h1>
+                <p class="text-secondary">从左侧「待安排课程」把课程小方块拖入右侧「教室 × 时间段」表格：放得进即排课成功；校验不通过（教室/教师时间冲突、容量不足）时小方块会回到原位。</p>
+
+                <!-- 学期筛选 -->
+                <div class="card shadow-sm mt-3">
+                    <div class="card-body py-3">
+                        <form class="row g-2 align-items-end" id="termForm">
+                            <div class="col-auto">
+                                <label class="form-label mb-1" for="semester">学期</label>
+                                <select class="form-select" id="semester" name="semester">
+                                    <option th:each="s : ${board.semesters}" th:value="${s}" th:text="${s}"
+                                            th:selected="${s == board.semester}">Spring</option>
+                                </select>
+                            </div>
+                            <div class="col-auto">
+                                <label class="form-label mb-1" for="year">年份</label>
+                                <select class="form-select" id="year" name="year">
+                                    <option th:each="y : ${board.years}" th:value="${y}" th:text="${y}"
+                                            th:selected="${y == board.year}">2010</option>
+                                </select>
+                            </div>
+                            <div class="col-auto">
+                                <button type="submit" class="btn btn-primary">加载看板</button>
+                            </div>
+                            <div class="col-auto ms-auto">
+                                <button type="button" class="btn btn-outline-primary"
+                                        id="openCreateModalBtn"
+                                        data-bs-toggle="modal" data-bs-target="#createSectionModal">＋ 新建待排课班</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 视图切换 -->
+                <ul class="nav nav-tabs mt-3" id="viewTabs">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" id="tabBoard">拖拽排课</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="tabWeek">周课表</a>
+                    </li>
+                </ul>
+                <div id="viewArea" class="mt-3">
+                <!-- 看板主体（拖拽成功/取消排课后由 AJAX 局部刷新） -->
+                <div th:fragment="board" id="schedBoard">
+                    <div class="row g-3">
+                        <div class="col-lg-3">
+                            <div class="card shadow-sm h-100">
+                                <div class="card-header bg-white fw-bold">
+                                    待安排课程
+                                    <span class="badge bg-primary rounded-pill" th:text="${#lists.size(board.pendingSections)}">0</span>
+                                </div>
+                                <div id="poolArea" class="card-body sched-pool">
+                                    <p class="hint mb-2">拖入右侧表格完成排课；已排的班也可拖回此处取消排课。</p>
+                                    <input type="text" id="poolSearch" class="form-control form-control-sm mb-2"
+                                           placeholder="搜索课程号 / 名称 / 班号 / 教师…">
+                                    <div th:if="${#lists.isEmpty(board.pendingSections)}"
+                                         class="text-center text-secondary py-4 border rounded">
+                                        本学期暂无待排课课程
+                                    </div>
+                                    <div class="sched-card card mb-2"
+                                         th:each="s : ${board.pendingSections}"
+                                         draggable="true"
+                                         th:attr="data-course-id=${s.courseId}, data-sec-id=${s.secId},
+                                                  data-semester=${board.semester}, data-year=${board.year},
+                                                  data-instructor-id=${s.instructorId}">
+                                        <div class="card-body py-2">
+                                            <div class="fw-bold small text-truncate" th:text="${s.courseId} + ' · ' + ${s.courseTitle}">CS-101 · 课程</div>
+                                            <div class="small text-secondary" th:text="'第 ' + ${s.secId} + ' 班'">第 1 班</div>
+                                            <div class="small text-secondary text-truncate" th:text="'教师：' + ${s.instructorNames}">教师：</div>
+                                            <div class="small" th:text="'已选 ' + ${s.enrolled} + ' 人'">已选 0 人</div>
+                                        </div>
+                                    </div>
+                                    <div id="poolNoMatch" class="text-center text-secondary py-3 border rounded" style="display:none">
+                                        没有匹配的课程
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-9">
+                            <div class="card shadow-sm">
+                                <div class="card-header bg-white fw-bold">
+                                    教室 × 时间段（<span th:text="${board.semester}">Spring</span> <span th:text="${board.year}">2010</span>）
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table scheduling-table mb-0">
+                                        <thead>
+                                        <tr>
+                                            <th class="sched-corner">教室 \ 时间段</th>
+                                            <th class="sched-ts-head" th:each="ts : ${board.timeSlots}">
+                                                <div class="fw-bold" th:text="${ts.timeSlotId}">A</div>
+                                                <small class="text-secondary" th:text="${ts.label}">M/W/F 08:00-08:50</small>
+                                            </th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr th:each="room : ${board.classrooms}">
+                                            <th class="sched-room-head">
+                                                <div th:text="${room.building + ' ' + room.roomNumber}">Packard 101</div>
+                                                <small class="text-secondary" th:text="'容量 ' + ${room.capacity}">容量 100</small>
+                                            </th>
+                                            <td class="sched-cell"
+                                                th:each="ts : ${board.timeSlots}"
+                                                th:with="sec=${board.cellMap[room.building + '|' + room.roomNumber + '|' + ts.timeSlotId]}"
+                                                th:attr="data-building=${room.building}, data-room=${room.roomNumber}, data-timeslot=${ts.timeSlotId}"
+                                                th:classappend="${sec != null} ? 'cell-occupied' : 'cell-empty'">
+                                                <div class="sched-block"
+                                                     th:if="${sec != null}"
+                                                     draggable="true"
+                                                     th:attr="data-course-id=${sec.courseId}, data-sec-id=${sec.secId},
+                                                              data-semester=${board.semester}, data-year=${board.year},
+                                                              data-instructor-id=${sec.instructorId},
+                                                              data-building=${sec.building}, data-room=${sec.roomNumber}">
+                                                    <div class="sched-block-title" th:text="${sec.courseId}">CS-101</div>
+                                                    <div class="sched-block-sub text-truncate" th:text="${sec.courseTitle}">课程名</div>
+                                                    <div class="sched-block-meta">
+                                                        <span th:text="'班 ' + ${sec.secId}">班 1</span>
+                                                        <span class="text-truncate" th:text="${sec.instructorNames}">教师</span>
+                                                    </div>
+                                                    <div class="sched-block-foot" th:text="${sec.enrolled} + '/' + ${sec.capacity}">0/100</div>
+                                                </div>
+                                                <span class="cell-plus" th:unless="${sec != null}">＋</span>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="card-footer bg-white small text-secondary">
+                                    提示：把「待安排课程」的方块拖进格子即可排课；已排的班可拖到其他格子改排，或拖回左侧取消排课。教室/教师时间重叠、容量不足时无法放入。
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <script th:inline="javascript">
+                        window._schedBoardData = {
+                            timeSlotDays: /*[[${board.timeSlotDays}]]*/ {},
+                            teacherLoad: /*[[${board.teacherLoad}]]*/ {}
+                        };
+                    </script>
+                </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+
+<!-- 新建待排课班弹窗 -->
+<div class="modal fade" id="createSectionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">新建待排课班</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label" for="newCourseId">课程</label>
+                    <select class="form-select" id="newCourseId">
+                        <option th:each="c : ${courses}" th:value="${c.courseId}" th:text="${c.courseId} + ' - ' + ${c.title}">课程</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="newSecId">班号</label>
+                    <input type="text" class="form-control" id="newSecId" placeholder="如 1">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="newInstructorId">授课教师（可选）</label>
+                    <select class="form-select" id="newInstructorId">
+                        <option value="">（不指定）</option>
+                        <option th:each="i : ${instructors}" th:value="${i.id}" th:text="${i.id} + ' - ' + ${i.name}">教师</option>
+                    </select>
+                </div>
+                <p class="hint mb-0">该开课班将加入左侧「待安排课程」，学期/年份跟随当前看板选择，之后拖入表格即可完成排课。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="createSectionBtn">创建</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 提示消息 -->
+<div class="sched-toast-wrap" id="schedToastWrap"></div>
+
+<script th:src="@{/js/scheduling.js}"></script>
+</body>
+</html>

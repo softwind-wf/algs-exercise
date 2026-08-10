@@ -25,8 +25,10 @@ public class SectionController {
     public String list(@RequestParam(required = false) String semester,
                        @RequestParam(required = false) Integer year,
                        @RequestParam(required = false) String courseId,
+                       @RequestParam(defaultValue = "1") int page,
+                       @RequestParam(defaultValue = "10") int size,
                        Model model) {
-        model.addAttribute("sections", sectionService.list(semester, year, courseId));
+        model.addAttribute("sections", sectionService.page(semester, year, courseId, page, size));
         model.addAttribute("courses", courseService.list(null, null));
         model.addAttribute("semester", semester);
         model.addAttribute("year", year);

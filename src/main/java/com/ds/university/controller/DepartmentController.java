@@ -6,6 +6,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 /** 系浏览 */
 @Controller
@@ -19,8 +20,10 @@ public class DepartmentController {
     }
 
     @GetMapping
-    public String list(Model model) {
-        model.addAttribute("departments", departmentService.listWithStats());
+    public String list(@RequestParam(defaultValue = "1") int page,
+                       @RequestParam(defaultValue = "10") int size,
+                       Model model) {
+        model.addAttribute("departments", departmentService.page(page, size));
         return "departments";
     }
 

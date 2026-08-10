@@ -2,6 +2,7 @@ package com.ds.university.service;
 
 import com.ds.university.common.BusinessException;
 import com.ds.university.common.ErrorCode;
+import com.ds.university.common.PageResult;
 import com.ds.university.entity.Instructor;
 import com.ds.university.mapper.InstructorMapper;
 import com.ds.university.vo.InstructorDetailVO;
@@ -21,6 +22,15 @@ public class InstructorService {
 
     public List<Instructor> list(String deptName) {
         return instructorMapper.selectAll(deptName);
+    }
+
+    /** 教师分页列表 */
+    public PageResult<Instructor> page(String deptName, int page, int size) {
+        size = PageResult.normalizeSize(size);
+        long total = instructorMapper.countByFilter(deptName);
+        int safePage = PageResult.clampPage(page, size, total);
+        List<Instructor> records = instructorMapper.selectPage(deptName, (safePage - 1) * size, size);
+        return new PageResult<>(records, safePage, size, total);
     }
 
     public InstructorDetailVO detail(String id) {

@@ -7,7 +7,15 @@ public class Classroom {
     private String roomNumber;
     private Integer capacity;
 
-    public String getBuilding() {
+
+    public Classroom() {
+    }
+
+    public Classroom(String building, String roomNumber, Integer capacity) {
+        this.building = building;
+        this.roomNumber = roomNumber;
+        this.capacity = capacity;
+    }    public String getBuilding() {
         return building;
     }
 

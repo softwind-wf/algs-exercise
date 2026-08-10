@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('成绩单')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <h1 class="page-title mb-0">成绩单</h1>
+        <div class="btn-group btn-group-sm" role="group" aria-label="学生中心导航">
+            <a class="btn btn-outline-primary" th:href="@{/student}">首页</a>
+            <a class="btn btn-outline-primary" th:href="@{/student/courses}">选课 / 退课</a>
+            <a class="btn btn-primary" th:href="@{/student/transcript}">成绩单</a>
+            <a class="btn btn-outline-primary" th:href="@{/student/advisor}">导师</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mt-3">
+        <div class="card-body">
+            <h2 class="h5 mb-2" th:text="${transcript.studentName}">学生姓名</h2>
+            <p class="text-secondary mb-0">
+                学号：<span th:text="${transcript.studentId}">学号</span> ·
+                主修系：<span th:text="${transcript.deptName}">系</span>
+            </p>
+        </div>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-3 g-4 mt-1">
+        <div class="col">
+            <div class="card stat-card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="num" th:text="${transcript.courseCount}">0</div>
+                    <div class="label">修读课程数</div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card stat-card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="num" th:text="${transcript.earnedCredits}">0</div>
+                    <div class="label">已获学分</div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card stat-card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="num" th:text="${transcript.gpa != null ? transcript.gpa : '-'}">-</div>
+                    <div class="label">GPA</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-responsive bg-white border rounded-3 shadow-sm mt-4">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+            <tr>
+                <th>学期</th><th>年份</th><th>课程号</th><th>课程名</th><th class="text-end">学分</th><th>成绩</th><th class="text-end">绩点</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${transcript.rows}">
+                <td th:text="${r.semester}">学期</td>
+                <td th:text="${r.year}">年份</td>
+                <td><a th:href="@{/courses/{id}(id=${r.courseId})}" th:text="${r.courseId}">课程号</a></td>
+                <td th:text="${r.title}">课程名</td>
+                <td class="text-end" th:text="${r.credits}">学分</td>
+                <td>
+                    <span class="badge text-bg-success" th:if="${r.grade != null and r.grade != ''}" th:text="${r.grade}">成绩</span>
+                    <span class="badge text-bg-secondary" th:unless="${r.grade != null and r.grade != ''}" th:text="'在读'">在读</span>
+                </td>
+                <td class="text-end" th:text="${r.gradePoint != null ? r.gradePoint : '-'}">绩点</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center justify-content-between mt-3 gap-2">
+        <p class="hint mb-0" th:if="${transcript.pageResult.total > 0}">
+            共 <span th:text="${transcript.pageResult.total}">0</span> 条，第 <span th:text="${transcript.pageResult.page}">1</span> / <span th:text="${transcript.pageResult.totalPages}">1</span> 页
+        </p>
+        <nav th:if="${transcript.pageResult.totalPages > 1}" aria-label="分页">
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item" th:classappend="${!transcript.pageResult.hasPrev} ? 'disabled'">
+                    <a class="page-link" th:href="@{/student/transcript(page=${transcript.pageResult.prevPage}, size=${transcript.pageResult.size})}">上一页</a>
+                </li>
+                <li class="page-item" th:each="n : ${transcript.pageResult.pageNumbers}"
+                    th:classappend="${n == 0 ? 'disabled' : (n == transcript.pageResult.page ? 'active' : '')}">
+                    <span class="page-link" th:if="${n == 0}">…</span>
+                    <a class="page-link" th:unless="${n == 0}"
+                       th:href="@{/student/transcript(page=${n}, size=${transcript.pageResult.size})}"
+                       th:text="${n}">1</a>
+                </li>
+                <li class="page-item" th:classappend="${!transcript.pageResult.hasNext} ? 'disabled'">
+                    <a class="page-link" th:href="@{/student/transcript(page=${transcript.pageResult.nextPage}, size=${transcript.pageResult.size})}">下一页</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <p class="hint mt-2" th:if="${#lists.isEmpty(transcript.rows)}">暂无成绩记录。</p>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

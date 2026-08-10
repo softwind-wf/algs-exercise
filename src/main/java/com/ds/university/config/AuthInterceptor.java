@@ -9,13 +9,15 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 /**
- * 登录鉴权拦截器：/admin/** 需要 ADMIN 角色。
- * 后续可扩展为按 @RequirePermission 注解做细粒度权限校验。
+ * 登录鉴权拦截器：/admin/** 需要 ADMIN，/student/** 需要 STUDENT，/instructor/** 需要 INSTRUCTOR；
+ * /instructors 等公开列表不受影响。
  */
 @Component
 public class AuthInterceptor implements HandlerInterceptor {
 
     private static final String ADMIN_PREFIX = "/admin";
+    private static final String STUDENT_PREFIX = "/student";
+    private static final String INSTRUCTOR_PREFIX = "/instructor";
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
@@ -24,7 +26,7 @@ public class AuthInterceptor implements HandlerInterceptor {
         LoginUser user = session == null ? null : (LoginUser) session.getAttribute("loginUser");
 
         String uri = request.getRequestURI();
-        if (uri.startsWith(ADMIN_PREFIX)) {
+        if (matches(uri, ADMIN_PREFIX)) {
             if (user == null) {
                 response.sendRedirect(request.getContextPath() + "/login");
                 return false;
@@ -34,6 +36,30 @@ public class AuthInterceptor implements HandlerInterceptor {
                 return false;
             }
         }
+        if (matches(uri, STUDENT_PREFIX)) {
+            if (user == null) {
+                response.sendRedirect(request.getContextPath() + "/login");
+                return false;
+            }
+            if (!user.getRoles().contains("STUDENT")) {
+                response.sendError(HttpServletResponse.SC_FORBIDDEN);
+                return false;
+            }
+        }
+        if (matches(uri, INSTRUCTOR_PREFIX)) {
+            if (user == null) {
+                response.sendRedirect(request.getContextPath() + "/login");
+                return false;
+            }
+            if (!user.getRoles().contains("INSTRUCTOR")) {
+                response.sendError(HttpServletResponse.SC_FORBIDDEN);
+                return false;
+            }
+        }
         return true;
+    }
+    /** 精确前缀匹配：/xxx 或 /xxx/...，避免误拦 /xxx 的同前缀公开路径（如 /instructors）。 */
+    private boolean matches(String uri, String prefix) {
+        return uri.equals(prefix) || uri.startsWith(prefix + "/");
     }
 }

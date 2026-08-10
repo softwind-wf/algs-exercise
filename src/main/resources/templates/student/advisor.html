@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('导师')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <h1 class="page-title mb-0">导师</h1>
+        <div class="btn-group btn-group-sm" role="group" aria-label="学生中心导航">
+            <a class="btn btn-outline-primary" th:href="@{/student}">首页</a>
+            <a class="btn btn-outline-primary" th:href="@{/student/courses}">选课 / 退课</a>
+            <a class="btn btn-outline-primary" th:href="@{/student/transcript}">成绩单</a>
+            <a class="btn btn-primary" th:href="@{/student/advisor}">导师</a>
+        </div>
+    </div>
+
+    <div class="card login-card shadow-sm mt-4">
+        <div class="card-body p-4 text-center">
+            <div class="display-6 mb-2" th:text="${advisor.name}">导师姓名</div>
+            <p class="text-secondary mb-0">
+                工号：<span th:text="${advisor.iId}">工号</span> ·
+                所属院系：<a th:href="@{/departments/{name}(name=${advisor.deptName})}" th:text="${advisor.deptName}">系</a> ·
+                指导的学生数：<span th:text="${advisor.adviseeCount}">0</span>
+            </p>
+            <a class="btn btn-outline-primary btn-sm mt-4" th:href="@{/instructors/{id}(id=${advisor.iId})}">查看教师详情</a>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

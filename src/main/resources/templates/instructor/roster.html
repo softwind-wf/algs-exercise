@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('班级名单')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <h1 class="page-title mb-0">班级名单</h1>
+        <div class="btn-group btn-group-sm" role="group" aria-label="教师中心导航">
+            <a class="btn btn-outline-primary" th:href="@{/instructor}">首页</a>
+            <a class="btn btn-outline-primary" th:href="@{/instructor/sections}">授课列表</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mt-3">
+        <div class="card-body">
+            <h2 class="h5 mb-2" th:text="${roster.section.courseId + ' ' + roster.section.courseTitle}">课程</h2>
+            <p class="text-secondary mb-0">
+                开课号：<span th:text="${roster.section.secId}">开课号</span> ·
+                学期：<span th:text="${roster.section.semester}">学期</span> ·
+                年份：<span th:text="${roster.section.year}">年份</span> ·
+                教室：<span th:text="${roster.section.building + ' ' + roster.section.roomNumber}">教室</span> ·
+                时间段：<span th:text="${roster.section.timeSlotId}">时间段</span> ·
+                选课/容量：<span th:text="${roster.section.enrolled} + '/' + ${roster.section.capacity}">选课/容量</span>
+            </p>
+        </div>
+    </div>
+
+    <div class="alert alert-success py-2 mt-3" th:if="${success}" th:text="${success}">成功提示</div>
+    <div class="alert alert-danger py-2 mt-3" th:if="${error}" th:text="${error}">错误提示</div>
+
+    <h2 class="h5 mt-4">学生名单</h2>
+    <div class="table-responsive bg-white border rounded-3 shadow-sm">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+            <tr>
+                <th>学号</th><th>姓名</th><th>院系</th><th class="text-end">已修学分</th><th>成绩</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${roster.rows}">
+                <td th:text="${r.studentId}">学号</td>
+                <td th:text="${r.name}">姓名</td>
+                <td th:text="${r.deptName}">院系</td>
+                <td class="text-end" th:text="${r.totCred}">学分</td>
+                <td>
+                    <form method="post" th:action="@{/instructor/grade}" class="d-flex flex-wrap gap-2">
+                        <input type="hidden" name="studentId" th:value="${r.studentId}">
+                        <input type="hidden" name="courseId" th:value="${roster.section.courseId}">
+                        <input type="hidden" name="secId" th:value="${roster.section.secId}">
+                        <input type="hidden" name="semester" th:value="${roster.section.semester}">
+                        <input type="hidden" name="year" th:value="${roster.section.year}">
+                        <select class="form-select form-select-sm" name="grade" style="width: auto;">
+                            <option value="" th:selected="${r.grade == null or r.grade.isEmpty()}">未出成绩</option>
+                            <option value="A+" th:selected="${r.grade == 'A+'}">A+</option>
+                            <option value="A" th:selected="${r.grade == 'A'}">A</option>
+                            <option value="A-" th:selected="${r.grade == 'A-'}">A-</option>
+                            <option value="B+" th:selected="${r.grade == 'B+'}">B+</option>
+                            <option value="B" th:selected="${r.grade == 'B'}">B</option>
+                            <option value="B-" th:selected="${r.grade == 'B-'}">B-</option>
+                            <option value="C+" th:selected="${r.grade == 'C+'}">C+</option>
+                            <option value="C" th:selected="${r.grade == 'C'}">C</option>
+                            <option value="C-" th:selected="${r.grade == 'C-'}">C-</option>
+                            <option value="D+" th:selected="${r.grade == 'D+'}">D+</option>
+                            <option value="D" th:selected="${r.grade == 'D'}">D</option>
+                            <option value="F" th:selected="${r.grade == 'F'}">F</option>
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-outline-primary">保存</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="hint mt-2" th:if="${#lists.isEmpty(roster.rows)}">该开课班暂无学生选课。</p>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

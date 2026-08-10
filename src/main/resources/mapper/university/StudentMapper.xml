@@ -16,8 +16,176 @@
         WHERE a.s_id = #{id}
     </select>
 
+    <!-- 导师信息（含指导的学生数） -->
+    <select id="selectAdvisor" resultType="com.ds.university.vo.AdvisorVO">
+        SELECT i.ID AS i_id, i.name, i.dept_name,
+               (SELECT COUNT(*) FROM advisor a2 WHERE a2.i_id = i.ID) AS advisee_count
+        FROM advisor a
+        JOIN instructor i ON a.i_id = i.ID
+        WHERE a.s_id = #{id}
+    </select>
+
+    <!-- 已选开课班列表：课程名、教师、容量、成绩 -->
+    <select id="selectEnrollments" resultType="com.ds.university.vo.EnrollmentVO">
+        SELECT t.course_id, t.sec_id, t.semester, t.year,
+               c.title, c.credits,
+               (SELECT GROUP_CONCAT(i.name SEPARATOR '、')
+                FROM teaches th
+                JOIN instructor i ON th.ID = i.ID
+                WHERE th.course_id = t.course_id AND th.sec_id = t.sec_id
+                  AND th.semester = t.semester AND th.year = t.year) AS instructor_names,
+               s.time_slot_id, s.building, s.room_number,
+               (SELECT COUNT(*) FROM takes k
+                WHERE k.course_id = t.course_id AND k.sec_id = t.sec_id
+                  AND k.semester = t.semester AND k.year = t.year) AS enrolled,
+               cl.capacity,
+               t.grade
+        FROM takes t
+        JOIN section s ON t.course_id = s.course_id AND t.sec_id = s.sec_id
+            AND t.semester = s.semester AND t.year = s.year
+        JOIN course c ON t.course_id = c.course_id
+        LEFT JOIN classroom cl ON s.building = cl.building AND s.room_number = cl.room_number
+        WHERE t.ID = #{id}
+        ORDER BY t.year DESC, t.semester, t.course_id
+    </select>
+
+    <!-- 成绩单明细 -->
+    <select id="selectTranscript" resultType="com.ds.university.vo.TranscriptRowVO">
+        SELECT t.course_id, c.title, c.credits, t.semester, t.year, t.grade
+        FROM takes t
+        JOIN course c ON t.course_id = c.course_id
+        WHERE t.ID = #{id}
+        ORDER BY t.year, t.semester, t.course_id
+    </select>
+
+    <!-- 选课目录：某学期/年份的开课班，标记当前学生是否已选 -->
+    <select id="selectCatalog" resultType="com.ds.university.vo.CatalogSectionVO">
+        SELECT s.course_id, s.sec_id, s.semester, s.year,
+               s.building, s.room_number, s.time_slot_id,
+               c.title AS course_title, c.credits,
+               (SELECT GROUP_CONCAT(i.name SEPARATOR '、')
+                FROM teaches t
+                JOIN instructor i ON t.ID = i.ID
+                WHERE t.course_id = s.course_id AND t.sec_id = s.sec_id
+                  AND t.semester = s.semester AND t.year = s.year) AS instructor_names,
+               (SELECT COUNT(*) FROM takes k
+                WHERE k.course_id = s.course_id AND k.sec_id = s.sec_id
+                  AND k.semester = s.semester AND k.year = s.year) AS enrolled,
+               cl.capacity,
+               CASE WHEN myt.ID IS NOT NULL THEN 1 ELSE 0 END AS selected
+        FROM section s
+        JOIN course c ON s.course_id = c.course_id
+        LEFT JOIN classroom cl ON s.building = cl.building AND s.room_number = cl.room_number
+        LEFT JOIN takes myt ON myt.ID = #{id}
+            AND myt.course_id = s.course_id AND myt.sec_id = s.sec_id
+            AND myt.semester = s.semester AND myt.year = s.year
+        WHERE s.semester = #{semester} AND s.year = #{year}
+        <if test="courseId != null and courseId != ''">
+            AND s.course_id = #{courseId}
+        </if>
+        ORDER BY s.course_id, s.sec_id
+    </select>
+    <!-- 选课目录数量（分页使用） -->
+    <select id="countCatalog" resultType="long">
+        SELECT COUNT(*)
+        FROM section s
+        JOIN course c ON s.course_id = c.course_id
+        LEFT JOIN takes myt ON myt.ID = #{id}
+            AND myt.course_id = s.course_id AND myt.sec_id = s.sec_id
+            AND myt.semester = s.semester AND myt.year = s.year
+        WHERE s.semester = #{semester} AND s.year = #{year}
+        <if test="courseId != null and courseId != ''">
+            AND s.course_id = #{courseId}
+        </if>
+    </select>
+
+    <!-- 选课目录分页 -->
+    <select id="selectCatalogPage" resultType="com.ds.university.vo.CatalogSectionVO">
+        SELECT s.course_id, s.sec_id, s.semester, s.year,
+               s.building, s.room_number, s.time_slot_id,
+               c.title AS course_title, c.credits,
+               (SELECT GROUP_CONCAT(i.name SEPARATOR '、')
+                FROM teaches t
+                JOIN instructor i ON t.ID = i.ID
+                WHERE t.course_id = s.course_id AND t.sec_id = s.sec_id
+                  AND t.semester = s.semester AND t.year = s.year) AS instructor_names,
+               (SELECT COUNT(*) FROM takes k
+                WHERE k.course_id = s.course_id AND k.sec_id = s.sec_id
+                  AND k.semester = s.semester AND k.year = s.year) AS enrolled,
+               cl.capacity,
+               CASE WHEN myt.ID IS NOT NULL THEN 1 ELSE 0 END AS selected
+        FROM section s
+        JOIN course c ON s.course_id = c.course_id
+        LEFT JOIN classroom cl ON s.building = cl.building AND s.room_number = cl.room_number
+        LEFT JOIN takes myt ON myt.ID = #{id}
+            AND myt.course_id = s.course_id AND myt.sec_id = s.sec_id
+            AND myt.semester = s.semester AND myt.year = s.year
+        WHERE s.semester = #{semester} AND s.year = #{year}
+        <if test="courseId != null and courseId != ''">
+            AND s.course_id = #{courseId}
+        </if>
+        ORDER BY s.course_id, s.sec_id
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <!-- 学生某学期已选课程的时间段 -->
+    <select id="selectEnrolledTimeSlots" resultType="com.ds.university.entity.TimeSlot">
+        SELECT ts.time_slot_id, ts.day, ts.start_time, ts.end_time
+        FROM takes t
+        JOIN section s ON t.course_id = s.course_id AND t.sec_id = s.sec_id
+            AND t.semester = s.semester AND t.year = s.year
+        JOIN time_slot ts ON ts.time_slot_id = s.time_slot_id
+        WHERE t.ID = #{id} AND t.semester = #{semester} AND t.year = #{year}
+    </select>
+
+    <!-- 某课程中该学生尚未通过的先修课数量（无成绩或成绩为 F 视为未通过） -->
+    <select id="countPrereqNotPassed" resultType="int">
+        SELECT COUNT(*)
+        FROM prereq p
+        LEFT JOIN takes t ON t.course_id = p.prereq_id AND t.ID = #{id}
+            AND t.grade IS NOT NULL AND t.grade != 'F'
+        WHERE p.course_id = #{courseId}
+          AND t.ID IS NULL
+    </select>
+
+    <!-- 有开课班的年份（从新到旧） -->
+    <select id="selectDistinctYears" resultType="int">
+        SELECT DISTINCT year FROM section ORDER BY year DESC
+    </select>
+
     <select id="count" resultType="int">
         SELECT COUNT(*) FROM student
     </select>
+    <!-- 全部学生（简单列表，用于后台管理） -->
+    <select id="selectAllSimple" resultType="com.ds.university.entity.Student">
+        SELECT ID AS id, name, dept_name, tot_cred
+        FROM student
+        ORDER BY ID
+    </select>
 
-</mapper>
+
+
+    <!-- 按已通过成绩重算已修总学分（成绩录入/清除、退课后调用，F 视为未通过） -->
+    <update id="recomputeTotCred">
+        UPDATE student s
+        SET tot_cred = (SELECT COALESCE(SUM(c.credits), 0)
+                        FROM takes t
+                        JOIN course c ON t.course_id = c.course_id
+                        WHERE t.ID = s.ID AND t.grade IS NOT NULL AND t.grade != 'F')
+        WHERE s.ID = #{id}
+    </update>
+
+    <insert id="insert">
+        INSERT INTO student (ID, name, dept_name, tot_cred)
+        VALUES (#{id}, #{name}, #{deptName}, #{totCred})
+    </insert>
+
+    <update id="update">
+        UPDATE student
+        SET name = #{name}, dept_name = #{deptName}, tot_cred = #{totCred}
+        WHERE ID = #{id}
+    </update>
+
+    <delete id="delete">
+        DELETE FROM student WHERE ID = #{id}
+    </delete></mapper>

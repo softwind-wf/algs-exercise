@@ -25,8 +25,10 @@ public class CourseController {
     @GetMapping
     public String list(@RequestParam(required = false) String deptName,
                        @RequestParam(required = false) String keyword,
+                       @RequestParam(defaultValue = "1") int page,
+                       @RequestParam(defaultValue = "10") int size,
                        Model model) {
-        model.addAttribute("courses", courseService.list(deptName, keyword));
+        model.addAttribute("courses", courseService.page(deptName, keyword, page, size));
         model.addAttribute("departments", departmentService.listAll());
         model.addAttribute("deptName", deptName);
         model.addAttribute("keyword", keyword);

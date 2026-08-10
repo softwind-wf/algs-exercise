@@ -2,23 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.ds.university.mapper.SectionMapper">
 
-    <!-- 开课班列表：学期 / 年份 / 课程号筛选（均可选），含教师、选课人数、容量 -->
-    <select id="selectAll" resultType="com.ds.university.vo.SectionVO">
-        SELECT s.course_id, s.sec_id, s.semester, s.year,
-               s.building, s.room_number, s.time_slot_id,
-               c.title AS course_title,
-               (SELECT GROUP_CONCAT(i.name SEPARATOR '、')
-                FROM teaches t
-                JOIN instructor i ON t.ID = i.ID
-                WHERE t.course_id = s.course_id AND t.sec_id = s.sec_id
-                  AND t.semester = s.semester AND t.year = s.year) AS instructor_names,
-               (SELECT COUNT(*) FROM takes k
-                WHERE k.course_id = s.course_id AND k.sec_id = s.sec_id
-                  AND k.semester = s.semester AND k.year = s.year) AS enrolled,
-               cl.capacity
-        FROM section s
-        LEFT JOIN course c ON s.course_id = c.course_id
-        LEFT JOIN classroom cl ON s.building = cl.building AND s.room_number = cl.room_number
+    <sql id="sectionFilter">
         <where>
             <if test="semester != null and semester != ''">
                 AND s.semester = #{semester}
@@ -30,11 +14,152 @@
                 AND s.course_id = #{courseId}
             </if>
         </where>
+    </sql>
+
+    <!-- 开课班列表：学期 / 年份 / 课程号筛选（均可选），含教师、选课人数、容量 -->
+    <select id="selectAll" resultType="com.ds.university.vo.SectionVO">
+        SELECT s.course_id, s.sec_id, s.semester, s.year,
+               s.building, s.room_number, s.time_slot_id,
+               c.title AS course_title,
+               (SELECT GROUP_CONCAT(i.name SEPARATOR '、')
+                FROM teaches t
+                JOIN instructor i ON t.ID = i.ID
+                WHERE t.course_id = s.course_id AND t.sec_id = s.sec_id
+                  AND t.semester = s.semester AND t.year = s.year) AS instructor_names,
+               (SELECT t.ID FROM teaches t
+                WHERE t.course_id = s.course_id AND t.sec_id = s.sec_id
+                  AND t.semester = s.semester AND t.year = s.year
+                LIMIT 1) AS instructor_id,
+               (SELECT COUNT(*) FROM takes k
+                WHERE k.course_id = s.course_id AND k.sec_id = s.sec_id
+                  AND k.semester = s.semester AND k.year = s.year) AS enrolled,
+               cl.capacity
+        FROM section s
+        LEFT JOIN course c ON s.course_id = c.course_id
+        LEFT JOIN classroom cl ON s.building = cl.building AND s.room_number = cl.room_number
+        <include refid="sectionFilter"/>
         ORDER BY s.year DESC, s.semester, s.course_id, s.sec_id
+    </select>
+
+    <!-- 开课班分页列表 -->
+    <select id="selectPage" resultType="com.ds.university.vo.SectionVO">
+        SELECT s.course_id, s.sec_id, s.semester, s.year,
+               s.building, s.room_number, s.time_slot_id,
+               c.title AS course_title,
+               (SELECT GROUP_CONCAT(i.name SEPARATOR '、')
+                FROM teaches t
+                JOIN instructor i ON t.ID = i.ID
+                WHERE t.course_id = s.course_id AND t.sec_id = s.sec_id
+                  AND t.semester = s.semester AND t.year = s.year) AS instructor_names,
+               (SELECT t.ID FROM teaches t
+                WHERE t.course_id = s.course_id AND t.sec_id = s.sec_id
+                  AND t.semester = s.semester AND t.year = s.year
+                LIMIT 1) AS instructor_id,
+               (SELECT COUNT(*) FROM takes k
+                WHERE k.course_id = s.course_id AND k.sec_id = s.sec_id
+                  AND k.semester = s.semester AND k.year = s.year) AS enrolled,
+               cl.capacity
+        FROM section s
+        LEFT JOIN course c ON s.course_id = c.course_id
+        LEFT JOIN classroom cl ON s.building = cl.building AND s.room_number = cl.room_number
+        <include refid="sectionFilter"/>
+        ORDER BY s.year DESC, s.semester, s.course_id, s.sec_id
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 开课班总数（按筛选条件） -->
+    <select id="countByFilter" resultType="long">
+        SELECT COUNT(*)
+        FROM section s
+        <include refid="sectionFilter"/>
+    </select>
+
+    <!-- 最新开课班（首页展示，按年份/学期倒序取前 N 条） -->
+    <select id="selectLatest" resultType="com.ds.university.vo.SectionVO">
+        SELECT s.course_id, s.sec_id, s.semester, s.year,
+               s.building, s.room_number, s.time_slot_id,
+               c.title AS course_title,
+               (SELECT GROUP_CONCAT(i.name SEPARATOR '、')
+                FROM teaches t
+                JOIN instructor i ON t.ID = i.ID
+                WHERE t.course_id = s.course_id AND t.sec_id = s.sec_id
+                  AND t.semester = s.semester AND t.year = s.year) AS instructor_names,
+               (SELECT t.ID FROM teaches t
+                WHERE t.course_id = s.course_id AND t.sec_id = s.sec_id
+                  AND t.semester = s.semester AND t.year = s.year
+                LIMIT 1) AS instructor_id,
+               (SELECT COUNT(*) FROM takes k
+                WHERE k.course_id = s.course_id AND k.sec_id = s.sec_id
+                  AND k.semester = s.semester AND k.year = s.year) AS enrolled,
+               cl.capacity
+        FROM section s
+        LEFT JOIN course c ON s.course_id = c.course_id
+        LEFT JOIN classroom cl ON s.building = cl.building AND s.room_number = cl.room_number
+        ORDER BY s.year DESC, s.semester, s.course_id, s.sec_id
+        LIMIT #{limit}
     </select>
 
     <select id="count" resultType="int">
         SELECT COUNT(*) FROM section
     </select>
 
+
+    <select id="selectById" resultType="com.ds.university.entity.Section">
+        SELECT course_id, sec_id, semester, year, building, room_number, time_slot_id
+        FROM section
+        WHERE course_id = #{courseId} AND sec_id = #{secId}
+          AND semester = #{semester} AND year = #{year}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO section (course_id, sec_id, semester, year, building, room_number, time_slot_id)
+        VALUES (#{courseId}, #{secId}, #{semester}, #{year}, #{building}, #{roomNumber}, #{timeSlotId})
+    </insert>
+
+    <update id="update">
+        UPDATE section
+        SET building = #{building}, room_number = #{roomNumber}, time_slot_id = #{timeSlotId}
+        WHERE course_id = #{courseId} AND sec_id = #{secId}
+          AND semester = #{semester} AND year = #{year}
+    </update>
+
+    <delete id="delete">
+        DELETE FROM section
+        WHERE course_id = #{courseId} AND sec_id = #{secId}
+          AND semester = #{semester} AND year = #{year}
+    </delete>
+
+    <select id="countRoomTimeConflict" resultType="int">
+        SELECT COUNT(*)
+        FROM section s
+        JOIN time_slot ts ON ts.time_slot_id = s.time_slot_id
+        JOIN time_slot nt ON nt.time_slot_id = #{timeSlotId}
+        WHERE s.semester = #{semester} AND s.year = #{year}
+          AND s.building = #{building} AND s.room_number = #{roomNumber}
+          AND ts.day = nt.day
+          AND ts.start_time &lt; nt.end_time AND nt.start_time &lt; ts.end_time
+          AND NOT (s.course_id = #{courseId} AND s.sec_id = #{secId}
+                   AND s.semester = #{semester} AND s.year = #{year})
+    </select>
+
+    <!-- 教师时间冲突：同一教师同一学期/年份，其他授课时间段与目标时段有重叠 -->
+    <select id="countInstructorTimeConflict" resultType="int">
+        SELECT COUNT(*)
+        FROM teaches t
+        JOIN section s ON t.course_id = s.course_id AND t.sec_id = s.sec_id
+            AND t.semester = s.semester AND t.year = s.year
+        JOIN time_slot ts ON ts.time_slot_id = s.time_slot_id
+        JOIN time_slot nt ON nt.time_slot_id = #{timeSlotId}
+        WHERE t.ID = #{instructorId}
+          AND s.semester = #{semester} AND s.year = #{year}
+          AND ts.day = nt.day
+          AND ts.start_time &lt; nt.end_time AND nt.start_time &lt; ts.end_time
+          AND NOT (s.course_id = #{courseId} AND s.sec_id = #{secId})
+    </select>
+
+    <select id="countEnrolled" resultType="int">
+        SELECT COUNT(*) FROM takes
+        WHERE course_id = #{courseId} AND sec_id = #{secId}
+          AND semester = #{semester} AND year = #{year}
+    </select>
 </mapper>

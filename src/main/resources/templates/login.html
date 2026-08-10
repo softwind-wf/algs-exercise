@@ -4,19 +4,26 @@
 <body>
 <nav th:replace="fragments/layout :: nav"></nav>
 
-<main class="container narrow">
-    <h1>用户登录</h1>
-    <div class="alert" th:if="${error}" th:text="${error}">错误提示</div>
-    <form method="post" th:action="@{/login}">
-        <label>账号
-            <input type="text" name="userId" th:value="${userId}" required autofocus>
-        </label>
-        <label>密码
-            <input type="password" name="password" required>
-        </label>
-        <button type="submit">登录</button>
-    </form>
-    <p class="hint">演示账号：zhang / katz / admin，密码均为 password</p>
+<main class="container">
+    <div class="card login-card shadow-sm mt-5">
+        <div class="card-body p-4">
+            <h1 class="h4 text-center mb-4">用户登录</h1>
+            <div class="alert alert-danger py-2" th:if="${error}" th:text="${error}">错误提示</div>
+            <form method="post" th:action="@{/login}">
+                <div class="mb-3">
+                    <label class="form-label" for="userId">账号</label>
+                    <input class="form-control" type="text" id="userId" name="userId"
+                           th:value="${userId}" required autofocus>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="password">密码</label>
+                    <input class="form-control" type="password" id="password" name="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">登录</button>
+            </form>
+            <p class="hint text-center mt-3 mb-0">演示账号：zhang / katz / admin，密码均为 password</p>
+        </div>
+    </div>
 </main>
 
 <footer th:replace="fragments/layout :: footer"></footer>

@@ -17,15 +17,16 @@ import java.util.Properties;
 import java.util.TreeMap;
 
 /**
- * 大学数据库建库工具：执行 {@code src/main/resources/sql/university.sql}
- * 创建 university 库的 9 张表（实体 5 + 联系 4），并验证表结构与外键。
+ * 大学数据库建库工具：依次执行 {@code university.sql}（业务表 + 示例数据）
+ * 与 {@code university_auth.sql}（账号与权限表），并验证表结构与外键。
  *
  * <p>连接信息从 {@code src/main/resources/db.properties} 读取。</p>
  */
 public class UniversityDbSetup {
 
     private static final String DB_NAME = "university";
-    private static final String SQL_PATH = "src/main/resources/sql/university_auth.sql";
+    private static final String SQL_BUSINESS_PATH = "src/main/resources/sql/university.sql";
+    private static final String SQL_AUTH_PATH = "src/main/resources/sql/university_auth.sql";
 
     public static void main(String[] args) throws Exception {
         System.out.println("╔════════════════════════════════════════════╗");
@@ -33,17 +34,18 @@ public class UniversityDbSetup {
         System.out.println("╚════════════════════════════════════════════╝");
 
         Properties props = loadDbConfig();
-        String sql = loadSqlScript();
 
-        // 1. 执行建库建表脚本（allowMultiQueries 一次执行整段 DDL）
+        // 1. 依次执行建库建表脚本（allowMultiQueries 一次执行整段 DDL）
         String url = "jdbc:mysql://localhost:" + props.getProperty("port", "3306")
                 + "?useUnicode=true&characterEncoding=UTF-8"
                 + "&useSSL=false&allowPublicKeyRetrieval=true&allowMultiQueries=true";
         try (Connection conn = DriverManager.getConnection(url,
                 props.getProperty("user"), props.getProperty("password"));
              Statement st = conn.createStatement()) {
-            st.execute(sql);
-            System.out.println("✅ SQL 脚本执行完成");
+            st.execute(loadSqlScript(SQL_BUSINESS_PATH));
+            System.out.println("✅ university.sql 执行完成（业务表 + 示例数据）");
+            st.execute(loadSqlScript(SQL_AUTH_PATH));
+            System.out.println("✅ university_auth.sql 执行完成（账号与权限表）");
         }
 
         // 2. 验证：打印每张表的结构
@@ -78,13 +80,13 @@ public class UniversityDbSetup {
         throw new IOException("找不到 db.properties，请确认文件存在于 src/main/resources/");
     }
 
-    /** 读取 university.sql 脚本内容 */
-    private static String loadSqlScript() throws IOException {
-        File f = new File(SQL_PATH);
+    /** 读取指定 SQL 脚本内容 */
+    private static String loadSqlScript(String path) throws IOException {
+        File f = new File(path);
         if (!f.exists()) {
-            throw new IOException("找不到 SQL 脚本: " + SQL_PATH);
+            throw new IOException("找不到 SQL 脚本: " + path);
         }
-        return new String(Files.readAllBytes(Paths.get(SQL_PATH)), StandardCharsets.UTF_8);
+        return new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
     }
 
     /** 查询 information_schema 打印每张表的列定义（主键/外键标注） */
@@ -138,7 +140,8 @@ public class UniversityDbSetup {
         String url = "jdbc:mysql://localhost:" + props.getProperty("port", "3306")
                 + "?useSSL=false&allowPublicKeyRetrieval=true";
         String[] tables = {"department", "classroom", "course", "instructor", "student",
-                "section", "teaches", "takes", "prereq"};
+                "section", "teaches", "takes", "prereq", "advisor", "time_slot",
+                "sys_user", "sys_role", "sys_permission", "sys_user_role", "sys_role_permission"};
         System.out.println("\n──────────────── 示例数据行数统计 ────────────────");
         try (Connection conn = DriverManager.getConnection(url,
                 props.getProperty("user"), props.getProperty("password"));

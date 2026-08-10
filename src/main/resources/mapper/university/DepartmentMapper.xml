@@ -14,6 +14,19 @@
         ORDER BY d.dept_name
     </select>
 
+    <!-- 系列表分页：含教师数 / 课程数 -->
+    <select id="selectPageWithStats" resultType="com.ds.university.vo.DepartmentVO">
+        SELECT d.dept_name, d.building, d.budget,
+               COUNT(DISTINCT i.ID) AS teacher_count,
+               COUNT(DISTINCT c.course_id) AS course_count
+        FROM department d
+        LEFT JOIN instructor i ON i.dept_name = d.dept_name
+        LEFT JOIN course c ON c.dept_name = d.dept_name
+        GROUP BY d.dept_name, d.building, d.budget
+        ORDER BY d.dept_name
+        LIMIT #{offset}, #{limit}
+    </select>
+
     <select id="selectAllSimple" resultType="com.ds.university.entity.Department">
         SELECT dept_name, building, budget
         FROM department
@@ -44,4 +57,18 @@
         ORDER BY course_id
     </select>
 
-</mapper>
+
+    <insert id="insert">
+        INSERT INTO department (dept_name, building, budget)
+        VALUES (#{deptName}, #{building}, #{budget})
+    </insert>
+
+    <update id="update">
+        UPDATE department
+        SET building = #{building}, budget = #{budget}
+        WHERE dept_name = #{deptName}
+    </update>
+
+    <delete id="delete">
+        DELETE FROM department WHERE dept_name = #{deptName}
+    </delete></mapper>

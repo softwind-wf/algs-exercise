@@ -2,16 +2,36 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.ds.university.mapper.InstructorMapper">
 
-    <!-- 教师列表：按系筛选（可选） -->
-    <select id="selectAll" resultType="com.ds.university.entity.Instructor">
-        SELECT ID AS id, name, dept_name, salary
-        FROM instructor
+    <sql id="instructorFilter">
         <where>
             <if test="deptName != null and deptName != ''">
                 AND dept_name = #{deptName}
             </if>
         </where>
+    </sql>
+
+    <!-- 教师列表：按系筛选（可选） -->
+    <select id="selectAll" resultType="com.ds.university.entity.Instructor">
+        SELECT ID AS id, name, dept_name, salary
+        FROM instructor
+        <include refid="instructorFilter"/>
         ORDER BY ID
+    </select>
+
+    <!-- 教师分页列表 -->
+    <select id="selectPage" resultType="com.ds.university.entity.Instructor">
+        SELECT ID AS id, name, dept_name, salary
+        FROM instructor
+        <include refid="instructorFilter"/>
+        ORDER BY ID
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 教师总数（按筛选条件） -->
+    <select id="countByFilter" resultType="long">
+        SELECT COUNT(*)
+        FROM instructor
+        <include refid="instructorFilter"/>
     </select>
 
     <select id="selectById" resultType="com.ds.university.entity.Instructor">
@@ -42,4 +62,18 @@
         SELECT COUNT(*) FROM instructor
     </select>
 
-</mapper>
+
+    <insert id="insert">
+        INSERT INTO instructor (ID, name, dept_name, salary)
+        VALUES (#{id}, #{name}, #{deptName}, #{salary})
+    </insert>
+
+    <update id="update">
+        UPDATE instructor
+        SET name = #{name}, dept_name = #{deptName}, salary = #{salary}
+        WHERE ID = #{id}
+    </update>
+
+    <delete id="delete">
+        DELETE FROM instructor WHERE ID = #{id}
+    </delete></mapper>

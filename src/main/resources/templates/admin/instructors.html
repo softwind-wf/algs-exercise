@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('教师管理')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container-fluid admin-shell px-0">
+    <div class="row g-0">
+        <div class="col-md-3 col-lg-2">
+            <aside th:replace="admin/_fragments :: adminNav('instructors')"></aside>
+        </div>
+        <div class="col-md-9 col-lg-10">
+            <div class="admin-content p-4">
+                <h1 class="page-title">教师管理</h1>
+                <p class="text-secondary">维护教师工号、姓名、所属院系与工资</p>
+
+                <div class="alert alert-success py-2 mt-3" th:if="${success}" th:text="${success}">成功提示</div>
+                <div class="alert alert-danger py-2 mt-3" th:if="${error}" th:text="${error}">错误提示</div>
+
+                <div class="card shadow-sm mt-3">
+                    <div class="card-body">
+                        <h2 class="h5" th:text="${editInstructor != null} ? '编辑教师' : '新增教师'">新增教师</h2>
+                        <form method="post" th:action="@{${editInstructor != null} ? '/admin/instructors/update' : '/admin/instructors'}">
+                            <div class="row g-3 align-items-end">
+                                <div class="col-auto">
+                                    <label class="form-label mb-1" for="id">工号</label>
+                                    <input class="form-control" type="text" id="id" name="id" maxlength="5"
+                                           th:value="${editInstructor != null} ? ${editInstructor.id}"
+                                           th:readonly="${editInstructor != null}" required>
+                                </div>
+                                <div class="col-auto">
+                                    <label class="form-label mb-1" for="name">姓名</label>
+                                    <input class="form-control" type="text" id="name" name="name"
+                                           th:value="${editInstructor != null} ? ${editInstructor.name}" required>
+                                </div>
+                                <div class="col-auto">
+                                    <label class="form-label mb-1" for="deptName">所属院系</label>
+                                    <select class="form-select" id="deptName" name="deptName">
+                                        <option th:each="d : ${departments}" th:value="${d.deptName}"
+                                                th:text="${d.deptName}"
+                                                th:selected="${editInstructor != null and editInstructor.deptName == d.deptName}">院系</option>
+                                    </select>
+                                </div>
+                                <div class="col-auto">
+                                    <label class="form-label mb-1" for="salary">工资</label>
+                                    <input class="form-control" type="number" step="0.01" id="salary" name="salary"
+                                           th:value="${editInstructor != null} ? ${editInstructor.salary}">
+                                </div>
+                                <div class="col-auto">
+                                    <button type="submit" class="btn btn-primary"
+                                            th:text="${editInstructor != null} ? '保存修改' : '创建'">创建</button>
+                                    <a class="btn btn-outline-secondary" th:if="${editInstructor != null}"
+                                       th:href="@{/admin/instructors}">取消</a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="table-responsive bg-white border rounded-3 shadow-sm mt-4">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                        <tr>
+                            <th>工号</th><th>姓名</th><th>所属院系</th><th class="text-end">工资</th><th class="text-end">操作</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="i : ${instructors}">
+                            <td th:text="${i.id}">工号</td>
+                            <td th:text="${i.name}">姓名</td>
+                            <td th:text="${i.deptName}">院系</td>
+                            <td class="text-end" th:text="${i.salary}">工资</td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-secondary"
+                                   th:href="@{/admin/instructors(edit=${i.id})}">编辑</a>
+                                <form class="d-inline" method="post" th:action="@{/admin/instructors/delete}"
+                                      onsubmit="return confirm('确定删除该教师吗？');">
+                                    <input type="hidden" name="id" th:value="${i.id}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="hint mt-2" th:if="${#lists.isEmpty(instructors)}">暂无教师，请先新增。</p>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

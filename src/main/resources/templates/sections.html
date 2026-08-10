@@ -5,53 +5,87 @@
 <nav th:replace="fragments/layout :: nav"></nav>
 
 <main class="container">
-    <h1>开课班</h1>
-    <form method="get" th:action="@{/sections}" class="filter">
-        <label>学期
-            <select name="semester">
-                <option value="">全部</option>
-                <option value="Fall" th:selected="${semester == 'Fall'}">Fall</option>
-                <option value="Spring" th:selected="${semester == 'Spring'}">Spring</option>
-                <option value="Summer" th:selected="${semester == 'Summer'}">Summer</option>
-            </select>
-        </label>
-        <label>年份
-            <input type="number" name="year" th:value="${year}" placeholder="如 2010" min="1900" max="2100">
-        </label>
-        <label>课程
-            <select name="courseId">
-                <option value="">全部</option>
-                <option th:each="c : ${courses}" th:value="${c.courseId}"
-                        th:selected="${courseId == c.courseId}"
-                        th:text="${c.courseId} + ' ' + ${c.title}">课程</option>
-            </select>
-        </label>
-        <button type="submit">查询</button>
+    <h1 class="page-title">开课班</h1>
+
+    <form method="get" th:action="@{/sections}" class="filter-card p-3 mt-3 mb-4">
+        <div class="row g-3 align-items-end">
+            <div class="col-auto">
+                <label class="form-label mb-1" for="semester">学期</label>
+                <select class="form-select" id="semester" name="semester">
+                    <option value="">全部</option>
+                    <option value="Fall" th:selected="${semester == 'Fall'}">Fall</option>
+                    <option value="Spring" th:selected="${semester == 'Spring'}">Spring</option>
+                    <option value="Summer" th:selected="${semester == 'Summer'}">Summer</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <label class="form-label mb-1" for="year">年份</label>
+                <input class="form-control" type="number" id="year" name="year"
+                       th:value="${year}" placeholder="如 2010" min="1900" max="2100">
+            </div>
+            <div class="col-auto">
+                <label class="form-label mb-1" for="courseId">课程</label>
+                <select class="form-select" id="courseId" name="courseId">
+                    <option value="">全部</option>
+                    <option th:each="c : ${courses}" th:value="${c.courseId}"
+                            th:selected="${courseId == c.courseId}"
+                            th:text="${c.courseId} + ' ' + ${c.title}">课程</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">查询</button>
+            </div>
+        </div>
     </form>
 
-    <table>
-        <thead>
-        <tr>
-            <th>课程</th><th>开课号</th><th>学期</th><th>年份</th><th>教室</th><th>时间段</th><th>教师</th><th>选课/容量</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:each="s : ${sections}">
-            <td>
-                <a th:href="@{/courses/{id}(id=${s.courseId})}" th:text="${s.courseId}">课程号</a>
-                <span class="dim" th:text="s.title">课程名</span>
-            </td>
-            <td th:text="${s.secId}">开课号</td>
-            <td th:text="${s.semester}">学期</td>
-            <td th:text="${s.year}">年份</td>
-            <td th:text="${s.building + ' ' + s.roomNumber}">教室</td>
-            <td th:text="${s.timeSlotId}">时间段</td>
-            <td th:text="${s.instructorNames}">教师</td>
-            <td class="num" th:text="${s.enrolled} + '/' + ${s.capacity}">选课/容量</td>
-        </tr>
-        </tbody>
-    </table>
-    <p class="hint" th:if="${#lists.isEmpty(sections)}">没有符合条件的开课班。</p>
+    <div class="table-responsive bg-white border rounded-3 shadow-sm">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+            <tr>
+                <th>课程</th><th>开课号</th><th>学期</th><th>年份</th><th>教室</th><th>时间段</th><th>教师</th><th class="text-end">选课/容量</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="s : ${sections.records}">
+                <td>
+                    <a th:href="@{/courses/{id}(id=${s.courseId})}" th:text="${s.courseId}">课程号</a>
+                    <span class="dim" th:text="${s.courseTitle}">课程名</span>
+                </td>
+                <td th:text="${s.secId}">开课号</td>
+                <td th:text="${s.semester}">学期</td>
+                <td th:text="${s.year}">年份</td>
+                <td th:text="${s.building + ' ' + s.roomNumber}">教室</td>
+                <td th:text="${s.timeSlotId}">时间段</td>
+                <td th:text="${s.instructorNames}">教师</td>
+                <td class="text-end" th:text="${s.enrolled} + '/' + ${s.capacity}">选课/容量</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="hint mt-2" th:if="${#lists.isEmpty(sections.records)}">没有符合条件的开课班。</p>
+
+    <div class="d-flex flex-wrap align-items-center justify-content-between mt-3 gap-2">
+        <p class="hint mb-0" th:if="${sections.total > 0}">
+            共 <span th:text="${sections.total}">0</span> 条，第 <span th:text="${sections.page}">1</span> / <span th:text="${sections.totalPages}">1</span> 页
+        </p>
+        <nav th:if="${sections.totalPages > 1}" aria-label="分页">
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item" th:classappend="${!sections.hasPrev} ? 'disabled'">
+                    <a class="page-link" th:href="@{/sections(page=${sections.prevPage}, semester=${semester}, year=${year}, courseId=${courseId})}">上一页</a>
+                </li>
+                <li class="page-item" th:each="n : ${sections.pageNumbers}"
+                    th:classappend="${n == 0 ? 'disabled' : (n == sections.page ? 'active' : '')}">
+                    <span class="page-link" th:if="${n == 0}">…</span>
+                    <a class="page-link" th:unless="${n == 0}"
+                       th:href="@{/sections(page=${n}, semester=${semester}, year=${year}, courseId=${courseId})}"
+                       th:text="${n}">1</a>
+                </li>
+                <li class="page-item" th:classappend="${!sections.hasNext} ? 'disabled'">
+                    <a class="page-link" th:href="@{/sections(page=${sections.nextPage}, semester=${semester}, year=${year}, courseId=${courseId})}">下一页</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
 </main>
 
 <footer th:replace="fragments/layout :: footer"></footer>

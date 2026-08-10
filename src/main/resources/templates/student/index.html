@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('学生中心')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <h1 class="page-title mb-0">学生中心</h1>
+        <div class="btn-group btn-group-sm" role="group" aria-label="学生中心导航">
+            <a class="btn btn-primary" th:href="@{/student}">首页</a>
+            <a class="btn btn-outline-primary" th:href="@{/student/courses}">选课 / 退课</a>
+            <a class="btn btn-outline-primary" th:href="@{/student/transcript}">成绩单</a>
+            <a class="btn btn-outline-primary" th:href="@{/student/advisor}">导师</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mt-3">
+        <div class="card-body">
+            <h2 class="h5 mb-3" th:text="${dashboard.student.name}">学生姓名</h2>
+            <p class="text-secondary mb-1">
+                学号：<span th:text="${dashboard.student.id}">学号</span> ·
+                主修系：<span th:text="${dashboard.student.deptName}">系</span> ·
+                已修学分：<span th:text="${dashboard.student.totCred}">学分</span> ·
+                导师：<span th:text="${dashboard.advisorName ?: '未分配'}">导师</span>
+            </p>
+        </div>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-3 g-4 mt-1">
+        <div class="col">
+            <div class="card stat-card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="num" th:text="${dashboard.enrollmentCount}">0</div>
+                    <div class="label">已选课程</div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card stat-card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="num" th:text="${dashboard.earnedCredits}">0</div>
+                    <div class="label">已获学分</div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card stat-card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="num" th:text="${dashboard.gpa != null ? dashboard.gpa : '-'}">-</div>
+                    <div class="label">GPA</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mt-1">
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h3 class="h6">选课 / 退课</h3>
+                    <p class="text-secondary small mb-3">浏览开课班目录，选择本学期想修的课程，也可以退掉已选课程。</p>
+                    <a class="btn btn-sm btn-primary" th:href="@{/student/courses}">进入</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h3 class="h6">成绩单</h3>
+                    <p class="text-secondary small mb-3">查看各学期修读课程的成绩、绩点与 GPA。</p>
+                    <a class="btn btn-sm btn-primary" th:href="@{/student/transcript}">进入</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h3 class="h6">导师</h3>
+                    <p class="text-secondary small mb-3">查看指导教师的姓名、所属院系等信息。</p>
+                    <a class="btn btn-sm btn-primary" th:href="@{/student/advisor}">进入</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

@@ -3,31 +3,115 @@
 <head th:fragment="head(title)">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title th:text="${title}">大学网站</title>
+    <title th:text="${title}">大学教务信息网站</title>
+    <link rel="stylesheet" th:href="@{/vendor/bootstrap/bootstrap.min.css}">
     <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body>
 
-<nav th:fragment="nav">
-    <div class="nav-inner">
-        <a class="brand" th:href="@{/}">大学网站</a>
-        <a th:href="@{/departments}">院系</a>
-        <a th:href="@{/courses}">课程</a>
-        <a th:href="@{/sections}">开课班</a>
-        <a th:href="@{/instructors}">教师</a>
-        <span class="nav-right" th:if="${session.loginUser != null}">
-            <span th:text="'欢迎，' + ${session.loginUser.userId}">欢迎</span>
-            <a th:href="@{/logout}">退出</a>
-        </span>
-        <span class="nav-right" th:unless="${session.loginUser != null}">
-            <a th:href="@{/login}">登录</a>
-        </span>
+<nav th:fragment="nav" th:with="isAdmin=${session.loginUser != null and #lists.contains(session.loginUser.roles, 'ADMIN')}">
+    <!-- 顶部信息条 -->
+    <div class="topbar">
+        <div class="container d-flex justify-content-between align-items-center">
+            <span>欢迎访问大学教务信息网站</span>
+            <span class="d-flex gap-3">
+                <a th:href="@{/}">首页</a>
+                <a th:href="@{/login}" th:if="${session.loginUser == null}">登录</a>
+                <a th:href="@{/logout}" th:if="${session.loginUser != null}">退出登录</a>
+            </span>
+        </div>
+    </div>
+    <!-- 主导航 -->
+    <div class="navbar navbar-expand-lg navbar-dark university-navbar">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" th:href="@{/}">
+                <span class="brand-logo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
+                </span>
+                大学教务信息网站
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+                    aria-controls="mainNav" aria-expanded="false" aria-label="切换导航">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="mainNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item" th:if="${!isAdmin}"><a class="nav-link" th:href="@{/departments}">院系</a></li>
+                    <li class="nav-item" th:if="${!isAdmin}"><a class="nav-link" th:href="@{/courses}">课程</a></li>
+                    <li class="nav-item" th:if="${!isAdmin}"><a class="nav-link" th:href="@{/sections}">开课班</a></li>
+                    <li class="nav-item" th:if="${!isAdmin}">
+                        <a class="nav-link" th:href="@{/instructors}">教师</a>
+                    </li>
+                    <li class="nav-item" th:if="${session.loginUser != null and #lists.contains(session.loginUser.roles, 'STUDENT')}">
+                        <a class="nav-link" th:href="@{/student}">学生中心</a>
+                    </li>
+                    <li class="nav-item" th:if="${session.loginUser != null and #lists.contains(session.loginUser.roles, 'INSTRUCTOR')}">
+                        <a class="nav-link" th:href="@{/instructor}">教师中心</a>
+                    </li>
+                    <li class="nav-item" th:if="${session.loginUser != null and #lists.contains(session.loginUser.roles, 'ADMIN')}">
+                        <a class="nav-link" th:href="@{/admin}">教务管理</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav" th:if="${session.loginUser != null}">
+                    <li class="nav-item"><span class="nav-link disabled" th:text="'欢迎：' + ${session.loginUser.userId}">欢迎</span></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/logout}">退出</a></li>
+                </ul>
+                <ul class="navbar-nav" th:unless="${session.loginUser != null}">
+                    <li class="nav-item"><a class="nav-link" th:href="@{/login}">登录</a></li>
+                </ul>
+            </div>
+        </div>
     </div>
 </nav>
 
-<footer th:fragment="footer">
-    <p>大学教务信息网站 · Spring Boot + Spring MVC + MyBatis</p>
+<footer th:fragment="footer" class="university-footer pt-5 mt-4">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <h5 class="d-flex align-items-center gap-2">
+                    <span class="brand-logo">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
+                    </span>
+                    大学教务信息网站
+                </h5>
+                <p class="small">数据驱动的大学教学演示系统，基于 Spring Boot + Spring MVC + MyBatis 构建，覆盖教学管理全流程。</p>
+            </div>
+            <div class="col-6 col-lg-2">
+                <h6>快速导航</h6>
+                <ul>
+                    <li><a th:href="@{/departments}">院系</a></li>
+                    <li><a th:href="@{/courses}">课程</a></li>
+                    <li><a th:href="@{/sections}">开课班</a></li>
+                    <li><a th:href="@{/instructors}">教师</a></li>
+                </ul>
+            </div>
+            <div class="col-6 col-lg-2">
+                <h6>服务中心</h6>
+                <ul>
+                    <li><a th:href="@{/student}">学生中心</a></li>
+                    <li><a th:href="@{/instructor}">教师中心</a></li>
+                    <li><a th:href="@{/admin}">教务管理</a></li>
+                    <li><a th:href="@{/login}">登录系统</a></li>
+                </ul>
+            </div>
+            <div class="col-lg-4">
+                <h6>联系方式</h6>
+                <ul>
+                    <li>地址：示例市大学路 1 号</li>
+                    <li>电话：028-12345678</li>
+                    <li>邮箱：admin@university.example</li>
+                    <li>工作时间：周一至周五 8:30 - 17:30</li>
+                </ul>
+            </div>
+        </div>
+        <hr class="footer-divider">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 pb-2">
+            <p class="mb-0 small">大学教务信息网站 · Spring Boot + Spring MVC + MyBatis</p>
+            <p class="mb-0 small">Copyright © 2026 University Demo · 仅供教学演示使用</p>
+        </div>
+    </div>
 </footer>
 
+<script th:src="@{/vendor/bootstrap/bootstrap.bundle.min.js}"></script>
 </body>
 </html>

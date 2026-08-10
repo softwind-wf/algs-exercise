@@ -36,6 +36,15 @@ public class AuthController {
         try {
             LoginUser loginUser = authService.login(userId, password);
             session.setAttribute(SESSION_USER, loginUser);
+            if (loginUser.getRoles().contains("ADMIN")) {
+                return "redirect:/admin";
+            }
+            if (loginUser.getRoles().contains("STUDENT")) {
+                return "redirect:/student";
+            }
+            if (loginUser.getRoles().contains("INSTRUCTOR")) {
+                return "redirect:/instructor";
+            }
             return "redirect:/";
         } catch (BusinessException e) {
             model.addAttribute("error", e.getMessage());

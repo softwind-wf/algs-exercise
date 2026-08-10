@@ -9,7 +9,15 @@ public class Department {
     private String building;
     private BigDecimal budget;
 
-    public String getDeptName() {
+
+    public Department() {
+    }
+
+    public Department(String deptName, String building, BigDecimal budget) {
+        this.deptName = deptName;
+        this.building = building;
+        this.budget = budget;
+    }    public String getDeptName() {
         return deptName;
     }
 

@@ -5,27 +5,53 @@
 <nav th:replace="fragments/layout :: nav"></nav>
 
 <main class="container">
-    <h1>院系列表</h1>
-    <table>
-        <thead>
-        <tr>
-            <th>系名称</th>
-            <th>教学楼</th>
-            <th>预算</th>
-            <th>教师数</th>
-            <th>课程数</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:each="d : ${departments}">
-            <td><a th:href="@{/departments/{name}(name=${d.deptName})}" th:text="${d.deptName}">系名</a></td>
-            <td th:text="${d.building}">楼</td>
-            <td class="num" th:text="${d.budget}">预算</td>
-            <td class="num" th:text="${d.teacherCount}">0</td>
-            <td class="num" th:text="${d.courseCount}">0</td>
-        </tr>
-        </tbody>
-    </table>
+    <h1 class="page-title">院系列表</h1>
+
+    <div class="table-responsive bg-white border rounded-3 shadow-sm mt-3">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+            <tr>
+                <th>系名称</th>
+                <th>教学楼</th>
+                <th class="text-end">预算</th>
+                <th class="text-end">教师数</th>
+                <th class="text-end">课程数</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="d : ${departments.records}">
+                <td><a th:href="@{/departments/{name}(name=${d.deptName})}" th:text="${d.deptName}">系名</a></td>
+                <td th:text="${d.building}">楼</td>
+                <td class="text-end" th:text="${d.budget}">预算</td>
+                <td class="text-end" th:text="${d.teacherCount}">0</td>
+                <td class="text-end" th:text="${d.courseCount}">0</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center justify-content-between mt-3 gap-2">
+        <p class="hint mb-0" th:if="${departments.total > 0}">
+            共 <span th:text="${departments.total}">0</span> 条，第 <span th:text="${departments.page}">1</span> / <span th:text="${departments.totalPages}">1</span> 页
+        </p>
+        <nav th:if="${departments.totalPages > 1}" aria-label="分页">
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item" th:classappend="${!departments.hasPrev} ? 'disabled'">
+                    <a class="page-link" th:href="@{/departments(page=${departments.prevPage})}">上一页</a>
+                </li>
+                <li class="page-item" th:each="n : ${departments.pageNumbers}"
+                    th:classappend="${n == 0 ? 'disabled' : (n == departments.page ? 'active' : '')}">
+                    <span class="page-link" th:if="${n == 0}">…</span>
+                    <a class="page-link" th:unless="${n == 0}"
+                       th:href="@{/departments(page=${n})}"
+                       th:text="${n}">1</a>
+                </li>
+                <li class="page-item" th:classappend="${!departments.hasNext} ? 'disabled'">
+                    <a class="page-link" th:href="@{/departments(page=${departments.nextPage})}">下一页</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
 </main>
 
 <footer th:replace="fragments/layout :: footer"></footer>

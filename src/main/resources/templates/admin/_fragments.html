@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- 教务管理后台左侧菜单（仅被 admin 页面引用） -->
+<aside th:fragment="adminNav(active)" class="admin-sidebar d-flex flex-column">
+    <div class="p-3 border-bottom">
+        <h1 class="h5 mb-1">教务管理</h1>
+        <small class="text-secondary">基础数据 · 排课 · 先修</small>
+    </div>
+    <nav class="nav nav-pills flex-column px-2 pt-2 flex-grow-1">
+        <a class="nav-link" th:classappend="${active == 'home'} ? 'active'" th:href="@{/admin}">首页概览</a>
+        <a class="nav-link" th:classappend="${active == 'departments'} ? 'active'" th:href="@{/admin/departments}">院系管理</a>
+        <a class="nav-link" th:classappend="${active == 'courses'} ? 'active'" th:href="@{/admin/courses}">课程管理</a>
+        <a class="nav-link" th:classappend="${active == 'instructors'} ? 'active'" th:href="@{/admin/instructors}">教师管理</a>
+        <a class="nav-link" th:classappend="${active == 'students'} ? 'active'" th:href="@{/admin/students}">学生管理</a>
+        <a class="nav-link" th:classappend="${active == 'classrooms'} ? 'active'" th:href="@{/admin/classrooms}">教室管理</a>
+        <a class="nav-link" th:classappend="${active == 'sections'} ? 'active'" th:href="@{/admin/sections}">排课管理</a>
+        <a class="nav-link" th:classappend="${active == 'scheduling'} ? 'active'" th:href="@{/admin/scheduling}">排课看板</a>
+        <a class="nav-link" th:classappend="${active == 'prereqs'} ? 'active'" th:href="@{/admin/prereqs}">先修管理</a>
+        <a class="nav-link" th:classappend="${active == 'stats'} ? 'active'" th:href="@{/admin/stats}">统计报表</a>
+    </nav>
+    <div class="p-3 border-top">
+        <a class="btn btn-sm btn-outline-secondary w-100" th:href="@{/}">← 返回网站首页</a>
+    </div>
+</aside>
+
+</body>
+</html>

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('统计报表')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container-fluid admin-shell px-0">
+    <div class="row g-0">
+        <div class="col-md-3 col-lg-2">
+            <aside th:replace="admin/_fragments :: adminNav('stats')"></aside>
+        </div>
+        <div class="col-md-9 col-lg-10">
+            <div class="admin-content p-4">
+                <h1 class="page-title">统计报表</h1>
+                <p class="text-secondary">系预算、教师平均工资、选课人数、成绩分布（UC-09）</p>
+
+                <!-- 筛选 -->
+                <form class="card shadow-sm mt-3" method="get" th:action="@{/admin/stats}">
+                    <div class="card-body py-3">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-auto">
+                                <label class="form-label mb-1" for="semester">学期（选课人数）</label>
+                                <select class="form-select" id="semester" name="semester">
+                                    <option th:each="s : ${semesters}" th:value="${s}" th:text="${s}"
+                                            th:selected="${s == semester}">Spring</option>
+                                </select>
+                            </div>
+                            <div class="col-auto">
+                                <label class="form-label mb-1" for="year">年份（选课人数）</label>
+                                <select class="form-select" id="year" name="year">
+                                    <option th:each="y : ${years}" th:value="${y}" th:text="${y}"
+                                            th:selected="${y == year}">2010</option>
+                                </select>
+                            </div>
+                            <div class="col-auto">
+                                <label class="form-label mb-1" for="courseId">课程（成绩分布）</label>
+                                <select class="form-select" id="courseId" name="courseId">
+                                    <option th:each="c : ${courses}" th:value="${c.courseId}"
+                                            th:text="${c.courseId} + ' - ' + ${c.title}"
+                                            th:selected="${c.courseId == gradeCourseId}">CS-101</option>
+                                </select>
+                            </div>
+                            <div class="col-auto">
+                                <button type="submit" class="btn btn-primary">查询</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- 汇总卡片 -->
+                <div class="row g-3 mt-1">
+                    <div class="col-6 col-md-4 col-xl">
+                        <div class="card stat-card shadow-sm text-center">
+                            <div class="card-body py-3"><div class="num" th:text="${departmentCount}">0</div><div class="label">院系</div></div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4 col-xl">
+                        <div class="card stat-card shadow-sm text-center">
+                            <div class="card-body py-3"><div class="num" th:text="${courseCount}">0</div><div class="label">课程</div></div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4 col-xl">
+                        <div class="card stat-card shadow-sm text-center">
+                            <div class="card-body py-3"><div class="num" th:text="${instructorCount}">0</div><div class="label">教师</div></div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4 col-xl">
+                        <div class="card stat-card shadow-sm text-center">
+                            <div class="card-body py-3"><div class="num" th:text="${studentCount}">0</div><div class="label">学生</div></div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4 col-xl">
+                        <div class="card stat-card shadow-sm text-center">
+                            <div class="card-body py-3"><div class="num" th:text="${sectionCount}">0</div><div class="label">开课班</div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 系经费 -->
+                <div class="card shadow-sm mt-4">
+                    <div class="card-header bg-white fw-bold">系经费与教师数</div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                            <tr>
+                                <th>系名</th><th>教学楼</th><th class="text-end">预算</th><th class="text-end">教师数</th><th>经费对比</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="b : ${deptBudgets}">
+                                <td th:text="${b.deptName}">系名</td>
+                                <td th:text="${b.building}">楼</td>
+                                <td class="text-end" th:text="${b.budget}">100000</td>
+                                <td class="text-end" th:text="${b.instructorCount}">1</td>
+                                <td style="min-width: 180px;">
+                                    <div class="progress progress-sm">
+                                        <div class="progress-bar bg-primary" role="progressbar"
+                                             th:style="'width:' + ${b.budgetPercent} + '%'"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="hint m-2" th:if="${#lists.isEmpty(deptBudgets)}">暂无院系数据</p>
+                </div>
+
+                <!-- 教师平均工资 -->
+                <div class="card shadow-sm mt-4">
+                    <div class="card-header bg-white fw-bold">各系教师平均工资</div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                            <tr>
+                                <th>系名</th><th class="text-end">教师数</th>
+                                <th class="text-end">平均工资</th><th class="text-end">最高</th><th class="text-end">最低</th>
+                                <th>平均工资对比</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="s : ${deptSalaries}">
+                                <td th:text="${s.deptName}">系名</td>
+                                <td class="text-end" th:text="${s.instructorCount}">1</td>
+                                <td class="text-end" th:text="${s.avgSalary}">0</td>
+                                <td class="text-end" th:text="${s.maxSalary}">0</td>
+                                <td class="text-end" th:text="${s.minSalary}">0</td>
+                                <td style="min-width: 180px;">
+                                    <div class="progress progress-sm">
+                                        <div class="progress-bar bg-info" role="progressbar"
+                                             th:style="'width:' + ${s.avgPercent} + '%'"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="hint m-2" th:if="${#lists.isEmpty(deptSalaries)}">暂无教师数据</p>
+                </div>
+
+                <!-- 选课人数 vs 容量 -->
+                <div class="card shadow-sm mt-4">
+                    <div class="card-header bg-white fw-bold">
+                        选课人数 vs 容量（<span th:text="${semester}">Spring</span> <span th:text="${year}">2010</span>）
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                            <tr>
+                                <th>课程</th><th>班号</th><th>教室</th><th>时段</th>
+                                <th class="text-end">选课 / 容量</th><th style="min-width: 200px;">利用率</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="e : ${enrollments}">
+                                <td>
+                                    <span th:text="${e.courseId}">CS-101</span>
+                                    <span class="dim" th:text="${e.courseTitle}">课程名</span>
+                                </td>
+                                <td th:text="${e.secId}">1</td>
+                                <td th:text="${e.building + ' ' + e.roomNumber}">Packard 101</td>
+                                <td th:text="${e.timeSlotId}">A</td>
+                                <td class="text-end" th:text="${e.enrolled} + ' / ' + ${e.capacity}">0 / 100</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress progress-sm flex-grow-1">
+                                            <div class="progress-bar"
+                                                 th:classappend="${e.utilization != null and e.utilization >= 90} ? 'bg-danger' : (${e.utilization != null and e.utilization >= 70} ? 'bg-warning' : 'bg-success')"
+                                                 role="progressbar"
+                                                 th:style="'width:' + ${e.utilization} + '%'"></div>
+                                        </div>
+                                        <span class="small text-secondary" th:text="${e.utilization} + '%'">50%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="hint m-2" th:if="${#lists.isEmpty(enrollments)}">该学期暂无开课班</p>
+                    <div class="card-footer bg-white small text-secondary">
+                        红色 = 利用率 ≥ 90%（接近满员），黄色 = ≥ 70%，绿色 = 其余。
+                    </div>
+                </div>
+
+                <!-- 成绩分布 -->
+                <div class="card shadow-sm mt-4">
+                    <div class="card-header bg-white fw-bold">
+                        成绩分布（<span th:text="${gradeCourseId}">CS-101</span> · 跨学期汇总）
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                            <tr>
+                                <th style="width: 160px;">成绩</th>
+                                <th class="text-end" style="width: 100px;">人数</th>
+                                <th>占比</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="g : ${gradeDistribution}">
+                                <td>
+                                    <span class="badge rounded-pill"
+                                          th:classappend="${g.grade == '未出分'} ? 'text-bg-secondary' : 'text-bg-primary'"
+                                          th:text="${g.grade}">A</span>
+                                </td>
+                                <td class="text-end" th:text="${g.count}">0</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress progress-sm flex-grow-1">
+                                            <div class="progress-bar bg-primary" role="progressbar"
+                                                 th:style="'width:' + ${g.percent} + '%'"></div>
+                                        </div>
+                                        <span class="small text-secondary" th:text="${g.percent} + '%'">50%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="hint m-2" th:if="${#lists.isEmpty(gradeDistribution)}">该课程暂无成绩记录</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

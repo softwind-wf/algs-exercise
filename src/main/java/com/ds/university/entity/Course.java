@@ -10,7 +10,16 @@ public class Course {
     private String deptName;
     private BigDecimal credits;
 
-    public String getCourseId() {
+
+    public Course() {
+    }
+
+    public Course(String courseId, String title, String deptName, BigDecimal credits) {
+        this.courseId = courseId;
+        this.title = title;
+        this.deptName = deptName;
+        this.credits = credits;
+    }    public String getCourseId() {
         return courseId;
     }
 
