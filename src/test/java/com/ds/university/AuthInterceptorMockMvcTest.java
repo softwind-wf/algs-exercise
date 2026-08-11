@@ -2,6 +2,7 @@ package com.ds.university;
 
 import com.ds.university.config.CsrfInterceptor;
 import com.ds.university.controller.AuthController;
+import com.ds.university.service.LoginGuard;
 import com.ds.university.vo.LoginUser;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +38,9 @@ class AuthInterceptorMockMvcTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private LoginGuard loginGuard;
 
     /** 未登录访问 /student/** → 重定向到登录页 */
     @Test
@@ -198,6 +202,36 @@ class AuthInterceptorMockMvcTest {
         String newToken = (String) postSession.getAttribute(CsrfInterceptor.SESSION_CSRF);
         assertNotNull(newToken);
         assertNotEquals(csrfToken, newToken, "登录后 CSRF token 应轮换");
+    }
+
+    /**
+     * IP 维度限流：同一 IP 失败超过阈值被锁定后，
+     * 即使携带正确账号密码登录也应被拒绝（拦截对全站账号各试几次的攻击）。
+     */
+    @Test
+    void lockedIpIsRejectedEvenWithValidCredentials() throws Exception {
+        String ip = "127.0.0.1"; // MockMvc 默认远端地址
+        try {
+            for (int i = 0; i < LoginGuard.IP_MAX_ATTEMPTS; i++) {
+                loginGuard.recordIpFailure(ip);
+            }
+            MvcResult pageResult = mockMvc.perform(get("/login"))
+                    .andExpect(status().isOk())
+                    .andReturn();
+            HttpSession preSession = pageResult.getRequest().getSession(false);
+            String csrfToken = (String) preSession.getAttribute(CsrfInterceptor.SESSION_CSRF);
+            mockMvc.perform(post("/login")
+                            .session((MockHttpSession) preSession)
+                            .param(CsrfInterceptor.PARAM_CSRF, csrfToken)
+                            .param("userId", "zhang")
+                            .param("password", "password"))
+                    .andExpect(status().isOk())
+                    .andExpect(view().name("login"))
+                    .andExpect(content().string(containsString("当前 IP 登录失败次数过多")));
+        } finally {
+            // 避免污染同上下文其他登录测试
+            loginGuard.clearIp(ip);
+        }
     }
 
     private HttpSession sessionWithRole(String role, String refId) {

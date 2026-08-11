@@ -24,7 +24,7 @@ import java.util.Random;
  * 磁盘对象 Disk 用内存 Map 模拟"文件系统里的页文件",每次 read/write 都计数,
  * 并记录读页顺序,便于观察一次查询到底访问了哪几页。
  *
- * 演示目的(与 com.ds.datastructure.btree.BPlusTree 对照):
+ * 演示目的(与 cn.exercise.algs4.datastructure.btree.BPlusTree 对照):
  *  - 点查询:树高多少层,就读多少页 —— 磁盘访问次数 = 树高;
  *  - 范围查询:先沿树定位起点,再沿叶子链表"顺序读"连续页;
  *  - 记录只存在叶子页里(内部页只是索引)。

@@ -18,7 +18,7 @@ import java.util.Random;
  *  - 所有叶子位于同一层,因此树始终完美平衡,增删查都是 O(log_t n)。
  *
  * 当 t = 2 时,节点容量为 1~3 个键,即一棵 2-3-4 树——
- * 本实现就是 com.ds.datastructure.twothreefourtree.TwoThreeFourTree 的 t 参数化推广,
+ * 本实现就是 cn.exercise.algs4.datastructure.twothreefourtree.TwoThreeFourTree 的 t 参数化推广,
  * 插入、删除的"自顶向下"策略完全一致,只是把固定容量推广到 2t-1。
  *
  * 插入:自顶向下分裂。下行时遇到满(2t-1 键)节点先分裂,中间键上浮到父,

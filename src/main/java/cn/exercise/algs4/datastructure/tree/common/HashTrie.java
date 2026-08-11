@@ -18,7 +18,7 @@ import java.util.Map;
  * 本类只实现六个子节点存储原语，增删查、前缀、计数、剪除、遍历等全部复用抽象基类。
  * </p>
  *
- * <p>与原 com.ds.datastructure.trie.HashTrie 的关系：同一实现思路的泛型/分层化版本。</p>
+ * <p>与原 cn.exercise.algs4.datastructure.trie.HashTrie 的关系：同一实现思路的泛型/分层化版本。</p>
  */
 public class HashTrie extends AbstractTrie {
 

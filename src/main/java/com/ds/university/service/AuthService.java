@@ -25,21 +25,22 @@ public class AuthService {
         this.loginGuard = loginGuard;
     }
 
-    public LoginUser login(String userId, String rawPassword) {
-        // 防爆破：锁定期间直接拒绝，不做任何密码运算
+    public LoginUser login(String userId, String rawPassword, String clientIp) {
+        // 防爆破：IP 维度优先检查（拦截对全站账号各试几次的攻击），锁定期间直接拒绝，不做任何密码运算
+        throwIfIpLocked(clientIp);
         throwIfLocked(userId);
 
         SysUser user = sysUserMapper.selectByUserId(userId);
         if (user == null) {
-            failAndThrowIfLocked(userId);
+            failAndThrowIfLocked(userId, clientIp);
             throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
         if (user.getEnabled() == null || user.getEnabled() != 1) {
-            failAndThrowIfLocked(userId);
+            failAndThrowIfLocked(userId, clientIp);
             throw new BusinessException(ErrorCode.USER_DISABLED);
         }
         if (!passwordEncoder.matches(rawPassword, user.getPassword())) {
-            failAndThrowIfLocked(userId);
+            failAndThrowIfLocked(userId, clientIp);
             throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
         loginGuard.recordSuccess(userId);
@@ -56,10 +57,14 @@ public class AuthService {
         return loginUser;
     }
 
-    /** 记录失败；若本次失败触发了锁定，立即报锁定而不是普通失败 */
-    private void failAndThrowIfLocked(String userId) {
+    /** 记录账号与 IP 两个维度的失败；若本次失败触发了任一维度锁定，立即报锁定而不是普通失败 */
+    private void failAndThrowIfLocked(String userId, String clientIp) {
         loginGuard.recordFailure(userId);
+        if (clientIp != null && !clientIp.isEmpty()) {
+            loginGuard.recordIpFailure(clientIp);
+        }
         throwIfLocked(userId);
+        throwIfIpLocked(clientIp);
     }
 
     private void throwIfLocked(String userId) {
@@ -68,6 +73,18 @@ public class AuthService {
             long minutes = (lockedSeconds + 59) / 60;
             throw new BusinessException(ErrorCode.LOGIN_LOCKED,
                     "登录失败次数过多，请 " + minutes + " 分钟后再试");
+        }
+    }
+
+    private void throwIfIpLocked(String clientIp) {
+        if (clientIp == null || clientIp.isEmpty()) {
+            return;
+        }
+        long lockedSeconds = loginGuard.ipLockRemainingSeconds(clientIp);
+        if (lockedSeconds > 0) {
+            long minutes = (lockedSeconds + 59) / 60;
+            throw new BusinessException(ErrorCode.LOGIN_LOCKED,
+                    "当前 IP 登录失败次数过多，请 " + minutes + " 分钟后再试");
         }
     }
 

@@ -7,7 +7,7 @@ import java.util.List;
  * 多叉树(List 孩子版) —— {@link AbstractMultiTree} 的孩子列表存储实现
  * <p>
  * 每个节点的孩子用 {@code List<Node>} 保存，直观且支持随机访问，
- * 对应原 com.ds.datastructure.tree.Tree 的表示方式(children 为 ArrayList)。
+ * 对应原 cn.exercise.algs4.datastructure.tree.Tree 的表示方式(children 为 ArrayList)。
  * 本类只实现三个孩子存储原语，遍历/统计/迭代/打印全部复用抽象基类。
  * </p>
  *

@@ -18,7 +18,7 @@ import java.util.Queue;
  * 抽象"遍历算法 + 结构统计"，把孩子<b>如何存储</b>作为变体点。
  * </p>
  * <p>
- * 本类的价值：原 com.ds.datastructure.tree.Tree 的多叉树只有一种表示(List 孩子)，且遍历直接打印到 stdout。
+ * 本类的价值：原 cn.exercise.algs4.datastructure.tree.Tree 的多叉树只有一种表示(List 孩子)，且遍历直接打印到 stdout。
  * 这里把先序/后序(递归 + 栈)、层序、size/height、迭代器、缩进打印统一实现一遍，
  * 孩子存储抽象成三个原语，支持两种经典表示：
  * </p>

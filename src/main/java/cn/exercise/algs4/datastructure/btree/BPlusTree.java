@@ -11,7 +11,7 @@ import java.util.Random;
 /**
  * B+ 树 —— B 树的变体:数据全部在叶子,内部节点只做路由
  *
- * 与 B 树(com.ds.datastructure.btree.BTree)的三个本质区别:
+ * 与 B 树(cn.exercise.algs4.datastructure.btree.BTree)的三个本质区别:
  *  1. 真正的键(数据)只存于叶子;内部节点存"分隔键",即各右子树最小键的拷贝。
  *  2. 叶子之间用 next 指针串成有序链表,支持范围查询 O(log n + k)。
  *  3. 叶子分裂时,右半最小键作为分隔键"拷贝"上浮(它仍留在叶子,是真实数据);

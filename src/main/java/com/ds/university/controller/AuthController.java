@@ -36,7 +36,7 @@ public class AuthController {
                         HttpServletRequest request,
                         Model model) {
         try {
-            LoginUser loginUser = authService.login(userId, password);
+            LoginUser loginUser = authService.login(userId, password, resolveClientIp(request));
             // 登录成功后更换 Session ID（Servlet 3.1），防止会话固定攻击；
             // changeSessionId 保留原会话属性，CSRF token 等不断链
             HttpSession session = request.getSession(true);
@@ -65,5 +65,14 @@ public class AuthController {
     public String logout(HttpSession session) {
         session.invalidate();
         return "redirect:/login";
+    }
+
+    /**
+     * 取客户端 IP 用于登录限流：只用 TCP 对端地址，
+     * 不读 X-Forwarded-For 等可伪造头，避免攻击者改头绕过 IP 限流。
+     * 若部署在反向代理后，需在受信任代理层配置并改用对应解析逻辑。
+     */
+    private static String resolveClientIp(HttpServletRequest request) {
+        return request.getRemoteAddr();
     }
 }
