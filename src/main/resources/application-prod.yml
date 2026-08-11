@@ -1,0 +1,8 @@
+# 生产环境：模板缓存开启提升渲染性能，SQL 日志只留 warn
+spring:
+  thymeleaf:
+    cache: true
+
+logging:
+  level:
+    com.ds.university.mapper: warn

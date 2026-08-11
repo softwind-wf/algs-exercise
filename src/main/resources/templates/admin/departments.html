@@ -21,6 +21,7 @@
                     <div class="card-body">
                         <h2 class="h5" th:text="${editDept != null} ? '编辑院系' : '新增院系'">新增院系</h2>
                         <form method="post" th:action="@{${editDept != null} ? '/admin/departments/update' : '/admin/departments'}">
+                            <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
                             <div class="row g-3 align-items-end">
                                 <div class="col-auto">
                                     <label class="form-label mb-1" for="deptName">院系名称</label>
@@ -66,6 +67,7 @@
                                    th:href="@{/admin/departments(edit=${d.deptName})}">编辑</a>
                                 <form class="d-inline" method="post" th:action="@{/admin/departments/delete}"
                                       onsubmit="return confirm('确定删除该院系吗？');">
+                                    <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
                                     <input type="hidden" name="deptName" th:value="${d.deptName}">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>
                                 </form>

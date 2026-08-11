@@ -5,6 +5,7 @@ import com.ds.university.common.ErrorCode;
 import com.ds.university.common.PageResult;
 import com.ds.university.service.CourseService;
 import com.ds.university.service.StudentService;
+import com.ds.university.service.TermDefaults;
 import com.ds.university.util.ScheduleExcelWriter;
 import com.ds.university.vo.LoginUser;
 import com.ds.university.vo.StudentProfileVO;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.servlet.http.HttpSession;
 import java.io.IOException;
@@ -31,15 +33,15 @@ import java.util.List;
 @RequestMapping("/student")
 public class StudentCenterController {
 
-    private static final String DEFAULT_SEMESTER = "Spring";
-    private static final int DEFAULT_YEAR = 2010;
-
     private final StudentService studentService;
     private final CourseService courseService;
+    private final TermDefaults termDefaults;
 
-    public StudentCenterController(StudentService studentService, CourseService courseService) {
+    public StudentCenterController(StudentService studentService, CourseService courseService,
+                                   TermDefaults termDefaults) {
         this.studentService = studentService;
         this.courseService = courseService;
+        this.termDefaults = termDefaults;
     }
 
     /** 学生中心首页 */
@@ -58,8 +60,8 @@ public class StudentCenterController {
                           @RequestParam(required = false) Integer size,
                           HttpSession session, Model model) {
         String studentId = currentStudentId(session);
-        String safeSemester = semester == null || semester.isEmpty() ? DEFAULT_SEMESTER : semester;
-        Integer safeYear = year == null ? DEFAULT_YEAR : year;
+        String safeSemester = semester == null || semester.isEmpty() ? termDefaults.semester() : semester;
+        Integer safeYear = year == null ? termDefaults.year() : year;
         int safeSize = PageResult.normalizeSize(size == null ? 0 : size);
 
         model.addAttribute("catalogPage", studentService.catalogPage(studentId, safeSemester, safeYear,
@@ -128,8 +130,8 @@ public class StudentCenterController {
     public String schedule(@RequestParam(required = false) String semester,
                            @RequestParam(required = false) Integer year,
                            HttpSession session, Model model) {
-        String safeSemester = semester == null || semester.isEmpty() ? DEFAULT_SEMESTER : semester;
-        Integer safeYear = year == null ? DEFAULT_YEAR : year;
+        String safeSemester = semester == null || semester.isEmpty() ? termDefaults.semester() : semester;
+        Integer safeYear = year == null ? termDefaults.year() : year;
         model.addAttribute("week", studentService.weeklySchedule(
                 currentStudentId(session), safeSemester, safeYear));
         model.addAttribute("years", studentService.years());
@@ -143,8 +145,8 @@ public class StudentCenterController {
     public ResponseEntity<byte[]> downloadSchedule(@RequestParam(required = false) String semester,
                                                    @RequestParam(required = false) Integer year,
                                                    HttpSession session) throws IOException {
-        String safeSemester = semester == null || semester.isEmpty() ? DEFAULT_SEMESTER : semester;
-        Integer safeYear = year == null ? DEFAULT_YEAR : year;
+        String safeSemester = semester == null || semester.isEmpty() ? termDefaults.semester() : semester;
+        Integer safeYear = year == null ? termDefaults.year() : year;
         String studentId = currentStudentId(session);
         StudentProfileVO profile = studentService.profile(studentId);
         WeeklyScheduleVO week = studentService.weeklySchedule(studentId, safeSemester, safeYear);
@@ -169,20 +171,22 @@ public class StudentCenterController {
         return "student/advisor";
     }
 
+    /** 选课/退课后重定向回选课页；用 UriComponentsBuilder 统一做 URL 编码，避免拼接注入 */
     private String redirectToCourses(String semester, Integer year, String courseIdFilter,
                                      Integer page, Integer size) {
-        StringBuilder sb = new StringBuilder("redirect:/student/courses?semester=").append(semester)
-                .append("&year=").append(year);
+        UriComponentsBuilder ub = UriComponentsBuilder.fromPath("/student/courses")
+                .queryParam("semester", semester)
+                .queryParam("year", year);
         if (courseIdFilter != null && !courseIdFilter.isEmpty()) {
-            sb.append("&courseId=").append(courseIdFilter);
+            ub.queryParam("courseId", courseIdFilter);
         }
         if (page != null && page > 1) {
-            sb.append("&page=").append(page);
+            ub.queryParam("page", page);
         }
         if (size != null && size != PageResult.normalizeSize(0)) {
-            sb.append("&size=").append(size);
+            ub.queryParam("size", size);
         }
-        return sb.toString();
+        return "redirect:" + ub.build().encode().toUriString();
     }
 
     private String currentStudentId(HttpSession session) {

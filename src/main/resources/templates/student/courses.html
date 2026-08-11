@@ -45,6 +45,7 @@
                 <td class="text-end">
                     <form method="post" th:action="@{/student/drop}"
                           th:if="${e.grade == null or e.grade.isEmpty()}">
+                        <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
                         <input type="hidden" name="courseId" th:value="${e.courseId}">
                         <input type="hidden" name="secId" th:value="${e.secId}">
                         <input type="hidden" name="semester" th:value="${e.semester}">
@@ -116,6 +117,7 @@
                 <td class="text-end" th:text="${s.enrolled} + '/' + ${s.capacity}">选课/容量</td>
                 <td class="text-end">
                     <form method="post" th:action="@{/student/enroll}" th:if="${!s.selected}">
+                        <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
                         <input type="hidden" name="courseId" th:value="${s.courseId}">
                         <input type="hidden" name="secId" th:value="${s.secId}">
                         <input type="hidden" name="semester" th:value="${s.semester}">

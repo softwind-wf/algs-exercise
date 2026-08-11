@@ -17,6 +17,7 @@ public enum ErrorCode {
     USER_DISABLED(4012, "账号已禁用"),
     PASSWORD_WRONG(4013, "原密码不正确"),
     PASSWORD_INVALID(4014, "新密码不符合要求"),
+    LOGIN_LOCKED(4015, "登录失败次数过多，账号已临时锁定"),
     NOT_FOUND(4040, "资源不存在"),
     INTERNAL_ERROR(5000, "系统内部错误");
 

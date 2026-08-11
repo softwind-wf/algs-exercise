@@ -11,9 +11,11 @@ import com.ds.university.mapper.TimeSlotMapper;
 import com.ds.university.vo.AdvisorVO;
 import com.ds.university.vo.CatalogSectionVO;
 import com.ds.university.vo.EnrollmentVO;
+import com.ds.university.vo.SectionLockVO;
 import com.ds.university.vo.StudentDashboardVO;
 import com.ds.university.vo.StudentProfileVO;
 import com.ds.university.vo.TranscriptRowVO;
+import com.ds.university.vo.TranscriptSummaryVO;
 import com.ds.university.vo.SectionVO;
 import com.ds.university.vo.TranscriptVO;
 import com.ds.university.vo.WeeklyScheduleVO;
@@ -206,35 +208,36 @@ public class StudentService {
     public void enroll(String studentId, String courseId, String secId, String semester, Integer year) {
         validateEnrollParams(courseId, secId, semester, year);
 
-        // 1. 开课班必须存在
-        List<CatalogSectionVO> sections = studentMapper.selectCatalog(studentId, semester, year, courseId);
-        CatalogSectionVO section = sections.stream()
-                .filter(s -> secId.equals(s.getSecId()))
-                .findFirst()
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "开课班不存在"));
-
-        // 2. 不能重复选课
-        if (takesMapper.exists(studentId, courseId, secId, semester, year) > 0) {
-            throw new BusinessException(ErrorCode.DUPLICATE_ENROLL);
+        // 1. 同一学期同一课程只能选一个班（含完全重复选课）
+        if (takesMapper.countCourseEnrollment(studentId, courseId, semester, year) > 0) {
+            if (takesMapper.exists(studentId, courseId, secId, semester, year) > 0) {
+                throw new BusinessException(ErrorCode.DUPLICATE_ENROLL);
+            }
+            throw new BusinessException(ErrorCode.DUPLICATE_ENROLL,
+                    "该课程已选择了其他开课班，不能重复选课");
         }
 
-        // 3. 锁定开课班行，容量校验与插入在同一事务中串行执行
-        takesMapper.lockSection(courseId, secId, semester, year);
+        // 2. 一条 SELECT ... FOR UPDATE 完成：存在性校验 + 锁定开课班行 + 读取容量/时段，
+        //    容量校验与插入在同一事务中串行执行
+        SectionLockVO section = takesMapper.lockAndGetSection(courseId, secId, semester, year);
+        if (section == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "开课班不存在");
+        }
 
-        // 4. 容量检查
+        // 3. 容量检查
         int enrolledCount = takesMapper.countEnrolled(courseId, secId, semester, year);
         if (section.getCapacity() != null && enrolledCount >= section.getCapacity()) {
             throw new BusinessException(ErrorCode.SECTION_FULL);
         }
 
-        // 5. 先修课程检查
+        // 4. 先修课程检查
         int prereqNotPassed = studentMapper.countPrereqNotPassed(studentId, courseId);
         if (prereqNotPassed > 0) {
             throw new BusinessException(ErrorCode.PREREQ_NOT_DONE);
         }
 
-        // 6. 时间冲突检查（同学期同天时间重叠）
-        checkTimeConflict(studentId, courseId, secId, semester, year, section.getTimeSlotId());
+        // 5. 时间冲突检查（同学期同天时间重叠，一条 SQL 在数据库端判定）
+        checkTimeConflict(studentId, semester, year, section.getTimeSlotId());
 
         takesMapper.insert(studentId, courseId, secId, semester, year);
     }
@@ -286,19 +289,29 @@ public class StudentService {
         vo.setGpa(gradedCredits == 0 ? null : round2(totalPoints / gradedCredits));
         return vo;
     }
-    /** 成绩单（分页显示明细，汇总统计仍基于全部记录） */
+    /** 成绩单（分页显示明细，汇总统计走独立聚合查询，均下推到 SQL） */
     public TranscriptVO transcript(String studentId, int page, int size) {
-        TranscriptVO vo = transcript(studentId);
-        List<TranscriptRowVO> rows = vo.getRows();
+        Student student = requireStudent(studentId);
         size = PageResult.normalizeSize(size);
-        long total = rows == null ? 0 : rows.size();
+        long total = studentMapper.countTranscript(studentId);
         int safePage = PageResult.clampPage(page, size, total);
-        int from = Math.min((safePage - 1) * size, rows.size());
-        int to = Math.min(from + size, rows.size());
-        PageResult<TranscriptRowVO> pageResult = new PageResult<>(
-                rows.subList(from, to), safePage, size, total);
-        vo.setPageResult(pageResult);
-        vo.setRows(pageResult.getRecords());
+        List<TranscriptRowVO> rows = studentMapper.selectTranscriptPage(
+                studentId, (safePage - 1) * size, size);
+
+        TranscriptSummaryVO summary = studentMapper.selectTranscriptSummary(studentId);
+        int earnedCredits = summary.getEarnedCredits() == null ? 0 : summary.getEarnedCredits();
+        int gradedCredits = summary.getGradedCredits() == null ? 0 : summary.getGradedCredits();
+        double totalPoints = summary.getTotalPoints() == null ? 0.0 : summary.getTotalPoints();
+
+        TranscriptVO vo = new TranscriptVO();
+        vo.setStudentId(student.getId());
+        vo.setStudentName(student.getName());
+        vo.setDeptName(student.getDeptName());
+        vo.setRows(rows);
+        vo.setCourseCount((int) total);
+        vo.setEarnedCredits(earnedCredits);
+        vo.setGpa(gradedCredits == 0 ? null : round2(totalPoints / gradedCredits));
+        vo.setPageResult(new PageResult<>(rows, safePage, size, total));
         return vo;
     }
 
@@ -336,23 +349,16 @@ public class StudentService {
         }
     }
 
-    private void checkTimeConflict(String studentId, String courseId, String secId,
-                                   String semester, Integer year, String timeSlotId) {
-        List<TimeSlot> newSlots = timeSlotMapper.selectById(timeSlotId);
-        if (newSlots.isEmpty()) {
+    /** 时间冲突检查：一条 SQL 完成同天时间区间重叠判定，不再内存双重循环比较 */
+    private void checkTimeConflict(String studentId, String semester, Integer year, String timeSlotId) {
+        if (timeSlotId == null || timeSlotId.isEmpty()) {
             return;
         }
-        List<TimeSlot> enrolledSlots = studentMapper.selectEnrolledTimeSlots(studentId, semester, year);
-        for (TimeSlot mine : enrolledSlots) {
-            for (TimeSlot target : newSlots) {
-                if (mine.getDay().equals(target.getDay())
-                        && mine.getStartTime().isBefore(target.getEndTime())
-                        && target.getStartTime().isBefore(mine.getEndTime())) {
-                    throw new BusinessException(ErrorCode.PARAM_ERROR,
-                            "与已选课程时间冲突：" + target.getDay() + " "
-                                    + target.getStartTime() + "-" + target.getEndTime());
-                }
-            }
+        TimeSlot conflict = studentMapper.selectConflictingTimeSlot(studentId, semester, year, timeSlotId);
+        if (conflict != null) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR,
+                    "与已选课程时间冲突：" + conflict.getDay() + " "
+                            + conflict.getStartTime() + "-" + conflict.getEndTime());
         }
     }
 

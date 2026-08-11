@@ -186,11 +186,17 @@
         el.classList.add('shake');
     }
 
+    /* 读取页面 meta 中的 CSRF token */
+    function csrfToken() {
+        var meta = document.querySelector('meta[name="_csrf"]');
+        return meta ? meta.getAttribute('content') : '';
+    }
+
     /* 发送表单请求：非 JSON 响应视为失败（如未登录被重定向、服务器异常页） */
     function postForm(url, params) {
         return fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': csrfToken() },
             body: params
         }).then(function (r) {
             var ct = r.headers.get('content-type') || '';

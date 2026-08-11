@@ -1,0 +1,8 @@
+# 开发环境（默认 profile）：模板缓存关闭便于热改，SQL 日志开到 debug
+spring:
+  thymeleaf:
+    cache: false
+
+logging:
+  level:
+    com.ds.university.mapper: debug

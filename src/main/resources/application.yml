@@ -4,13 +4,16 @@ server:
 spring:
   application:
     name: university-web
+  profiles:
+    # 未显式指定 profile 时默认走 dev（模板缓存关闭、SQL 日志 debug）；
+    # 生产环境用 --spring.profiles.active=prod 启动
+    default: dev
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/university?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: ${DB_USER:root}
     password: ${DB_PASSWORD:root}
   thymeleaf:
-    cache: false
     encoding: UTF-8
 
 mybatis:
@@ -18,7 +21,3 @@ mybatis:
   type-aliases-package: com.ds.university.entity
   configuration:
     map-underscore-to-camel-case: true
-
-logging:
-  level:
-    com.ds.university.mapper: debug

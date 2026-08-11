@@ -21,6 +21,7 @@
                     <div class="card-body">
                         <h2 class="h5" th:text="${editCourse != null} ? '编辑课程' : '新增课程'">新增课程</h2>
                         <form method="post" th:action="@{${editCourse != null} ? '/admin/courses/update' : '/admin/courses'}">
+                            <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
                             <div class="row g-3 align-items-end">
                                 <div class="col-auto">
                                     <label class="form-label mb-1" for="courseId">课程号</label>
@@ -75,6 +76,7 @@
                                    th:href="@{/admin/courses(edit=${c.courseId})}">编辑</a>
                                 <form class="d-inline" method="post" th:action="@{/admin/courses/delete}"
                                       onsubmit="return confirm('确定删除该课程吗？');">
+                                    <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
                                     <input type="hidden" name="courseId" th:value="${c.courseId}">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>
                                 </form>

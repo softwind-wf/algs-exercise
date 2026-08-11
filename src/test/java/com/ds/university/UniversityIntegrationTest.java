@@ -12,6 +12,8 @@ import com.ds.university.vo.DeptBudgetVO;
 import com.ds.university.vo.DeptSalaryVO;
 import com.ds.university.vo.EnrollmentReportVO;
 import com.ds.university.vo.GradeCountVO;
+import com.ds.university.vo.TranscriptRowVO;
+import com.ds.university.vo.TranscriptVO;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,6 +25,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -165,6 +168,21 @@ class UniversityIntegrationTest {
     }
 
     @Test
+    void enrollRejectsSecondSectionOfSameCourse() {
+        setupStudent("T0001", "测试学生");
+        insertCourse("TEST-1", "测试课程", 3);
+        insertSection("TEST-1", "1", "Packard", "101", "A");
+        insertSection("TEST-1", "2", "Watson", "100", "B");
+
+        studentService.enroll("T0001", "TEST-1", "1", SEMESTER, YEAR);
+        BusinessException dup = assertThrows(BusinessException.class,
+                () -> studentService.enroll("T0001", "TEST-1", "2", SEMESTER, YEAR),
+                "同课程同学期不允许选第二个开课班");
+        assertEquals(ErrorCode.DUPLICATE_ENROLL.getCode(), dup.getCode());
+        assertEquals(0, takesMapper.exists("T0001", "TEST-1", "2", SEMESTER, YEAR));
+    }
+
+    @Test
     void enrollRejectsWhenPrereqNotMet() {
         setupStudent("T0001", "测试学生");
         insertCourse("TEST-3", "测试课程3", 3);
@@ -194,6 +212,24 @@ class UniversityIntegrationTest {
     }
 
     @Test
+    void enrollRejectsTimeConflict() {
+        setupStudent("T0001", "测试学生");
+        insertCourse("TEST-1", "测试课程", 3);
+        insertCourse("TEST-5", "测试课程5", 3);
+        // 两个开课班共用同一时间段，必然同天时间重叠
+        insertSection("TEST-1", "1", "Packard", "101", "A");
+        insertSection("TEST-5", "1", "Watson", "100", "A");
+
+        studentService.enroll("T0001", "TEST-1", "1", SEMESTER, YEAR);
+        BusinessException conflict = assertThrows(BusinessException.class,
+                () -> studentService.enroll("T0001", "TEST-5", "1", SEMESTER, YEAR),
+                "同一时间段选课应被拒");
+        assertEquals(ErrorCode.PARAM_ERROR.getCode(), conflict.getCode());
+        assertTrue(conflict.getMessage().contains("与已选课程时间冲突"));
+        assertEquals(0, takesMapper.exists("T0001", "TEST-5", "1", SEMESTER, YEAR));
+    }
+
+    @Test
     void gradeValidationRejectsInvalidValue() {
         setupStudent("T0001", "测试学生");
         insertCourse("TEST-1", "测试课程", 3);
@@ -203,6 +239,54 @@ class UniversityIntegrationTest {
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> teacherService.updateGrade(INSTRUCTOR, "T0001", "TEST-1", "1", SEMESTER, YEAR, "Z"));
         assertEquals(ErrorCode.INVALID_GRADE.getCode(), ex.getCode());
+    }
+
+    @Test
+    void transcriptPageMatchesFullAggregation() {
+        setupStudent("T0001", "测试学生");
+        insertCourse("TEST-1", "测试课程1", 3);
+        insertCourse("TEST-2", "测试课程2", 4);
+        insertCourse("TEST-3", "测试课程3", 2);
+        insertCourse("TEST-4", "测试课程4", 3);
+        insertSection("TEST-1", "1", "Packard", "101", "A");
+        insertSection("TEST-2", "1", "Packard", "101", "B");
+        insertSection("TEST-3", "1", "Packard", "101", "C");
+        insertSection("TEST-4", "1", "Packard", "101", "D");
+        insertTakes("T0001", "TEST-1", "A");
+        insertTakes("T0001", "TEST-2", "B+");
+        insertTakes("T0001", "TEST-3", "F");
+        insertTakes("T0001", "TEST-4", null);
+
+        TranscriptVO full = studentService.transcript("T0001");
+        TranscriptVO paged = studentService.transcript("T0001", 1, 2);
+
+        assertEquals(4, paged.getCourseCount());
+        assertEquals(2, paged.getRows().size());
+        assertNotNull(paged.getPageResult());
+        assertEquals(4, paged.getPageResult().getTotal());
+        assertEquals(2, paged.getPageResult().getTotalPages());
+        // SQL 聚合与全量内存计算的汇总一致
+        assertEquals(full.getEarnedCredits(), paged.getEarnedCredits());
+        assertEquals(full.getGpa(), paged.getGpa());
+        // 已修学分 = 3 + 4（F 不计入，未出分不计入）
+        assertEquals(7, paged.getEarnedCredits());
+        // GPA = (4.0*3 + 3.3*4 + 0*2) / (3+4+2) = 2.8
+        assertEquals(2.8, paged.getGpa(), 0.001);
+        // 绩点换算下推到 SQL
+        for (TranscriptRowVO row : paged.getRows()) {
+            if ("A".equals(row.getGrade())) {
+                assertEquals(4.0, row.getGradePoint(), 0.001);
+            } else if ("B+".equals(row.getGrade())) {
+                assertEquals(3.3, row.getGradePoint(), 0.001);
+            } else if ("F".equals(row.getGrade())) {
+                assertEquals(0.0, row.getGradePoint(), 0.001);
+            } else {
+                assertNull(row.getGradePoint(), "未出成绩的绩点应为 NULL");
+            }
+        }
+        // 第 2 页返回剩余记录
+        TranscriptVO page2 = studentService.transcript("T0001", 2, 2);
+        assertEquals(2, page2.getRows().size());
     }
 
     // ========== 测试数据准备 ==========
@@ -226,6 +310,12 @@ class UniversityIntegrationTest {
     private void insertTeaches(String courseId, String secId) {
         jdbcTemplate.update("INSERT INTO teaches (ID, course_id, sec_id, semester, year) VALUES (?, ?, ?, ?, ?)",
                 INSTRUCTOR, courseId, secId, SEMESTER, YEAR);
+    }
+
+    private void insertTakes(String studentId, String courseId, String grade) {
+        jdbcTemplate.update("INSERT INTO takes (ID, course_id, sec_id, semester, year, grade) " +
+                        "VALUES (?, ?, '1', ?, ?, ?)",
+                studentId, courseId, SEMESTER, YEAR, grade);
     }
 
     private Integer totCred(String studentId) {

@@ -21,6 +21,7 @@
                     <div class="card-body">
                         <h2 class="h5">添加先修关系</h2>
                         <form method="post" th:action="@{/admin/prereqs}">
+                            <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
                             <div class="row g-3 align-items-end">
                                 <div class="col-auto">
                                     <label class="form-label mb-1" for="courseId">课程</label>
@@ -64,6 +65,7 @@
                             <td class="text-end">
                                 <form class="d-inline" method="post" th:action="@{/admin/prereqs/delete}"
                                       onsubmit="return confirm('确定删除该先修关系吗？');">
+                                    <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
                                     <input type="hidden" name="courseId" th:value="${p.courseId}">
                                     <input type="hidden" name="prereqId" th:value="${p.prereqId}">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>

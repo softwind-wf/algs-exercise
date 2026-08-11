@@ -6,6 +6,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import javax.servlet.http.HttpServletResponse;
+
 /**
  * 全局异常处理：页面请求统一跳转到 error 视图。
  * 后续新增 JSON 接口时，可在此补充 @ResponseBody 的处理方法。
@@ -20,6 +22,14 @@ public class GlobalExceptionHandler {
         model.addAttribute("errorCode", e.getCode());
         model.addAttribute("message", e.getMessage());
         return "error";
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public String handleForbidden(ForbiddenException e, Model model, HttpServletResponse response) {
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        model.addAttribute("errorCode", HttpServletResponse.SC_FORBIDDEN);
+        model.addAttribute("message", e.getMessage());
+        return "error/403";
     }
 
     @ExceptionHandler(Exception.class)

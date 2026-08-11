@@ -1,5 +1,6 @@
 package com.ds.university.config;
 
+import com.ds.university.common.ForbiddenException;
 import com.ds.university.vo.LoginUser;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -33,8 +34,7 @@ public class AuthInterceptor implements HandlerInterceptor {
                 return false;
             }
             if (!user.getRoles().contains("ADMIN")) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN);
-                return false;
+                throw new ForbiddenException("当前账号没有权限访问教务管理页面");
             }
         }
         if (matches(uri, STUDENT_PREFIX)) {
@@ -43,8 +43,7 @@ public class AuthInterceptor implements HandlerInterceptor {
                 return false;
             }
             if (!user.getRoles().contains("STUDENT")) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN);
-                return false;
+                throw new ForbiddenException("当前账号没有权限访问学生中心页面");
             }
         }
         if (matches(uri, INSTRUCTOR_PREFIX)) {
@@ -53,8 +52,7 @@ public class AuthInterceptor implements HandlerInterceptor {
                 return false;
             }
             if (!user.getRoles().contains("INSTRUCTOR")) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN);
-                return false;
+                throw new ForbiddenException("当前账号没有权限访问教师中心页面");
             }
         }
         if (matches(uri, ACCOUNT_PREFIX)) {

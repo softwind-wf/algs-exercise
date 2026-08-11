@@ -17,23 +17,32 @@ import java.util.List;
 public class AuthService {
 
     private final SysUserMapper sysUserMapper;
+    private final LoginGuard loginGuard;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    public AuthService(SysUserMapper sysUserMapper) {
+    public AuthService(SysUserMapper sysUserMapper, LoginGuard loginGuard) {
         this.sysUserMapper = sysUserMapper;
+        this.loginGuard = loginGuard;
     }
 
     public LoginUser login(String userId, String rawPassword) {
+        // 防爆破：锁定期间直接拒绝，不做任何密码运算
+        throwIfLocked(userId);
+
         SysUser user = sysUserMapper.selectByUserId(userId);
         if (user == null) {
+            failAndThrowIfLocked(userId);
             throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
         if (user.getEnabled() == null || user.getEnabled() != 1) {
+            failAndThrowIfLocked(userId);
             throw new BusinessException(ErrorCode.USER_DISABLED);
         }
         if (!passwordEncoder.matches(rawPassword, user.getPassword())) {
+            failAndThrowIfLocked(userId);
             throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
+        loginGuard.recordSuccess(userId);
 
         List<String> roles = sysUserMapper.selectRoleIds(userId);
         List<String> permissions = sysUserMapper.selectPermissions(userId);
@@ -45,6 +54,21 @@ public class AuthService {
         loginUser.setRoles(roles);
         loginUser.setPermissions(permissions);
         return loginUser;
+    }
+
+    /** 记录失败；若本次失败触发了锁定，立即报锁定而不是普通失败 */
+    private void failAndThrowIfLocked(String userId) {
+        loginGuard.recordFailure(userId);
+        throwIfLocked(userId);
+    }
+
+    private void throwIfLocked(String userId) {
+        long lockedSeconds = loginGuard.lockRemainingSeconds(userId);
+        if (lockedSeconds > 0) {
+            long minutes = (lockedSeconds + 59) / 60;
+            throw new BusinessException(ErrorCode.LOGIN_LOCKED,
+                    "登录失败次数过多，请 " + minutes + " 分钟后再试");
+        }
     }
 
     /** 修改密码：校验原密码后，加密保存新密码。 */

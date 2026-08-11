@@ -24,10 +24,12 @@
                             <h2 class="h5 mb-0">新建账号</h2>
                             <form method="post" th:action="@{/admin/accounts/open-all}"
                                   onsubmit="return confirm('将为所有未开户的学生和教师自动开户（账号=学号/工号，初始密码=password），确认吗？');">
+                                <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
                                 <button type="submit" class="btn btn-sm btn-outline-primary">一键为所有未开户人员开户</button>
                             </form>
                         </div>
                         <form method="post" th:action="@{/admin/accounts}">
+                            <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
                             <div class="row g-3 align-items-end">
                                 <div class="col-auto">
                                     <label class="form-label mb-1" for="userType">类型</label>
@@ -106,6 +108,7 @@
                             <td class="text-end">
                                 <form class="d-inline" method="post" th:action="@{/admin/accounts/reset}"
                                       onsubmit="return confirm('确定将该账号密码重置为默认密码吗？');">
+                                    <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
                                     <input type="hidden" name="userId" th:value="${a.userId}">
                                     <input type="hidden" name="password" th:value="${defaultPassword}">
                                     <button type="submit" class="btn btn-sm btn-outline-secondary"
@@ -113,6 +116,7 @@
                                 </form>
                                 <form class="d-inline" method="post" th:action="@{/admin/accounts/toggle}"
                                       onsubmit="return confirm('确定要切换该账号的启用状态吗？');">
+                                    <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
                                     <input type="hidden" name="userId" th:value="${a.userId}">
                                     <button type="submit" class="btn btn-sm"
                                             th:classappend="${a.enabled == 1} ? 'btn-outline-danger' : 'btn-outline-success'"

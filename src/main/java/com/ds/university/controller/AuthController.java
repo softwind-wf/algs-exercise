@@ -1,6 +1,7 @@
 package com.ds.university.controller;
 
 import com.ds.university.common.BusinessException;
+import com.ds.university.config.CsrfInterceptor;
 import com.ds.university.service.AuthService;
 import com.ds.university.vo.LoginUser;
 import org.springframework.stereotype.Controller;
@@ -36,6 +37,8 @@ public class AuthController {
         try {
             LoginUser loginUser = authService.login(userId, password);
             session.setAttribute(SESSION_USER, loginUser);
+            // 登录成功后轮换 CSRF token，避免登录前 token 被绑定到已认证会话
+            CsrfInterceptor.rotateToken(session);
             if (loginUser.getRoles().contains("ADMIN")) {
                 return "redirect:/admin";
             }

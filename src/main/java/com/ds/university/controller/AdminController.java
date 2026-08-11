@@ -6,6 +6,7 @@ import com.ds.university.entity.Section;
 import com.ds.university.service.AdminService;
 import com.ds.university.service.AccountService;
 import com.ds.university.service.StatsReportService;
+import com.ds.university.service.TermDefaults;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,12 +27,14 @@ public class AdminController {
     private final AdminService adminService;
     private final AccountService accountService;
     private final StatsReportService statsReportService;
+    private final TermDefaults termDefaults;
 
     public AdminController(AdminService adminService, StatsReportService statsReportService,
-                           AccountService accountService) {
+                           AccountService accountService, TermDefaults termDefaults) {
         this.adminService = adminService;
         this.statsReportService = statsReportService;
         this.accountService = accountService;
+        this.termDefaults = termDefaults;
     }
 
     /** 教务管理首页：统计概览 */
@@ -404,17 +407,15 @@ public class AdminController {
 
     // ========== 排课看板（拖拽排课） ==========
 
-    /** 默认学期/年份：Spring 2010（数据最全，便于演示） */
-    private static final String DEFAULT_SEMESTER = "Spring";
-    private static final Integer DEFAULT_YEAR = 2010;
+    /** 默认学期/年份：年份取数据库中开课班最大年份，学期可配置 */
     private static final String DEFAULT_COURSE = "CS-101";
 
     @GetMapping("/scheduling")
     public String scheduling(@RequestParam(required = false) String semester,
                              @RequestParam(required = false) Integer year,
                              Model model) {
-        String sem = (semester == null || semester.isEmpty()) ? DEFAULT_SEMESTER : semester;
-        int yr = (year == null) ? DEFAULT_YEAR : year;
+        String sem = (semester == null || semester.isEmpty()) ? termDefaults.semester() : semester;
+        int yr = (year == null) ? termDefaults.year() : year;
         fillSchedulingModel(model, sem, yr);
         model.addAttribute("courses", adminService.allCourses());
         model.addAttribute("instructors", adminService.allInstructors());
@@ -565,8 +566,8 @@ public class AdminController {
                         @RequestParam(required = false) Integer year,
                         @RequestParam(required = false) String courseId,
                         Model model) {
-        String sem = (semester == null || semester.isEmpty()) ? DEFAULT_SEMESTER : semester;
-        int yr = (year == null) ? DEFAULT_YEAR : year;
+        String sem = (semester == null || semester.isEmpty()) ? termDefaults.semester() : semester;
+        int yr = (year == null) ? termDefaults.year() : year;
         String cid = (courseId == null || courseId.isEmpty()) ? DEFAULT_COURSE : courseId;
         model.addAttribute("semester", sem);
         model.addAttribute("year", yr);

@@ -47,6 +47,7 @@
                 <td class="text-end" th:text="${r.totCred}">学分</td>
                 <td>
                     <form method="post" th:action="@{/instructor/grade}" class="d-flex flex-wrap gap-2">
+                        <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
                         <input type="hidden" name="studentId" th:value="${r.studentId}">
                         <input type="hidden" name="courseId" th:value="${roster.section.courseId}">
                         <input type="hidden" name="secId" th:value="${roster.section.secId}">

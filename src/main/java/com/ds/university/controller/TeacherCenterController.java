@@ -5,6 +5,7 @@ import com.ds.university.common.ErrorCode;
 import com.ds.university.entity.Instructor;
 import com.ds.university.service.AdminService;
 import com.ds.university.service.TeacherService;
+import com.ds.university.service.TermDefaults;
 import com.ds.university.util.ScheduleExcelWriter;
 import com.ds.university.vo.LoginUser;
 import com.ds.university.vo.WeeklyScheduleVO;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.servlet.http.HttpSession;
 import java.io.IOException;
@@ -29,15 +31,15 @@ import java.nio.charset.StandardCharsets;
 @RequestMapping("/instructor")
 public class TeacherCenterController {
 
-    private static final String DEFAULT_SEMESTER = "Spring";
-    private static final int DEFAULT_YEAR = 2010;
-
     private final TeacherService teacherService;
     private final AdminService adminService;
+    private final TermDefaults termDefaults;
 
-    public TeacherCenterController(TeacherService teacherService, AdminService adminService) {
+    public TeacherCenterController(TeacherService teacherService, AdminService adminService,
+                                   TermDefaults termDefaults) {
         this.teacherService = teacherService;
         this.adminService = adminService;
+        this.termDefaults = termDefaults;
     }
 
     /** 教师中心首页：授课列表 */
@@ -58,8 +60,8 @@ public class TeacherCenterController {
     public String schedule(@RequestParam(required = false) String semester,
                            @RequestParam(required = false) Integer year,
                            HttpSession session, Model model) {
-        String safeSemester = semester == null || semester.isEmpty() ? DEFAULT_SEMESTER : semester;
-        Integer safeYear = year == null ? DEFAULT_YEAR : year;
+        String safeSemester = semester == null || semester.isEmpty() ? termDefaults.semester() : semester;
+        Integer safeYear = year == null ? termDefaults.year() : year;
         model.addAttribute("week", adminService.weeklySchedule(
                 safeSemester, safeYear, "instructor", currentInstructorId(session)));
         model.addAttribute("years", adminService.sectionYears());
@@ -73,8 +75,8 @@ public class TeacherCenterController {
     public ResponseEntity<byte[]> downloadSchedule(@RequestParam(required = false) String semester,
                                                    @RequestParam(required = false) Integer year,
                                                    HttpSession session) throws IOException {
-        String safeSemester = semester == null || semester.isEmpty() ? DEFAULT_SEMESTER : semester;
-        Integer safeYear = year == null ? DEFAULT_YEAR : year;
+        String safeSemester = semester == null || semester.isEmpty() ? termDefaults.semester() : semester;
+        Integer safeYear = year == null ? termDefaults.year() : year;
         String instructorId = currentInstructorId(session);
         Instructor instructor = teacherService.dashboard(instructorId).getInstructor();
         WeeklyScheduleVO week = adminService.weeklySchedule(
@@ -120,8 +122,12 @@ public class TeacherCenterController {
         } catch (BusinessException e) {
             ra.addFlashAttribute("error", e.getMessage());
         }
-        return "redirect:/instructor/roster?courseId=" + courseId
-                + "&secId=" + secId + "&semester=" + semester + "&year=" + year;
+        return "redirect:" + UriComponentsBuilder.fromPath("/instructor/roster")
+                .queryParam("courseId", courseId)
+                .queryParam("secId", secId)
+                .queryParam("semester", semester)
+                .queryParam("year", year)
+                .build().encode().toUriString();
     }
 
     private String currentInstructorId(HttpSession session) {

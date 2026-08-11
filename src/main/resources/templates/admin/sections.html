@@ -25,6 +25,7 @@
                     <div class="card-body">
                         <h2 class="h5" th:text="${editSection != null} ? '编辑开课班' : '新增开课班'">新增开课班</h2>
                         <form method="post" th:action="@{${editSection != null} ? '/admin/sections/update' : '/admin/sections'}">
+                            <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
                             <div class="row g-3 align-items-end">
                                 <div class="col-auto">
                                     <label class="form-label mb-1" for="courseId">课程</label>
@@ -121,6 +122,7 @@
                                    th:href="@{/admin/sections(editCourseId=${s.courseId}, editSecId=${s.secId}, editSemester=${s.semester}, editYear=${s.year})}">编辑</a>
                                 <form class="d-inline" method="post" th:action="@{/admin/sections/delete}"
                                       onsubmit="return confirm('确定删除该开课班吗？');">
+                                    <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
                                     <input type="hidden" name="courseId" th:value="${s.courseId}">
                                     <input type="hidden" name="secId" th:value="${s.secId}">
                                     <input type="hidden" name="semester" th:value="${s.semester}">

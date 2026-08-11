@@ -6,6 +6,7 @@ import com.ds.university.vo.AdvisorVO;
 import com.ds.university.vo.CatalogSectionVO;
 import com.ds.university.vo.EnrollmentVO;
 import com.ds.university.vo.TranscriptRowVO;
+import com.ds.university.vo.TranscriptSummaryVO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -29,6 +30,17 @@ public interface StudentMapper {
     /** 成绩单明细 */
     List<TranscriptRowVO> selectTranscript(@Param("id") String id);
 
+    /** 成绩单明细总数（分页使用） */
+    long countTranscript(@Param("id") String id);
+
+    /** 成绩单明细分页（含绩点换算） */
+    List<TranscriptRowVO> selectTranscriptPage(@Param("id") String id,
+                                               @Param("offset") int offset,
+                                               @Param("size") int size);
+
+    /** 成绩单聚合统计：已修学分 / 加权总绩点 / 已出成绩学分 */
+    TranscriptSummaryVO selectTranscriptSummary(@Param("id") String id);
+
     /** 选课目录：某学期/年份的开课班，标记当前学生是否已选 */
     List<CatalogSectionVO> selectCatalog(@Param("id") String id,
                                          @Param("semester") String semester,
@@ -49,10 +61,11 @@ public interface StudentMapper {
                                              @Param("offset") int offset,
                                              @Param("size") int size);
 
-    /** 学生某学期已选课程的时间段（用于时间冲突检测） */
-    List<TimeSlot> selectEnrolledTimeSlots(@Param("id") String id,
-                                           @Param("semester") String semester,
-                                           @Param("year") Integer year);
+    /** 时间冲突检测：查找与学生已选课程同天重叠的新时间段（至多返回一条） */
+    TimeSlot selectConflictingTimeSlot(@Param("id") String id,
+                                       @Param("semester") String semester,
+                                       @Param("year") Integer year,
+                                       @Param("timeSlotId") String timeSlotId);
 
     /** 某课程中该学生尚未通过的先修课数量 */
     int countPrereqNotPassed(@Param("id") String id, @Param("courseId") String courseId);
