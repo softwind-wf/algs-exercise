@@ -70,12 +70,14 @@ public class AdminService {
     private final TeachesMapper teachesMapper;
     private final PrereqMapper prereqMapper;
     private final AccountService accountService;
+    private final AuditService auditService;
 
     public AdminService(DepartmentMapper departmentMapper, CourseMapper courseMapper,
                         InstructorMapper instructorMapper, StudentMapper studentMapper,
                         ClassroomMapper classroomMapper, SectionMapper sectionMapper,
                         TimeSlotMapper timeSlotMapper, TeachesMapper teachesMapper,
-                        PrereqMapper prereqMapper, AccountService accountService) {
+                        PrereqMapper prereqMapper, AccountService accountService,
+                        AuditService auditService) {
         this.departmentMapper = departmentMapper;
         this.courseMapper = courseMapper;
         this.instructorMapper = instructorMapper;
@@ -86,6 +88,7 @@ public class AdminService {
         this.teachesMapper = teachesMapper;
         this.prereqMapper = prereqMapper;
         this.accountService = accountService;
+        this.auditService = auditService;
     }
 
     // ========== 基础数据：院系 ==========
@@ -106,6 +109,8 @@ public class AdminService {
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "院系数据不合法");
         }
+        auditService.record(AuditService.ACTION_CREATE, AuditService.TARGET_DEPARTMENT, deptName,
+                "新建院系：" + deptName + "，楼字 " + building + "，预算 " + budget);
     }
 
     public void updateDepartment(String deptName, String building, BigDecimal budget) {
@@ -114,6 +119,8 @@ public class AdminService {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "预算不能为负");
         }
         departmentMapper.update(new Department(deptName, building, budget));
+        auditService.record(AuditService.ACTION_UPDATE, AuditService.TARGET_DEPARTMENT, deptName,
+                "更新院系：" + deptName + "，楼字 " + building + "，预算 " + budget);
     }
 
     public void deleteDepartment(String deptName) {
@@ -122,6 +129,8 @@ public class AdminService {
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "该系下存在课程/教师/学生，无法删除");
         }
+        auditService.record(AuditService.ACTION_DELETE, AuditService.TARGET_DEPARTMENT, deptName,
+                "删除院系：" + deptName);
     }
 
     // ========== 基础数据：课程 ==========
@@ -150,6 +159,8 @@ public class AdminService {
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "课程数据不合法");
         }
+        auditService.record(AuditService.ACTION_CREATE, AuditService.TARGET_COURSE, courseId,
+                "新建课程：" + courseId + " " + title + "（" + deptName + "，" + credits + " 学分）");
     }
 
     public void updateCourse(String courseId, String title, String deptName, BigDecimal credits) {
@@ -163,6 +174,8 @@ public class AdminService {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "所属院系不存在");
         }
         courseMapper.update(new Course(courseId, title, deptName, credits));
+        auditService.record(AuditService.ACTION_UPDATE, AuditService.TARGET_COURSE, courseId,
+                "更新课程：" + courseId + " " + title + "（" + deptName + "，" + credits + " 学分）");
     }
 
     public void deleteCourse(String courseId) {
@@ -171,6 +184,8 @@ public class AdminService {
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "该课程存在开课班/选课/先修关联，无法删除");
         }
+        auditService.record(AuditService.ACTION_DELETE, AuditService.TARGET_COURSE, courseId,
+                "删除课程：" + courseId);
     }
 
     // ========== 基础数据：教师 ==========
@@ -201,6 +216,8 @@ public class AdminService {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "教师数据不合法");
         }
         accountService.createAccount(id, "INSTRUCTOR", id, null);
+        auditService.record(AuditService.ACTION_CREATE, AuditService.TARGET_INSTRUCTOR, id,
+                "新建教师：" + id + " " + name + "（" + deptName + "）");
     }
 
     public void updateInstructor(String id, String name, String deptName, BigDecimal salary) {
@@ -214,6 +231,8 @@ public class AdminService {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "所属院系不存在");
         }
         instructorMapper.update(new Instructor(id, name, deptName, salary));
+        auditService.record(AuditService.ACTION_UPDATE, AuditService.TARGET_INSTRUCTOR, id,
+                "更新教师：" + id + " " + name + "（" + deptName + "，工资 " + salary + "）");
     }
 
 @Transactional
@@ -224,6 +243,8 @@ public class AdminService {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "该教师存在授课/指导关联，无法删除");
         }
         accountService.deleteAccount(id);
+        auditService.record(AuditService.ACTION_DELETE, AuditService.TARGET_INSTRUCTOR, id,
+                "删除教师：" + id + "（含登录账号）");
     }
 
     // ========== 基础数据：学生 ==========
@@ -254,6 +275,8 @@ public class AdminService {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "学生数据不合法");
         }
         accountService.createAccount(id, "STUDENT", id, null);
+        auditService.record(AuditService.ACTION_CREATE, AuditService.TARGET_STUDENT, id,
+                "新建学生：" + id + " " + name + "（" + deptName + "）");
     }
 
     public void updateStudent(String id, String name, String deptName, Integer totCred) {
@@ -267,6 +290,8 @@ public class AdminService {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "所属院系不存在");
         }
         studentMapper.update(new Student(id, name, deptName, totCred));
+        auditService.record(AuditService.ACTION_UPDATE, AuditService.TARGET_STUDENT, id,
+                "更新学生：" + id + " " + name + "（" + deptName + "，已修学分 " + totCred + "）");
     }
 
 @Transactional
@@ -277,6 +302,8 @@ public class AdminService {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "该学生存在选课/导师关联，无法删除");
         }
         accountService.deleteAccount(id);
+        auditService.record(AuditService.ACTION_DELETE, AuditService.TARGET_STUDENT, id,
+                "删除学生：" + id + "（含登录账号）");
     }
 
     // ========== 基础数据：教室 ==========
@@ -298,6 +325,9 @@ public class AdminService {
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "教室数据不合法");
         }
+        auditService.record(AuditService.ACTION_CREATE, AuditService.TARGET_CLASSROOM,
+                building + "/" + roomNumber,
+                "新建教室：" + building + " " + roomNumber + "，容量 " + capacity);
     }
 
     public void updateClassroom(String building, String roomNumber, Integer capacity) {
@@ -307,6 +337,9 @@ public class AdminService {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "容量必须大于 0");
         }
         classroomMapper.update(new Classroom(building, roomNumber, capacity));
+        auditService.record(AuditService.ACTION_UPDATE, AuditService.TARGET_CLASSROOM,
+                building + "/" + roomNumber,
+                "更新教室：" + building + " " + roomNumber + "，容量 " + capacity);
     }
 
     public void deleteClassroom(String building, String roomNumber) {
@@ -315,6 +348,9 @@ public class AdminService {
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "该教室存在排课引用，无法删除");
         }
+        auditService.record(AuditService.ACTION_DELETE, AuditService.TARGET_CLASSROOM,
+                building + "/" + roomNumber,
+                "删除教室：" + building + " " + roomNumber);
     }
 
     // ========== 排课：开课班 ==========
@@ -372,12 +408,16 @@ public class AdminService {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "排课数据不合法（请检查教室/时间段是否存在）");
         }
         assignInstructor(section, instructorId);
+        auditService.record(AuditService.ACTION_CREATE, AuditService.TARGET_SECTION, sectionKey(section),
+                "新建开课班：" + sectionDesc(section) + "，授课教师 " + orNone(instructorId));
     }
 
     public void updateSection(Section section, String instructorId) {
         validateSection(section, instructorId);
         sectionMapper.update(section);
         assignInstructor(section, instructorId);
+        auditService.record(AuditService.ACTION_UPDATE, AuditService.TARGET_SECTION, sectionKey(section),
+                "更新开课班：" + sectionDesc(section) + "，授课教师 " + orNone(instructorId));
     }
 
     public void deleteSection(String courseId, String secId, String semester, Integer year) {
@@ -387,6 +427,9 @@ public class AdminService {
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "该开课班已有学生选课，无法删除");
         }
+        auditService.record(AuditService.ACTION_DELETE, AuditService.TARGET_SECTION,
+                courseId + "/" + secId + "/" + semester + "/" + year,
+                "删除开课班：课程 " + courseId + "，班 " + secId + "，" + semester + " " + year);
     }
 
     // ========== 排课看板（拖拽排课） ==========
@@ -449,6 +492,8 @@ public class AdminService {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "开课班数据不合法");
         }
         assignInstructor(section, instructorId);
+        auditService.record(AuditService.ACTION_CREATE, AuditService.TARGET_SECTION, sectionKey(section),
+                "新建待排课开课班：" + sectionDesc(section) + "，授课教师 " + orNone(instructorId));
     }
 
     /** 拖拽排课：把开课班放入指定教室+时间段（含冲突校验），未指定教师则保留原教师 */
@@ -462,6 +507,8 @@ public class AdminService {
         if (instructorId != null && !instructorId.isEmpty()) {
             assignInstructor(section, instructorId);
         }
+        auditService.record(AuditService.ACTION_UPDATE, AuditService.TARGET_SECTION, sectionKey(section),
+                "排课：" + sectionDesc(section) + "，授课教师 " + orNone(instructorId));
     }
 
     /** 拖拽回待排课区：取消该开课班的教室/时间段（保留教师与选课） */
@@ -478,6 +525,9 @@ public class AdminService {
         section.setRoomNumber(null);
         section.setTimeSlotId(null);
         sectionMapper.update(section);
+        auditService.record(AuditService.ACTION_UPDATE, AuditService.TARGET_SECTION,
+                courseId + "/" + secId + "/" + semester + "/" + year,
+                "取消排课：课程 " + courseId + "，班 " + secId + "，" + semester + " " + year + "（教室/时间段清空）");
     }
     /** 时间段标识 -> 具体时段列表（如 A -> ["M 08:00-08:50", "W 08:00-08:50", "F 09:00-09:50"]） */
     private Map<String, List<String>> timeSlotDays() {
@@ -681,10 +731,16 @@ public class AdminService {
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "先修数据不合法");
         }
+        auditService.record(AuditService.ACTION_CREATE, AuditService.TARGET_PREREQ,
+                courseId + "/" + prereqId,
+                "新增先修关系：" + courseId + " 依赖 " + prereqId);
     }
 
     public void deletePrereq(String courseId, String prereqId) {
         prereqMapper.delete(courseId, prereqId);
+        auditService.record(AuditService.ACTION_DELETE, AuditService.TARGET_PREREQ,
+                courseId + "/" + prereqId,
+                "删除先修关系：" + courseId + " 依赖 " + prereqId);
     }
 
     /** 新增先修 (courseId 依赖 prereqId)：若 prereqId 传递依赖 courseId 则成环 */
@@ -734,5 +790,21 @@ public class AdminService {
         if (value == null || value.isEmpty()) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, message);
         }
+    }
+
+    /** 开课班审计标识：组合键 */
+    private static String sectionKey(Section s) {
+        return s.getCourseId() + "/" + s.getSecId() + "/" + s.getSemester() + "/" + s.getYear();
+    }
+
+    /** 开课班审计描述 */
+    private static String sectionDesc(Section s) {
+        return "课程 " + s.getCourseId() + "，班 " + s.getSecId() + "，" + s.getSemester() + " " + s.getYear()
+                + "，教室 " + orNone(s.getBuilding()) + " " + orNone(s.getRoomNumber())
+                + "，时段 " + orNone(s.getTimeSlotId());
+    }
+
+    private static String orNone(String v) {
+        return v == null || v.isEmpty() ? "无" : v;
     }
 }

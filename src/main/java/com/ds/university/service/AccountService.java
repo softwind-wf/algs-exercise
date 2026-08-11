@@ -34,13 +34,15 @@ public class AccountService {
     private final SysUserMapper sysUserMapper;
     private final StudentMapper studentMapper;
     private final InstructorMapper instructorMapper;
+    private final AuditService auditService;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public AccountService(SysUserMapper sysUserMapper, StudentMapper studentMapper,
-                          InstructorMapper instructorMapper) {
+                          InstructorMapper instructorMapper, AuditService auditService) {
         this.sysUserMapper = sysUserMapper;
         this.studentMapper = studentMapper;
         this.instructorMapper = instructorMapper;
+        this.auditService = auditService;
     }
 
     public long countAccounts() {
@@ -147,6 +149,8 @@ public class AccountService {
         user.setEnabled(1);
         sysUserMapper.insert(user);
         sysUserMapper.insertUserRole(trimmedUserId, userType);
+        auditService.record(AuditService.ACTION_ACCOUNT_CREATE, AuditService.TARGET_ACCOUNT, trimmedUserId,
+                "开户：" + trimmedUserId + "（" + userType + "，关联人员 " + refId + "）");
     }
 
     /** 重置密码 */
@@ -155,6 +159,8 @@ public class AccountService {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "账号不存在");
         }
         sysUserMapper.updatePassword(userId, passwordEncoder.encode(normalizePassword(rawPassword)));
+        auditService.record(AuditService.ACTION_PASSWORD_RESET, AuditService.TARGET_ACCOUNT, userId,
+                "重置密码：" + userId);
     }
 
     /** 启用/禁用账号，返回操作后是否启用 */
@@ -168,6 +174,8 @@ public class AccountService {
         }
         int enabled = (user.getEnabled() != null && user.getEnabled() == 1) ? 0 : 1;
         sysUserMapper.updateEnabled(userId, enabled);
+        auditService.record(AuditService.ACTION_ACCOUNT_TOGGLE, AuditService.TARGET_ACCOUNT, userId,
+                (enabled == 1 ? "启用账号：" : "禁用账号：") + userId);
         return enabled == 1;
     }
 
@@ -178,6 +186,8 @@ public class AccountService {
         }
         sysUserMapper.deleteUserRoles(userId);
         sysUserMapper.deleteByUserId(userId);
+        auditService.record(AuditService.ACTION_ACCOUNT_DELETE, AuditService.TARGET_ACCOUNT, userId,
+                "删除账号：" + userId);
     }
 
     /** 为所有未开户的学生/教师一键开户（账号=学号/工号，默认密码），返回 [学生数, 教师数] */
@@ -195,6 +205,8 @@ public class AccountService {
                 instructorCount++;
             }
         }
+        auditService.record(AuditService.ACTION_ACCOUNT_BATCH_CREATE, AuditService.TARGET_ACCOUNT, null,
+                "一键批量开户：学生 " + studentCount + " 人，教师 " + instructorCount + " 人");
         return new int[]{studentCount, instructorCount};
     }
 

@@ -20,6 +20,7 @@
         <a class="nav-link" th:classappend="${active == 'scheduling'} ? 'active'" th:href="@{/admin/scheduling}">排课看板</a>
         <a class="nav-link" th:classappend="${active == 'prereqs'} ? 'active'" th:href="@{/admin/prereqs}">先修管理</a>
         <a class="nav-link" th:classappend="${active == 'stats'} ? 'active'" th:href="@{/admin/stats}">统计报表</a>
+        <a class="nav-link" th:classappend="${active == 'audit'} ? 'active'" th:href="@{/admin/audit}">审计日志</a>
     </nav>
     <div class="p-3 border-top">
         <a class="btn btn-sm btn-outline-secondary w-100" th:href="@{/}">← 返回网站首页</a>

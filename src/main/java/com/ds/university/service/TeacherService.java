@@ -5,6 +5,7 @@ import com.ds.university.common.ErrorCode;
 import com.ds.university.entity.Instructor;
 import com.ds.university.mapper.InstructorMapper;
 import com.ds.university.mapper.StudentMapper;
+import com.ds.university.mapper.TakesMapper;
 import com.ds.university.mapper.TeacherMapper;
 import com.ds.university.vo.RosterRowVO;
 import com.ds.university.vo.RosterVO;
@@ -27,11 +28,16 @@ public class TeacherService {
     private final InstructorMapper instructorMapper;
     private final StudentMapper studentMapper;
     private final TeacherMapper teacherMapper;
+    private final TakesMapper takesMapper;
+    private final AuditService auditService;
 
-    public TeacherService(InstructorMapper instructorMapper, StudentMapper studentMapper, TeacherMapper teacherMapper) {
+    public TeacherService(InstructorMapper instructorMapper, StudentMapper studentMapper,
+                          TeacherMapper teacherMapper, TakesMapper takesMapper, AuditService auditService) {
         this.instructorMapper = instructorMapper;
         this.studentMapper = studentMapper;
         this.teacherMapper = teacherMapper;
+        this.takesMapper = takesMapper;
+        this.auditService = auditService;
     }
 
     /** 教师中心首页：个人信息 + 授课列表 + 统计 */
@@ -76,8 +82,19 @@ public class TeacherService {
         if (normalized != null && !VALID_GRADES.contains(normalized)) {
             throw new BusinessException(ErrorCode.INVALID_GRADE);
         }
+        String oldGrade = takesMapper.selectGrade(studentId, courseId, secId, semester, year);
         teacherMapper.updateGrade(studentId, courseId, secId, semester, year, normalized);
         studentMapper.recomputeTotCred(studentId);
+        auditService.record(AuditService.ACTION_GRADE_UPDATE, AuditService.TARGET_GRADE,
+                studentId + "/" + courseId + "/" + secId + "/" + semester + "/" + year,
+                "教师 " + instructorId + " 修改成绩：学生 " + studentId + "，课程 " + courseId
+                        + "（班 " + secId + "，" + semester + " " + year + "）："
+                        + display(oldGrade) + " -> " + display(normalized));
+    }
+
+    /** 成绩展示：null 显示为「无」，便于审计详情阅读 */
+    private static String display(String grade) {
+        return grade == null ? "无" : grade;
     }
 
     private void requireTeaching(String instructorId, String courseId, String secId,

@@ -5,6 +5,7 @@ import com.ds.university.common.Result;
 import com.ds.university.entity.Section;
 import com.ds.university.service.AdminService;
 import com.ds.university.service.AccountService;
+import com.ds.university.service.AuditService;
 import com.ds.university.service.StatsReportService;
 import com.ds.university.service.TermDefaults;
 import org.springframework.stereotype.Controller;
@@ -28,13 +29,16 @@ public class AdminController {
     private final AccountService accountService;
     private final StatsReportService statsReportService;
     private final TermDefaults termDefaults;
+    private final AuditService auditService;
 
     public AdminController(AdminService adminService, StatsReportService statsReportService,
-                           AccountService accountService, TermDefaults termDefaults) {
+                           AccountService accountService, TermDefaults termDefaults,
+                           AuditService auditService) {
         this.adminService = adminService;
         this.statsReportService = statsReportService;
         this.accountService = accountService;
         this.termDefaults = termDefaults;
+        this.auditService = auditService;
     }
 
     /** 教务管理首页：统计概览 */
@@ -48,6 +52,19 @@ public class AdminController {
         model.addAttribute("classroomCount", adminService.countClassrooms());
         model.addAttribute("prereqCount", adminService.countPrereqs());
         return "admin/index";
+    }
+
+    // ========== 审计日志 ==========
+
+    /** 审计日志：改成绩、删数据、建账号等敏感操作的追溯页面（只读，GET 筛选） */
+    @GetMapping("/audit")
+    public String audit(@RequestParam(required = false) String action,
+                        @RequestParam(required = false) String keyword, Model model) {
+        model.addAttribute("logs", auditService.query(action, keyword, AuditService.QUERY_LIMIT));
+        model.addAttribute("actions", AuditService.ALL_ACTIONS);
+        model.addAttribute("selAction", action == null ? "" : action);
+        model.addAttribute("keyword", keyword == null ? "" : keyword);
+        return "admin/audit";
     }
 
     // ========== 院系 ==========

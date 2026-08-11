@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('审计日志')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container-fluid admin-shell px-0">
+    <div class="row g-0">
+        <div class="col-md-3 col-lg-2">
+            <aside th:replace="admin/_fragments :: adminNav('audit')"></aside>
+        </div>
+        <div class="col-md-9 col-lg-10">
+            <div class="admin-content p-4">
+                <h1 class="page-title">审计日志</h1>
+                <p class="text-secondary">改成绩、删数据、建账号等敏感操作的操作留痕，只增不改，用于事后追溯。最多展示最近 200 条。</p>
+
+                <div class="card shadow-sm mt-3">
+                    <div class="card-body">
+                        <form method="get" th:action="@{/admin/audit}">
+                            <div class="row g-3 align-items-end">
+                                <div class="col-auto">
+                                    <label class="form-label mb-1" for="action">操作类型</label>
+                                    <select class="form-select" id="action" name="action">
+                                        <option value="" th:selected="${selAction == ''}">全部</option>
+                                        <option th:each="a : ${actions}" th:value="${a}" th:text="${a}"
+                                                th:selected="${selAction == a}">类型</option>
+                                    </select>
+                                </div>
+                                <div class="col-auto">
+                                    <label class="form-label mb-1" for="keyword">关键字</label>
+                                    <input class="form-control" type="text" id="keyword" name="keyword"
+                                           maxlength="50" th:value="${keyword}"
+                                           placeholder="操作者 / 对象编号 / 详情关键词">
+                                </div>
+                                <div class="col-auto">
+                                    <button type="submit" class="btn btn-primary">查询</button>
+                                    <a class="btn btn-outline-secondary" th:href="@{/admin/audit}">重置</a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="table-responsive bg-white border rounded-3 shadow-sm mt-4">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                        <tr>
+                            <th>时间</th>
+                            <th>操作者</th>
+                            <th>操作</th>
+                            <th>对象类型</th>
+                            <th>对象标识</th>
+                            <th>详情</th>
+                            <th>来源 IP</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="log : ${logs}">
+                            <td class="text-secondary text-nowrap"
+                                th:text="${log.createdAt != null} ? ${#dates.format(log.createdAt, 'yyyy-MM-dd HH:mm:ss')} : ''">时间</td>
+                            <td th:text="${log.userId != null} ? ${log.userId} : '（系统/无会话）'">操作者</td>
+                            <td>
+                                <span class="badge"
+                                      th:classappend="${log.action == 'DELETE' or log.action == 'ACCOUNT_DELETE'} ? 'text-bg-danger'
+                                              : (${log.action == 'GRADE_UPDATE' or log.action == 'PASSWORD_RESET'} ? 'text-bg-warning'
+                                              : 'text-bg-secondary')"
+                                      th:switch="${log.action}">
+                                    <span th:case="'GRADE_UPDATE'">改成绩</span>
+                                    <span th:case="'DELETE'">删除</span>
+                                    <span th:case="'CREATE'">新建</span>
+                                    <span th:case="'UPDATE'">更新</span>
+                                    <span th:case="'ACCOUNT_CREATE'">开户</span>
+                                    <span th:case="'ACCOUNT_BATCH_CREATE'">批量开户</span>
+                                    <span th:case="'PASSWORD_RESET'">重置密码</span>
+                                    <span th:case="'ACCOUNT_TOGGLE'">启用/禁用</span>
+                                    <span th:case="'ACCOUNT_DELETE'">删除账号</span>
+                                    <span th:case="*" th:text="${log.action}">操作</span>
+                                </span>
+                            </td>
+                            <td th:switch="${log.targetType}">
+                                <span th:case="'DEPARTMENT'">院系</span>
+                                <span th:case="'COURSE'">课程</span>
+                                <span th:case="'INSTRUCTOR'">教师</span>
+                                <span th:case="'STUDENT'">学生</span>
+                                <span th:case="'CLASSROOM'">教室</span>
+                                <span th:case="'SECTION'">开课班</span>
+                                <span th:case="'PREREQ'">先修</span>
+                                <span th:case="'ACCOUNT'">账号</span>
+                                <span th:case="'GRADE'">成绩</span>
+                                <span th:case="*" th:text="${log.targetType}">类型</span>
+                            </td>
+                            <td class="text-secondary" th:text="${log.targetId}">标识</td>
+                            <td style="max-width: 420px;" th:text="${log.detail}">详情</td>
+                            <td class="text-secondary" th:text="${log.clientIp}">IP</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="hint mt-2" th:if="${#lists.isEmpty(logs)}">暂无匹配的审计记录。</p>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>
