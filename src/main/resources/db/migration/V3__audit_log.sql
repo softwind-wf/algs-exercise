@@ -1,20 +1,14 @@
 -- ============================================================
--- 大学网站审计日志表
--- 数据库: university  字符集: utf8mb4
+-- V3 审计日志表 audit_log
 --
 -- 敏感操作留痕：改成绩、删数据、建账号/重置密码/启停账号等，
 -- 由 AuditService 在业务成功后写入，出问题可追溯。
 --
--- 依赖：需先执行 university.sql 与 university_auth.sql
---
--- ⚠️ 脚本会 DROP audit_log 后重建（历史审计记录将清空）
+-- 幂等写法（CREATE TABLE IF NOT EXISTS）：绝不 DROP 重建，
+-- 存量库重放不会清空历史审计记录。
 -- ============================================================
 
-USE university;
-
-DROP TABLE IF EXISTS audit_log;
-
-CREATE TABLE audit_log (
+CREATE TABLE IF NOT EXISTS audit_log (
     id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '审计记录ID（自增主键）',
     user_id     VARCHAR(20)  NULL     COMMENT '操作者登录账号；无请求上下文（如定时任务/测试）为 NULL',
     action      VARCHAR(30)  NOT NULL COMMENT '操作类型：CREATE/UPDATE/DELETE/GRADE_UPDATE/ACCOUNT_CREATE/PASSWORD_RESET/ACCOUNT_TOGGLE/ACCOUNT_DELETE/ACCOUNT_BATCH_CREATE',

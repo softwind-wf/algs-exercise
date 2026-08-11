@@ -22,6 +22,17 @@ spring:
     url: jdbc:mysql://localhost:3306/university?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: ${DB_USER:root}
     password: ${DB_PASSWORD:root}
+  flyway:
+    # schema 版本化管理：脚本在 classpath:db/migration（V1 业务表 / V2 账号权限 / V3 审计日志），
+    # 应用启动时自动迁移，替代手工执行 SQL，线上升级不再靠人肉脚本
+    enabled: true
+    encoding: UTF-8
+    # 存量库（已有表、无 flyway_schema_history 表）自动打基线后再补跑迁移；
+    # baseline-version=0 保证 V1 起全部执行，脚本均为幂等写法（IF NOT EXISTS / INSERT IGNORE），重放安全
+    baseline-on-migrate: true
+    baseline-version: 0
+    # 已应用迁移的脚本内容被篡改时启动即失败，防止版本漂移
+    validate-on-migrate: true
   thymeleaf:
     encoding: UTF-8
 

@@ -56,6 +56,17 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Flyway：数据库 schema 版本化管理，启动时自动迁移（版本由 spring-boot 父 POM 统一管理）。
+		     Flyway 8.x 起 MySQL 支持拆分为 flyway-mysql 模块，必须一并引入，否则报 Unsupported Database: MySQL 8.0 -->
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-mysql</artifactId>
+		</dependency>
+
 		<!-- 开发期热重载：类路径变更自动重启，模板/静态资源即时生效（打包时自动排除） -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

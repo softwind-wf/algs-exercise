@@ -1,26 +1,20 @@
 -- ============================================================
--- 大学数据库完整设计（Database System Concepts 教材经典模型）
--- 数据库: university  字符集: utf8mb4
+-- V1 业务基础表 + 示例数据
+-- （Database System Concepts 教材经典模型，共 11 张业务表）
 --
--- 共 9 张表：
---   实体集 5 张：department / course / instructor / student / classroom
---   联系集 4 张：section(开课班) / teaches(授课) / takes(选课) / prereq(先修)
+-- 幂等写法（CREATE TABLE IF NOT EXISTS + INSERT IGNORE）：
+-- 全新库完整建表灌数；已由手工 SQL 建好的存量库重放不会产生
+-- 重复数据，也不会破坏已有业务数据。
+-- INSERT 一律带显式列清单：存量表即使有手工加列残留也不会列数不匹配。
 --
--- ⚠️ 脚本开头会 DROP DATABASE IF EXISTS university，如已有数据将被清除
---
--- 定位：仅用于从零重建演示库（配合 UniversityDbSetup / sql.bat）。
--- 线上升级/增量变更一律由 Flyway 管理（db/migration/V*.sql），
--- 应用启动时自动迁移，禁止手工改库。
+-- 注意：本脚本不 DROP DATABASE / DROP TABLE。从零建库（含
+-- DROP DATABASE 重建）请改用 sql/university.sql 手工脚本。
 -- ============================================================
-
-DROP DATABASE IF EXISTS university;
-CREATE DATABASE university DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-USE university;
 
 -- ------------------------------------------------------------
 -- 1. 系 department
 -- ------------------------------------------------------------
-CREATE TABLE department (
+CREATE TABLE IF NOT EXISTS department (
     dept_name VARCHAR(20) PRIMARY KEY COMMENT '系名称（主键）',
     building  VARCHAR(15) NULL     COMMENT '所在教学楼',
     budget    DECIMAL(12, 2) NULL  COMMENT '经费预算'
@@ -29,7 +23,7 @@ CREATE TABLE department (
 -- ------------------------------------------------------------
 -- 2. 教室 classroom（联合主键）
 -- ------------------------------------------------------------
-CREATE TABLE classroom (
+CREATE TABLE IF NOT EXISTS classroom (
     building    VARCHAR(15) NOT NULL COMMENT '教学楼',
     room_number VARCHAR(7)  NOT NULL COMMENT '房间号',
     capacity    INT         NULL     COMMENT '容量',
@@ -39,7 +33,7 @@ CREATE TABLE classroom (
 -- ------------------------------------------------------------
 -- 3. 课程 course
 -- ------------------------------------------------------------
-CREATE TABLE course (
+CREATE TABLE IF NOT EXISTS course (
     course_id VARCHAR(8)  PRIMARY KEY COMMENT '课程号（主键）',
     title     VARCHAR(50) NULL     COMMENT '课程名',
     dept_name VARCHAR(20) NULL     COMMENT '所属系（FK→department）',
@@ -51,12 +45,11 @@ CREATE TABLE course (
 -- ------------------------------------------------------------
 -- 4. 教师 instructor
 -- ------------------------------------------------------------
-CREATE TABLE instructor (
+CREATE TABLE IF NOT EXISTS instructor (
     ID        VARCHAR(5)   PRIMARY KEY COMMENT '教师编号（主键）',
     name      VARCHAR(20)  NOT NULL   COMMENT '姓名',
     dept_name VARCHAR(20)  NULL       COMMENT '所属系（FK→department）',
     salary    DECIMAL(8, 2) NULL       COMMENT '工资',
-    phone_number VARCHAR(11) NULL      COMMENT '联系电话',
     CONSTRAINT fk_instructor_department FOREIGN KEY (dept_name)
         REFERENCES department (dept_name)
 ) ENGINE = InnoDB COMMENT = '教师';
@@ -64,7 +57,7 @@ CREATE TABLE instructor (
 -- ------------------------------------------------------------
 -- 5. 学生 student
 -- ------------------------------------------------------------
-CREATE TABLE student (
+CREATE TABLE IF NOT EXISTS student (
     ID        VARCHAR(5)  PRIMARY KEY COMMENT '学生编号（主键）',
     name      VARCHAR(20) NOT NULL    COMMENT '姓名',
     dept_name VARCHAR(20) NULL        COMMENT '主修系（FK→department）',
@@ -77,7 +70,7 @@ CREATE TABLE student (
 -- 6. 开课班 section
 --    (course_id, sec_id, semester, year) 联合主键
 -- ------------------------------------------------------------
-CREATE TABLE section (
+CREATE TABLE IF NOT EXISTS section (
     course_id    VARCHAR(8)  NOT NULL COMMENT '课程号（FK→course）',
     sec_id       VARCHAR(8)  NOT NULL COMMENT '开课号',
     semester     VARCHAR(6)  NOT NULL COMMENT '学期（Fall/Spring/Summer）',
@@ -96,7 +89,7 @@ CREATE TABLE section (
 -- ------------------------------------------------------------
 -- 7. 授课 teaches：Instructor ⇋ Section（多对多）
 -- ------------------------------------------------------------
-CREATE TABLE teaches (
+CREATE TABLE IF NOT EXISTS teaches (
     ID        VARCHAR(5) NOT NULL COMMENT '教师编号（FK→instructor）',
     course_id VARCHAR(8) NOT NULL COMMENT '课程号',
     sec_id    VARCHAR(8) NOT NULL COMMENT '开课号',
@@ -113,7 +106,7 @@ CREATE TABLE teaches (
 -- ------------------------------------------------------------
 -- 8. 选课 takes：Student ⇋ Section，带属性 grade 成绩
 -- ------------------------------------------------------------
-CREATE TABLE takes (
+CREATE TABLE IF NOT EXISTS takes (
     ID        VARCHAR(5) NOT NULL COMMENT '学生编号（FK→student）',
     course_id VARCHAR(8) NOT NULL COMMENT '课程号',
     sec_id    VARCHAR(8) NOT NULL COMMENT '开课号',
@@ -131,7 +124,7 @@ CREATE TABLE takes (
 -- ------------------------------------------------------------
 -- 9. 先修课 prereq：Course ⇋ Course（自引用）
 -- ------------------------------------------------------------
-CREATE TABLE prereq (
+CREATE TABLE IF NOT EXISTS prereq (
     course_id VARCHAR(8) NOT NULL COMMENT '课程号（FK→course）',
     prereq_id VARCHAR(8) NOT NULL COMMENT '先修课程号（FK→course）',
     PRIMARY KEY (course_id, prereq_id),
@@ -141,13 +134,35 @@ CREATE TABLE prereq (
         REFERENCES course (course_id)
 ) ENGINE = InnoDB COMMENT = '先修课';
 
+-- ------------------------------------------------------------
+-- 10. 指导关系 advisor：Student ⇋ Instructor（一个学生一个导师）
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS advisor (
+    s_id VARCHAR(5) PRIMARY KEY COMMENT '学生编号（FK→student.ID）',
+    i_id VARCHAR(5) NULL     COMMENT '指导教师编号（FK→instructor.ID）',
+    CONSTRAINT fk_advisor_student FOREIGN KEY (s_id)
+        REFERENCES student (ID),
+    CONSTRAINT fk_advisor_instructor FOREIGN KEY (i_id)
+        REFERENCES instructor (ID)
+) ENGINE = InnoDB COMMENT = '指导关系';
+
+-- ------------------------------------------------------------
+-- 11. 时间段 time_slot（(time_slot_id, day, start_time) 联合主键）
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS time_slot (
+    time_slot_id VARCHAR(4) NOT NULL COMMENT '时间段标识',
+    day          VARCHAR(1) NOT NULL COMMENT '星期（M/W/F）',
+    start_time   TIME       NOT NULL COMMENT '开始时间',
+    end_time     TIME       NULL     COMMENT '结束时间',
+    PRIMARY KEY (time_slot_id, day, start_time)
+) ENGINE = InnoDB COMMENT = '时间段';
+
 -- ============================================================
 -- 示例数据（Database System Concepts 附录 A 官方样例）
--- 插入顺序遵循外键依赖：父表先插，子表后插
+-- INSERT IGNORE：存量库已有同主键数据时跳过，不覆盖业务数据
 -- ============================================================
 
--- 1. department
-INSERT INTO department VALUES
+INSERT IGNORE INTO department (dept_name, building, budget) VALUES
     ('Biology',    'Watson',  90000),
     ('Comp. Sci.', 'Taylor', 100000),
     ('Elec. Eng.', 'Taylor',  85000),
@@ -156,16 +171,14 @@ INSERT INTO department VALUES
     ('Music',      'Packard', 80000),
     ('Physics',    'Watson',  70000);
 
--- 2. classroom
-INSERT INTO classroom VALUES
+INSERT IGNORE INTO classroom (building, room_number, capacity) VALUES
     ('Packard', '101',  500),
     ('Painter', '514',  10),
     ('Taylor',  '3128', 70),
     ('Watson',  '100',  30),
     ('Watson',  '120',  50);
 
--- 3. course
-INSERT INTO course VALUES
+INSERT IGNORE INTO course (course_id, title, dept_name, credits) VALUES
     ('BIO-101', 'Intro. to Biology',        'Biology',     4),
     ('BIO-301', 'Genetics',                 'Biology',     4),
     ('BIO-399', 'Computational Biology',    'Biology',     3),
@@ -180,8 +193,7 @@ INSERT INTO course VALUES
     ('MU-199',  'Music Video Production',   'Music',       3),
     ('PHY-101', 'Physical Principles',      'Physics',     4);
 
--- 4. instructor
-INSERT INTO instructor (ID, name, dept_name, salary) VALUES
+INSERT IGNORE INTO instructor (ID, name, dept_name, salary) VALUES
     ('10101', 'Srinivasan', 'Comp. Sci.', 65000),
     ('12121', 'Wu',         'Finance',    90000),
     ('15151', 'Mozart',     'Music',      40000),
@@ -195,8 +207,7 @@ INSERT INTO instructor (ID, name, dept_name, salary) VALUES
     ('83821', 'Brandt',     'Comp. Sci.', 92000),
     ('98345', 'Kim',        'Elec. Eng.', 80000);
 
--- 5. student
-INSERT INTO student VALUES
+INSERT IGNORE INTO student (ID, name, dept_name, tot_cred) VALUES
     ('00128', 'Zhang',    'Comp. Sci.', 102),
     ('12345', 'Shankar',  'Comp. Sci.', 32),
     ('19991', 'Brandt',   'History',    80),
@@ -211,8 +222,7 @@ INSERT INTO student VALUES
     ('98765', 'Bourikas', 'Elec. Eng.', 98),
     ('98988', 'Tanaka',   'Biology',    120);
 
--- 6. section
-INSERT INTO section (course_id, sec_id, semester, year, building, room_number, time_slot_id) VALUES
+INSERT IGNORE INTO section (course_id, sec_id, semester, year, building, room_number, time_slot_id) VALUES
     ('BIO-101', '1', 'Summer', 2009, 'Painter', '514',  'B'),
     ('BIO-301', '1', 'Summer', 2010, 'Painter', '514',  'A'),
     ('CS-101',  '1', 'Fall',   2009, 'Packard', '101',  'H'),
@@ -229,8 +239,7 @@ INSERT INTO section (course_id, sec_id, semester, year, building, room_number, t
     ('MU-199',  '1', 'Spring', 2010, 'Packard', '101',  'D'),
     ('PHY-101', '1', 'Fall',   2009, 'Watson',  '100',  'A');
 
--- 7. teaches
-INSERT INTO teaches VALUES
+INSERT IGNORE INTO teaches (ID, course_id, sec_id, semester, year) VALUES
     ('10101', 'CS-101',  '1', 'Fall',   2009),
     ('10101', 'CS-315',  '1', 'Spring', 2010),
     ('10101', 'CS-347',  '1', 'Fall',   2009),
@@ -247,8 +256,7 @@ INSERT INTO teaches VALUES
     ('83821', 'CS-319',  '2', 'Spring', 2010),
     ('98345', 'EE-181',  '1', 'Spring', 2009);
 
--- 8. takes
-INSERT INTO takes VALUES
+INSERT IGNORE INTO takes (ID, course_id, sec_id, semester, year, grade) VALUES
     ('00128', 'CS-101',  '1', 'Fall',   2009, 'A'),
     ('00128', 'CS-347',  '1', 'Fall',   2009, 'A-'),
     ('12345', 'CS-101',  '1', 'Fall',   2009, 'C'),
@@ -273,8 +281,7 @@ INSERT INTO takes VALUES
     ('98988', 'BIO-101', '1', 'Summer', 2009, 'A'),
     ('98988', 'BIO-301', '1', 'Summer', 2010, NULL);
 
--- 9. prereq
-INSERT INTO prereq VALUES
+INSERT IGNORE INTO prereq (course_id, prereq_id) VALUES
     ('BIO-301', 'BIO-101'),
     ('CS-190',  'CS-101'),
     ('CS-315',  'CS-101'),
@@ -282,31 +289,7 @@ INSERT INTO prereq VALUES
     ('CS-347',  'CS-101'),
     ('EE-181',  'PHY-101');
 
--- ------------------------------------------------------------
--- 10. 指导关系 advisor：Student ⇋ Instructor（一个学生一个导师）
--- ------------------------------------------------------------
-CREATE TABLE advisor (
-    s_id VARCHAR(5) PRIMARY KEY COMMENT '学生编号（FK→student.ID）',
-    i_id VARCHAR(5) NULL     COMMENT '指导教师编号（FK→instructor.ID）',
-    CONSTRAINT fk_advisor_student FOREIGN KEY (s_id)
-        REFERENCES student (ID),
-    CONSTRAINT fk_advisor_instructor FOREIGN KEY (i_id)
-        REFERENCES instructor (ID)
-) ENGINE = InnoDB COMMENT = '指导关系';
-
--- ------------------------------------------------------------
--- 11. 时间段 time_slot（(time_slot_id, day, start_time) 联合主键）
--- ------------------------------------------------------------
-CREATE TABLE time_slot (
-    time_slot_id VARCHAR(4) NOT NULL COMMENT '时间段标识',
-    day          VARCHAR(1) NOT NULL COMMENT '星期（M/W/F）',
-    start_time   TIME       NOT NULL COMMENT '开始时间',
-    end_time     TIME       NULL     COMMENT '结束时间',
-    PRIMARY KEY (time_slot_id, day, start_time)
-) ENGINE = InnoDB COMMENT = '时间段';
-
--- 10. advisor 示例数据
-INSERT INTO advisor VALUES
+INSERT IGNORE INTO advisor (s_id, i_id) VALUES
     ('00128', '45565'),
     ('12345', '10101'),
     ('23121', '76543'),
@@ -318,8 +301,7 @@ INSERT INTO advisor VALUES
     ('98765', '98345'),
     ('98988', '76766');
 
--- 11. time_slot 示例数据
-INSERT INTO time_slot VALUES
+INSERT IGNORE INTO time_slot (time_slot_id, day, start_time, end_time) VALUES
     ('A', 'M', '08:00:00', '08:50:00'),
     ('A', 'W', '08:00:00', '08:50:00'),
     ('A', 'F', '09:00:00', '09:50:00'),

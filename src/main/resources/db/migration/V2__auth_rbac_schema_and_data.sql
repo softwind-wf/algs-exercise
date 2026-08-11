@@ -1,34 +1,9 @@
 -- ============================================================
--- 大学网站账号与权限表（RBAC 模型）
--- 数据库: university  字符集: utf8mb4
+-- V2 账号与权限表（RBAC 模型，5 张 sys_* 表）+ 初始数据
 --
--- 依赖：需先执行 university.sql（本脚本只新增 5 张 sys_* 表，
---       不修改原有的 11 张业务表）
---
--- 共 5 张表：
---   sys_user            账号表（登录账号，user_type + ref_id 关联业务表）
---   sys_role            角色表（STUDENT / INSTRUCTOR / ADMIN）
---   sys_permission      权限表（细粒度权限点，如 course:manage）
---   sys_user_role       用户-角色 关联（多对多）
---   sys_role_permission 角色-权限 关联（多对多）
---
--- ⚠️ 脚本会 DROP 本脚本创建的 5 张 sys_* 表后重建，不影响业务表
---
--- 定位：仅用于从零重建演示库（配合 UniversityDbSetup / sql.bat）。
--- 线上升级/增量变更一律由 Flyway 管理（db/migration/V*.sql），
--- 应用启动时自动迁移，禁止手工改库。
+-- 幂等写法（CREATE TABLE IF NOT EXISTS + INSERT IGNORE）：
+-- 存量库重放不会破坏已有账号密码与角色分配。
 -- ============================================================
-
-USE university;
-
--- ------------------------------------------------------------
--- 清理（先删关联表，再删主表）
--- ------------------------------------------------------------
-DROP TABLE IF EXISTS sys_role_permission;
-DROP TABLE IF EXISTS sys_user_role;
-DROP TABLE IF EXISTS sys_permission;
-DROP TABLE IF EXISTS sys_role;
-DROP TABLE IF EXISTS sys_user;
 
 -- ------------------------------------------------------------
 -- 1. 账号表 sys_user
@@ -37,7 +12,7 @@ DROP TABLE IF EXISTS sys_user;
 --      INSTRUCTOR -> instructor.ID（如 '45565'）
 --      ADMIN      -> ref_id 为 NULL
 -- ------------------------------------------------------------
-CREATE TABLE sys_user (
+CREATE TABLE IF NOT EXISTS sys_user (
     user_id     VARCHAR(20)  NOT NULL COMMENT '登录账号（主键）',
     password    VARCHAR(100) NOT NULL COMMENT '密码（BCrypt 哈希，不存明文）',
     user_type   VARCHAR(20)  NOT NULL COMMENT '关联类型：STUDENT / INSTRUCTOR / ADMIN',
@@ -51,7 +26,7 @@ CREATE TABLE sys_user (
 -- ------------------------------------------------------------
 -- 2. 角色表 sys_role
 -- ------------------------------------------------------------
-CREATE TABLE sys_role (
+CREATE TABLE IF NOT EXISTS sys_role (
     role_id     VARCHAR(20)  NOT NULL COMMENT '角色标识（主键）：STUDENT / INSTRUCTOR / ADMIN',
     role_name   VARCHAR(50)  NOT NULL COMMENT '角色名称',
     description VARCHAR(200) NULL     COMMENT '角色说明',
@@ -62,7 +37,7 @@ CREATE TABLE sys_role (
 -- 3. 权限表 sys_permission
 --    权限编码格式：资源:操作，如 course:view / course:manage
 -- ------------------------------------------------------------
-CREATE TABLE sys_permission (
+CREATE TABLE IF NOT EXISTS sys_permission (
     permission_id INT          NOT NULL AUTO_INCREMENT COMMENT '权限ID（自增主键）',
     perm_code     VARCHAR(50)  NOT NULL COMMENT '权限编码（如 course:view）',
     perm_name     VARCHAR(50)  NOT NULL COMMENT '权限名称',
@@ -74,7 +49,7 @@ CREATE TABLE sys_permission (
 -- ------------------------------------------------------------
 -- 4. 用户-角色 关联 sys_user_role（一个用户可有多个角色）
 -- ------------------------------------------------------------
-CREATE TABLE sys_user_role (
+CREATE TABLE IF NOT EXISTS sys_user_role (
     user_id VARCHAR(20) NOT NULL COMMENT '账号（FK->sys_user）',
     role_id VARCHAR(20) NOT NULL COMMENT '角色（FK->sys_role）',
     PRIMARY KEY (user_id, role_id),
@@ -85,7 +60,7 @@ CREATE TABLE sys_user_role (
 -- ------------------------------------------------------------
 -- 5. 角色-权限 关联 sys_role_permission
 -- ------------------------------------------------------------
-CREATE TABLE sys_role_permission (
+CREATE TABLE IF NOT EXISTS sys_role_permission (
     role_id       VARCHAR(20) NOT NULL COMMENT '角色（FK->sys_role）',
     permission_id INT         NOT NULL COMMENT '权限（FK->sys_permission）',
     PRIMARY KEY (role_id, permission_id),
@@ -94,17 +69,17 @@ CREATE TABLE sys_role_permission (
 ) ENGINE = InnoDB COMMENT = '角色-权限关联';
 
 -- ============================================================
--- 初始数据
+-- 初始数据（INSERT IGNORE，重放安全）
 -- ============================================================
 
 -- 角色
-INSERT INTO sys_role (role_id, role_name, description) VALUES
+INSERT IGNORE INTO sys_role (role_id, role_name, description) VALUES
     ('STUDENT',    '学生',   '浏览课程、选课/退课、查看成绩单与导师'),
     ('INSTRUCTOR', '教师',   '查看授课任务、班级名单、录入/修改成绩'),
     ('ADMIN',      '管理员', '维护基础数据、分配账号与权限、查看统计报表');
 
 -- 权限点（资源:操作）
-INSERT INTO sys_permission (perm_code, perm_name, description) VALUES
+INSERT IGNORE INTO sys_permission (perm_code, perm_name, description) VALUES
     ('department:view',     '查看系',     '浏览系列表与详情'),
     ('department:manage',   '管理系',     '系的新增/修改/删除'),
     ('course:view',         '查看课程',   '浏览课程目录与详情'),
@@ -124,9 +99,9 @@ INSERT INTO sys_permission (perm_code, perm_name, description) VALUES
     ('stats:view',          '统计报表',   '查看统计报表'),
     ('user:manage',         '用户管理',   '账号与权限管理');
 
--- 角色-权限 映射
+-- 角色-权限 映射（IGNORE：已有映射跳过）
 -- 学生：可浏览 + 选课/成绩单/导师
-INSERT INTO sys_role_permission (role_id, permission_id)
+INSERT IGNORE INTO sys_role_permission (role_id, permission_id)
 SELECT 'STUDENT', permission_id FROM sys_permission
 WHERE perm_code IN (
     'department:view', 'course:view', 'instructor:view', 'section:view',
@@ -134,7 +109,7 @@ WHERE perm_code IN (
 );
 
 -- 教师：可浏览 + 班级名单 + 成绩录入
-INSERT INTO sys_role_permission (role_id, permission_id)
+INSERT IGNORE INTO sys_role_permission (role_id, permission_id)
 SELECT 'INSTRUCTOR', permission_id FROM sys_permission
 WHERE perm_code IN (
     'department:view', 'course:view', 'instructor:view', 'section:view',
@@ -142,19 +117,20 @@ WHERE perm_code IN (
 );
 
 -- 管理员：全部权限
-INSERT INTO sys_role_permission (role_id, permission_id)
+INSERT IGNORE INTO sys_role_permission (role_id, permission_id)
 SELECT 'ADMIN', permission_id FROM sys_permission;
 
--- 示例账号（密码为 BCrypt 哈希，默认密码均为 password）
+-- 演示账号（密码为 BCrypt 哈希，默认密码均为 password）
 --   对应哈希：$2a$10$/Gu.uRug7LYoOu0PzCdVKOqo4Ayxt3fM2utBEet4jNQ5nouNqojKO
---   ⚠️ 仅用于开发/演示，上线前必须重置
-INSERT INTO sys_user (user_id, password, user_type, ref_id, enabled) VALUES
+--   ⚠️ 仅用于开发/演示，上线前必须重置。
+--   IGNORE：账号已存在时不覆盖（避免冲掉线上已改的密码）。
+INSERT IGNORE INTO sys_user (user_id, password, user_type, ref_id, enabled) VALUES
     ('zhang', '$2a$10$/Gu.uRug7LYoOu0PzCdVKOqo4Ayxt3fM2utBEet4jNQ5nouNqojKO', 'STUDENT',    '00128', 1),
     ('katz',  '$2a$10$/Gu.uRug7LYoOu0PzCdVKOqo4Ayxt3fM2utBEet4jNQ5nouNqojKO', 'INSTRUCTOR', '45565', 1),
     ('admin', '$2a$10$/Gu.uRug7LYoOu0PzCdVKOqo4Ayxt3fM2utBEet4jNQ5nouNqojKO', 'ADMIN',      NULL,    1);
 
 -- 用户-角色 映射
-INSERT INTO sys_user_role (user_id, role_id) VALUES
+INSERT IGNORE INTO sys_user_role (user_id, role_id) VALUES
     ('zhang', 'STUDENT'),
     ('katz',  'INSTRUCTOR'),
     ('admin', 'ADMIN');
