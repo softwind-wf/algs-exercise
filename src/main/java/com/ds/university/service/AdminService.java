@@ -26,6 +26,7 @@ import com.ds.university.vo.SectionVO;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalTime;
@@ -68,12 +69,13 @@ public class AdminService {
     private final TimeSlotMapper timeSlotMapper;
     private final TeachesMapper teachesMapper;
     private final PrereqMapper prereqMapper;
+    private final AccountService accountService;
 
     public AdminService(DepartmentMapper departmentMapper, CourseMapper courseMapper,
                         InstructorMapper instructorMapper, StudentMapper studentMapper,
                         ClassroomMapper classroomMapper, SectionMapper sectionMapper,
                         TimeSlotMapper timeSlotMapper, TeachesMapper teachesMapper,
-                        PrereqMapper prereqMapper) {
+                        PrereqMapper prereqMapper, AccountService accountService) {
         this.departmentMapper = departmentMapper;
         this.courseMapper = courseMapper;
         this.instructorMapper = instructorMapper;
@@ -83,6 +85,7 @@ public class AdminService {
         this.timeSlotMapper = timeSlotMapper;
         this.teachesMapper = teachesMapper;
         this.prereqMapper = prereqMapper;
+        this.accountService = accountService;
     }
 
     // ========== 基础数据：院系 ==========
@@ -176,6 +179,7 @@ public class AdminService {
         return instructorMapper.selectAll(null);
     }
 
+@Transactional
     public void createInstructor(String id, String name, String deptName, BigDecimal salary) {
         requireText(id, "工号不能为空");
         requireText(name, "姓名不能为空");
@@ -196,6 +200,7 @@ public class AdminService {
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "教师数据不合法");
         }
+        accountService.createAccount(id, "INSTRUCTOR", id, null);
     }
 
     public void updateInstructor(String id, String name, String deptName, BigDecimal salary) {
@@ -211,12 +216,14 @@ public class AdminService {
         instructorMapper.update(new Instructor(id, name, deptName, salary));
     }
 
+@Transactional
     public void deleteInstructor(String id) {
         try {
             instructorMapper.delete(id);
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "该教师存在授课/指导关联，无法删除");
         }
+        accountService.deleteAccount(id);
     }
 
     // ========== 基础数据：学生 ==========
@@ -225,6 +232,7 @@ public class AdminService {
         return studentMapper.selectAllSimple();
     }
 
+@Transactional
     public void createStudent(String id, String name, String deptName, Integer totCred) {
         requireText(id, "学号不能为空");
         requireText(name, "姓名不能为空");
@@ -245,6 +253,7 @@ public class AdminService {
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "学生数据不合法");
         }
+        accountService.createAccount(id, "STUDENT", id, null);
     }
 
     public void updateStudent(String id, String name, String deptName, Integer totCred) {
@@ -260,12 +269,14 @@ public class AdminService {
         studentMapper.update(new Student(id, name, deptName, totCred));
     }
 
+@Transactional
     public void deleteStudent(String id) {
         try {
             studentMapper.delete(id);
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "该学生存在选课/导师关联，无法删除");
         }
+        accountService.deleteAccount(id);
     }
 
     // ========== 基础数据：教室 ==========

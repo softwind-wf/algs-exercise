@@ -46,4 +46,22 @@ public class AuthService {
         loginUser.setPermissions(permissions);
         return loginUser;
     }
+
+    /** 修改密码：校验原密码后，加密保存新密码。 */
+    public void changePassword(String userId, String oldPassword, String newPassword) {
+        SysUser user = sysUserMapper.selectByUserId(userId);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.LOGIN_FAILED);
+        }
+        if (oldPassword == null || oldPassword.isEmpty() || !passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new BusinessException(ErrorCode.PASSWORD_WRONG);
+        }
+        if (newPassword == null || newPassword.length() < 6 || newPassword.length() > 32) {
+            throw new BusinessException(ErrorCode.PASSWORD_INVALID);
+        }
+        if (passwordEncoder.matches(newPassword, user.getPassword())) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "新密码不能与原密码相同");
+        }
+        sysUserMapper.updatePassword(userId, passwordEncoder.encode(newPassword));
+    }
 }

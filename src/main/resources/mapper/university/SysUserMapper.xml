@@ -25,4 +25,52 @@
         WHERE ur.user_id = #{userId}
     </select>
 
+    <update id="updatePassword">
+        UPDATE sys_user
+        SET password = #{password},
+            update_time = NOW()
+        WHERE user_id = #{userId}
+    </update>
+
+    <select id="selectAll" resultType="com.ds.university.entity.SysUser">
+        SELECT user_id, password, user_type, ref_id, enabled, create_time, update_time
+        FROM sys_user
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectRefIds" resultType="string">
+        SELECT ref_id FROM sys_user WHERE user_type = #{userType} AND ref_id IS NOT NULL
+    </select>
+
+    <select id="selectByRefId" resultType="com.ds.university.entity.SysUser">
+        SELECT user_id, password, user_type, ref_id, enabled, create_time, update_time
+        FROM sys_user
+        WHERE user_type = #{userType} AND ref_id = #{refId}
+    </select>
+
+    <insert id="insert" parameterType="com.ds.university.entity.SysUser">
+        INSERT INTO sys_user (user_id, password, user_type, ref_id, enabled)
+        VALUES (#{userId}, #{password}, #{userType}, #{refId}, 1)
+    </insert>
+
+    <insert id="insertUserRole">
+        INSERT INTO sys_user_role (user_id, role_id) VALUES (#{userId}, #{roleId})
+    </insert>
+
+    <update id="updateEnabled">
+        UPDATE sys_user SET enabled = #{enabled}, update_time = NOW() WHERE user_id = #{userId}
+    </update>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*) FROM sys_user
+    </select>
+
+    <delete id="deleteUserRoles">
+        DELETE FROM sys_user_role WHERE user_id = #{userId}
+    </delete>
+
+    <delete id="deleteByUserId">
+        DELETE FROM sys_user WHERE user_id = #{userId}
+    </delete>
+
 </mapper>

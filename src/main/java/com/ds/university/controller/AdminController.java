@@ -4,6 +4,7 @@ import com.ds.university.common.BusinessException;
 import com.ds.university.common.Result;
 import com.ds.university.entity.Section;
 import com.ds.university.service.AdminService;
+import com.ds.university.service.AccountService;
 import com.ds.university.service.StatsReportService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -23,11 +24,14 @@ import java.util.Arrays;
 public class AdminController {
 
     private final AdminService adminService;
+    private final AccountService accountService;
     private final StatsReportService statsReportService;
 
-    public AdminController(AdminService adminService, StatsReportService statsReportService) {
+    public AdminController(AdminService adminService, StatsReportService statsReportService,
+                           AccountService accountService) {
         this.adminService = adminService;
         this.statsReportService = statsReportService;
+        this.accountService = accountService;
     }
 
     /** 教务管理首页：统计概览 */
@@ -166,7 +170,7 @@ public class AdminController {
                                    RedirectAttributes ra) {
         try {
             adminService.createInstructor(id, name, deptName, salary);
-            ra.addFlashAttribute("success", "教师已创建");
+            ra.addFlashAttribute("success", "教师已创建，登录账号 = " + id + "，初始密码 = " + AccountService.DEFAULT_PASSWORD);
         } catch (BusinessException e) {
             ra.addFlashAttribute("error", e.getMessage());
         }
@@ -219,7 +223,7 @@ public class AdminController {
                                 RedirectAttributes ra) {
         try {
             adminService.createStudent(id, name, deptName, totCred);
-            ra.addFlashAttribute("success", "学生已创建");
+            ra.addFlashAttribute("success", "学生已创建，登录账号 = " + id + "，初始密码 = " + AccountService.DEFAULT_PASSWORD);
         } catch (BusinessException e) {
             ra.addFlashAttribute("error", e.getMessage());
         }
@@ -495,6 +499,67 @@ public class AdminController {
     }
     // ========== 统计报表（UC-09） ==========
 
+    // ========== 账号管理 ==========
+
+    @GetMapping("/accounts")
+    public String accounts(Model model) {
+        model.addAttribute("accounts", accountService.listAccounts());
+        model.addAttribute("students", accountService.studentsWithoutAccount());
+        model.addAttribute("instructors", accountService.instructorsWithoutAccount());
+        model.addAttribute("defaultPassword", AccountService.DEFAULT_PASSWORD);
+        return "admin/accounts";
+    }
+
+    @PostMapping("/accounts")
+    public String createAccount(@RequestParam String userId,
+                                @RequestParam String userType,
+                                @RequestParam String refId,
+                                @RequestParam(required = false) String password,
+                                RedirectAttributes ra) {
+        try {
+            accountService.createAccount(userId, userType, refId, password);
+            String pwd = (password == null || password.isEmpty()) ? AccountService.DEFAULT_PASSWORD : password;
+            ra.addFlashAttribute("success", "账号已创建，初始密码：" + pwd);
+        } catch (BusinessException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/accounts";
+    }
+
+    @PostMapping("/accounts/reset")
+    public String resetPassword(@RequestParam String userId,
+                                @RequestParam(required = false) String password,
+                                RedirectAttributes ra) {
+        try {
+            accountService.resetPassword(userId, password);
+            String pwd = (password == null || password.isEmpty()) ? AccountService.DEFAULT_PASSWORD : password;
+            ra.addFlashAttribute("success", "账号 " + userId + " 密码已重置为：" + pwd);
+        } catch (BusinessException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/accounts";
+    }
+
+    @PostMapping("/accounts/toggle")
+    public String toggleAccount(@RequestParam String userId, RedirectAttributes ra) {
+        try {
+            boolean enabled = accountService.toggleEnabled(userId);
+            ra.addFlashAttribute("success", enabled ? "账号已启用" : "账号已禁用");
+        } catch (BusinessException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/accounts";
+    }
+    @PostMapping("/accounts/open-all")
+    public String openAllAccounts(RedirectAttributes ra) {
+        try {
+            int[] counts = accountService.openAllPendingAccounts();
+            ra.addFlashAttribute("success", "已为 " + counts[0] + " 名学生、" + counts[1] + " 名教师开户，初始密码：" + AccountService.DEFAULT_PASSWORD);
+        } catch (BusinessException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/accounts";
+    }
     @GetMapping("/stats")
     public String stats(@RequestParam(required = false) String semester,
                         @RequestParam(required = false) Integer year,

@@ -14,20 +14,44 @@ import com.ds.university.vo.EnrollmentVO;
 import com.ds.university.vo.StudentDashboardVO;
 import com.ds.university.vo.StudentProfileVO;
 import com.ds.university.vo.TranscriptRowVO;
+import com.ds.university.vo.SectionVO;
 import com.ds.university.vo.TranscriptVO;
+import com.ds.university.vo.WeeklyScheduleVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /** 学生中心业务：选课/退课、成绩单、导师 */
 @Service
 public class StudentService {
 
     private static final List<String> SEMESTERS = Arrays.asList("Fall", "Spring", "Summer");
+
+    /** 星期排序（周一至周日） */
+    private static final List<String> DAY_ORDER = Arrays.asList("M", "T", "W", "TH", "F", "S", "U");
+
+    /** 星期显示名 */
+    private static final Map<String, String> DAY_LABELS = new LinkedHashMap<>();
+
+    static {
+        DAY_LABELS.put("M", "周一");
+        DAY_LABELS.put("T", "周二");
+        DAY_LABELS.put("W", "周三");
+        DAY_LABELS.put("TH", "周四");
+        DAY_LABELS.put("F", "周五");
+        DAY_LABELS.put("S", "周六");
+        DAY_LABELS.put("U", "周日");
+    }
 
     /** 绩点对照表 */
     private static final Map<String, Double> GRADE_POINTS = new HashMap<>();
@@ -89,6 +113,76 @@ public class StudentService {
     public List<EnrollmentVO> enrollments(String studentId) {
         return studentMapper.selectEnrollments(studentId);
     }
+
+    /** 我的课程表：按 星期 x 时间段 展示本学期已选课程 */
+    public WeeklyScheduleVO weeklySchedule(String studentId, String semester, Integer year) {
+        validateTerm(semester, year);
+        WeeklyScheduleVO vo = new WeeklyScheduleVO();
+        vo.setSemester(semester);
+        vo.setYear(year);
+        vo.setFilterType("all");
+        vo.setFilterKey("");
+        vo.setFilterLabel("我的课程");
+
+        Map<String, List<TimeSlot>> slotRows = timeSlotMapper.selectAll().stream()
+                .collect(Collectors.groupingBy(TimeSlot::getTimeSlotId,
+                        LinkedHashMap::new, Collectors.toList()));
+
+        List<EnrollmentVO> enrollments = studentMapper.selectEnrollments(studentId);
+        Map<String, List<SectionVO>> cells = new HashMap<>();
+        LinkedHashSet<String> daySet = new LinkedHashSet<>();
+        LinkedHashSet<String> periodSet = new LinkedHashSet<>();
+        for (EnrollmentVO e : enrollments) {
+            if (!semester.equals(e.getSemester()) || !year.equals(e.getYear())) {
+                continue;
+            }
+            List<TimeSlot> rows = slotRows.get(e.getTimeSlotId());
+            if (rows == null) {
+                continue;
+            }
+            SectionVO section = toSectionVO(e);
+            for (TimeSlot ts : rows) {
+                daySet.add(ts.getDay());
+                periodSet.add(ts.getStartTime() + "-" + ts.getEndTime());
+                cells.computeIfAbsent(ts.getDay() + "|" + ts.getStartTime() + "-" + ts.getEndTime(),
+                        k -> new ArrayList<>()).add(section);
+            }
+        }
+
+        List<String> days = new ArrayList<>(daySet);
+        days.sort(Comparator.comparingInt(d -> {
+            int idx = DAY_ORDER.indexOf(d);
+            return idx < 0 ? Integer.MAX_VALUE : idx;
+        }));
+        Map<String, String> dayLabels = new LinkedHashMap<>();
+        for (String d : days) {
+            dayLabels.put(d, DAY_LABELS.getOrDefault(d, d));
+        }
+        List<String> periods = new ArrayList<>(periodSet);
+        periods.sort(Comparator.comparing(p -> LocalTime.parse(p.substring(0, 5))));
+
+        vo.setDays(days);
+        vo.setDayLabels(dayLabels);
+        vo.setPeriods(periods);
+        vo.setCells(cells);
+        return vo;
+    }
+
+    private SectionVO toSectionVO(EnrollmentVO e) {
+        SectionVO s = new SectionVO();
+        s.setCourseId(e.getCourseId());
+        s.setSecId(e.getSecId());
+        s.setSemester(e.getSemester());
+        s.setYear(e.getYear());
+        s.setBuilding(e.getBuilding());
+        s.setRoomNumber(e.getRoomNumber());
+        s.setTimeSlotId(e.getTimeSlotId());
+        s.setCourseTitle(e.getTitle());
+        s.setInstructorNames(e.getInstructorNames());
+        return s;
+    }
+
+
 
     /** 选课目录（某学期/年份的开课班，标记已选） */
     public List<CatalogSectionVO> catalog(String studentId, String semester, Integer year, String courseId) {

@@ -5,7 +5,14 @@ import com.ds.university.common.ErrorCode;
 import com.ds.university.common.PageResult;
 import com.ds.university.service.CourseService;
 import com.ds.university.service.StudentService;
+import com.ds.university.util.ScheduleExcelWriter;
 import com.ds.university.vo.LoginUser;
+import com.ds.university.vo.StudentProfileVO;
+import com.ds.university.vo.WeeklyScheduleVO;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,6 +22,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import javax.servlet.http.HttpSession;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /** 学生中心：选课/退课、成绩单、导师 */
@@ -112,6 +121,45 @@ public class StudentCenterController {
         model.addAttribute("transcript", studentService.transcript(currentStudentId(session),
                 page == null ? 1 : page, size == null ? 0 : size));
         return "student/transcript";
+    }
+
+    /** 我的课程表 */
+    @GetMapping("/schedule")
+    public String schedule(@RequestParam(required = false) String semester,
+                           @RequestParam(required = false) Integer year,
+                           HttpSession session, Model model) {
+        String safeSemester = semester == null || semester.isEmpty() ? DEFAULT_SEMESTER : semester;
+        Integer safeYear = year == null ? DEFAULT_YEAR : year;
+        model.addAttribute("week", studentService.weeklySchedule(
+                currentStudentId(session), safeSemester, safeYear));
+        model.addAttribute("years", studentService.years());
+        model.addAttribute("semester", safeSemester);
+        model.addAttribute("year", safeYear);
+        return "student/schedule";
+    }
+
+    /** 下载课程表（Excel 周课表网格，与页面一致） */
+    @GetMapping("/schedule/download")
+    public ResponseEntity<byte[]> downloadSchedule(@RequestParam(required = false) String semester,
+                                                   @RequestParam(required = false) Integer year,
+                                                   HttpSession session) throws IOException {
+        String safeSemester = semester == null || semester.isEmpty() ? DEFAULT_SEMESTER : semester;
+        Integer safeYear = year == null ? DEFAULT_YEAR : year;
+        String studentId = currentStudentId(session);
+        StudentProfileVO profile = studentService.profile(studentId);
+        WeeklyScheduleVO week = studentService.weeklySchedule(studentId, safeSemester, safeYear);
+        String title = "课程表（" + safeSemester + " " + safeYear + "）　学生："
+                + profile.getStudent().getName() + "（" + studentId + "）　专业："
+                + profile.getStudent().getDeptName();
+        byte[] bytes = ScheduleExcelWriter.toXlsx(week, "课程表", title);
+
+        String filename = "课程表_" + studentId + "_" + safeSemester + "_" + safeYear + ".xlsx";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(filename, StandardCharsets.UTF_8).build().toString())
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(bytes);
     }
 
     /** 导师 */

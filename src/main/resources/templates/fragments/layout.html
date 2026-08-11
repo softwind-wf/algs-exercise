@@ -17,6 +17,7 @@
             <span class="d-flex gap-3">
                 <a th:href="@{/}">首页</a>
                 <a th:href="@{/login}" th:if="${session.loginUser == null}">登录</a>
+                <a th:href="@{/account/password}" th:if="${session.loginUser != null}">修改密码</a>
                 <a th:href="@{/logout}" th:if="${session.loginUser != null}">退出登录</a>
             </span>
         </div>

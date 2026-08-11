@@ -2,8 +2,16 @@ package com.ds.university.controller;
 
 import com.ds.university.common.BusinessException;
 import com.ds.university.common.ErrorCode;
+import com.ds.university.entity.Instructor;
+import com.ds.university.service.AdminService;
 import com.ds.university.service.TeacherService;
+import com.ds.university.util.ScheduleExcelWriter;
 import com.ds.university.vo.LoginUser;
+import com.ds.university.vo.WeeklyScheduleVO;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,16 +21,23 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import javax.servlet.http.HttpSession;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 /** 教师中心：授课列表、班级名单、成绩录入 */
 @Controller
 @RequestMapping("/instructor")
 public class TeacherCenterController {
 
-    private final TeacherService teacherService;
+    private static final String DEFAULT_SEMESTER = "Spring";
+    private static final int DEFAULT_YEAR = 2010;
 
-    public TeacherCenterController(TeacherService teacherService) {
+    private final TeacherService teacherService;
+    private final AdminService adminService;
+
+    public TeacherCenterController(TeacherService teacherService, AdminService adminService) {
         this.teacherService = teacherService;
+        this.adminService = adminService;
     }
 
     /** 教师中心首页：授课列表 */
@@ -36,6 +51,45 @@ public class TeacherCenterController {
     public String sections(HttpSession session, Model model) {
         model.addAttribute("dashboard", teacherService.dashboard(currentInstructorId(session)));
         return "instructor/sections";
+    }
+
+    /** 授课表：按 星期 x 时间段 展示本学期所授课程 */
+    @GetMapping("/schedule")
+    public String schedule(@RequestParam(required = false) String semester,
+                           @RequestParam(required = false) Integer year,
+                           HttpSession session, Model model) {
+        String safeSemester = semester == null || semester.isEmpty() ? DEFAULT_SEMESTER : semester;
+        Integer safeYear = year == null ? DEFAULT_YEAR : year;
+        model.addAttribute("week", adminService.weeklySchedule(
+                safeSemester, safeYear, "instructor", currentInstructorId(session)));
+        model.addAttribute("years", adminService.sectionYears());
+        model.addAttribute("semester", safeSemester);
+        model.addAttribute("year", safeYear);
+        return "instructor/schedule";
+    }
+
+    /** 下载授课表（Excel 周课表网格，与页面一致） */
+    @GetMapping("/schedule/download")
+    public ResponseEntity<byte[]> downloadSchedule(@RequestParam(required = false) String semester,
+                                                   @RequestParam(required = false) Integer year,
+                                                   HttpSession session) throws IOException {
+        String safeSemester = semester == null || semester.isEmpty() ? DEFAULT_SEMESTER : semester;
+        Integer safeYear = year == null ? DEFAULT_YEAR : year;
+        String instructorId = currentInstructorId(session);
+        Instructor instructor = teacherService.dashboard(instructorId).getInstructor();
+        WeeklyScheduleVO week = adminService.weeklySchedule(
+                safeSemester, safeYear, "instructor", instructorId);
+        String title = "授课表（" + safeSemester + " " + safeYear + "）　教师："
+                + instructor.getName() + "（" + instructorId + "）　院系：" + instructor.getDeptName();
+        byte[] bytes = ScheduleExcelWriter.toXlsx(week, "授课表", title);
+
+        String filename = "授课表_" + instructorId + "_" + safeSemester + "_" + safeYear + ".xlsx";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(filename, StandardCharsets.UTF_8).build().toString())
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(bytes);
     }
 
     /** 班级名单（含成绩录入） */

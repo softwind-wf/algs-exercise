@@ -20,6 +20,7 @@
                 <div class="card shadow-sm mt-3">
                     <div class="card-body">
                         <h2 class="h5" th:text="${editStudent != null} ? '编辑学生' : '新增学生'">新增学生</h2>
+                        <p class="hint">创建后自动生成登录账号：账号 = 学号，初始密码 = password（可在“账号管理”中重置）。</p>
                         <form method="post" th:action="@{${editStudent != null} ? '/admin/students/update' : '/admin/students'}">
                             <div class="row g-3 align-items-end">
                                 <div class="col-auto">

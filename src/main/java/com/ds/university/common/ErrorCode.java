@@ -15,6 +15,8 @@ public enum ErrorCode {
     UNAUTHORIZED(4010, "未登录或无权限"),
     LOGIN_FAILED(4011, "账号或密码错误"),
     USER_DISABLED(4012, "账号已禁用"),
+    PASSWORD_WRONG(4013, "原密码不正确"),
+    PASSWORD_INVALID(4014, "新密码不符合要求"),
     NOT_FOUND(4040, "资源不存在"),
     INTERNAL_ERROR(5000, "系统内部错误");
 

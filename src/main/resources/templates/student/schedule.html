@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('我的课程表')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <h1 class="page-title mb-0">我的课程表</h1>
+        <div class="btn-group btn-group-sm" role="group" aria-label="学生中心导航">
+            <a class="btn btn-outline-primary" th:href="@{/student}">首页</a>
+            <a class="btn btn-outline-primary" th:href="@{/student/courses}">选课 / 退课</a>
+            <a class="btn btn-primary" th:href="@{/student/schedule}">课程表</a>
+            <a class="btn btn-outline-primary" th:href="@{/student/transcript}">成绩单</a>
+            <a class="btn btn-outline-primary" th:href="@{/student/advisor}">导师</a>
+        </div>
+    </div>
+
+    <form method="get" th:action="@{/student/schedule}" class="card shadow-sm mt-3">
+        <div class="card-body py-3">
+            <div class="row g-2 align-items-end">
+                <div class="col-auto">
+                    <label class="form-label mb-1" for="semester">学期</label>
+                    <select class="form-select" id="semester" name="semester">
+                        <option value="Fall" th:selected="${semester == 'Fall'}">Fall</option>
+                        <option value="Spring" th:selected="${semester == 'Spring'}">Spring</option>
+                        <option value="Summer" th:selected="${semester == 'Summer'}">Summer</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label mb-1" for="year">年份</label>
+                    <select class="form-select" id="year" name="year">
+                        <option th:each="y : ${years}" th:value="${y}" th:selected="${y == year}" th:text="${y}">2010</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">查询</button>
+                </div>
+                <div class="col-auto">
+                    <a class="btn btn-outline-success" th:href="@{/student/schedule/download(semester=${semester}, year=${year})}">下载课程表</a>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <p class="hint mt-4" th:if="${#lists.isEmpty(week.days)}">本学期暂无已选课程，请到「选课 / 退课」页面选课后即可在此查看周课表。</p>
+
+    <div class="card shadow-sm mt-3" th:unless="${#lists.isEmpty(week.days)}">
+        <div class="card-header bg-white fw-bold">
+            周课表（<span th:text="${week.semester}">Spring</span> <span th:text="${week.year}">2010</span> · <span th:text="${week.filterLabel}">我的课程</span>）
+        </div>
+        <div class="table-responsive">
+            <table class="table week-table mb-0">
+                <thead>
+                <tr>
+                    <th class="week-corner">时间 \ 星期</th>
+                    <th class="week-day-head" th:each="d : ${week.days}">
+                        <span th:text="${week.dayLabels.get(d)}">周一</span>
+                        <small class="text-secondary" th:text="'（' + ${d} + '）'">(M)</small>
+                    </th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="p : ${week.periods}">
+                    <th class="week-period-head" th:text="${p}">08:00-08:50</th>
+                    <td class="week-cell" th:each="d : ${week.days}"
+                        th:with="list=${week.cells[d + '|' + p]}">
+                        <div class="week-block"
+                             th:each="s : ${list}"
+                             th:classappend="${list != null and list.size() > 1} ? 'stacked'">
+                            <div class="week-block-title" th:text="${s.courseId} + '·' + ${s.courseTitle}">CS-101·课程</div>
+                            <div class="week-block-meta">
+                                <span th:text="'班' + ${s.secId}">班1</span>
+                                <span th:text="${s.building + ' ' + s.roomNumber}">Packard 101</span>
+                            </div>
+                            <div class="week-block-foot" th:text="${s.instructorNames}">教师</div>
+                        </div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer bg-white small text-secondary">
+            提示：同一格子可能同时有多门课程（不同教室）；可切换上方学期与年份查看不同学期的课程安排。
+        </div>
+    </div>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

@@ -18,6 +18,7 @@ public class AuthInterceptor implements HandlerInterceptor {
     private static final String ADMIN_PREFIX = "/admin";
     private static final String STUDENT_PREFIX = "/student";
     private static final String INSTRUCTOR_PREFIX = "/instructor";
+    private static final String ACCOUNT_PREFIX = "/account";
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
@@ -53,6 +54,12 @@ public class AuthInterceptor implements HandlerInterceptor {
             }
             if (!user.getRoles().contains("INSTRUCTOR")) {
                 response.sendError(HttpServletResponse.SC_FORBIDDEN);
+                return false;
+            }
+        }
+        if (matches(uri, ACCOUNT_PREFIX)) {
+            if (user == null) {
+                response.sendRedirect(request.getContextPath() + "/login");
                 return false;
             }
         }
