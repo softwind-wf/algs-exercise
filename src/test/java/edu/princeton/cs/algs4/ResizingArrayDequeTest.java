@@ -1,6 +1,6 @@
 package edu.princeton.cs.algs4;
 
-import com.ds.algs4.exercises.ch01.s03.ResizingArrayDeque;
+import cn.exercise.algs4.exercises.ch01.s03.ResizingArrayDeque;
 import org.junit.jupiter.api.Test;
 import java.util.Iterator;
 import java.util.NoSuchElementException;

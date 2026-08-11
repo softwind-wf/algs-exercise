@@ -1,6 +1,6 @@
 package edu.princeton.cs.algs4;
 
-import com.ds.algs4.exercises.ch01.s03.RandomBag;
+import cn.exercise.algs4.exercises.ch01.s03.RandomBag;
 import org.junit.jupiter.api.Test;
 import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;

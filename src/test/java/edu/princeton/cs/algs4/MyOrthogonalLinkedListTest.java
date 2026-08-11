@@ -1,6 +1,6 @@
 package edu.princeton.cs.algs4;
 
-import com.ds.linked.MyOrthogonalLinkedList;
+import cn.exercise.algs4.datastructure.linked.MyOrthogonalLinkedList;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

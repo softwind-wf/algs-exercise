@@ -1,6 +1,6 @@
 package edu.princeton.cs.algs4;
 
-import com.ds.algs4.exercises.ch01.s03.LinkedSteque;
+import cn.exercise.algs4.exercises.ch01.s03.LinkedSteque;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;

@@ -1,9 +1,9 @@
 package edu.princeton.cs.algs4;
 
-import com.ds.algs4.impl.ch04.Digraph;
+import cn.exercise.algs4.impl.ch04.Digraph;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
-import com.ds.algs4.impl.ch04.FastReachability;
+import cn.exercise.algs4.impl.ch04.FastReachability;
 
 import static org.junit.jupiter.api.Assertions.*;
 

@@ -1,5 +1,6 @@
 package com.ds.matching;
 
+import cn.exercise.algs4.datastructure.matching.BoyerMoore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

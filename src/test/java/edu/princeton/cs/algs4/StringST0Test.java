@@ -3,7 +3,7 @@ package edu.princeton.cs.algs4;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.BeforeEach;
-import com.ds.algs4.impl.ch05.StringST0;
+import cn.exercise.algs4.impl.ch05.StringST0;
 
 import java.util.ArrayList;
 import java.util.List;

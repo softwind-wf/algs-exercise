@@ -1,6 +1,6 @@
 package edu.princeton.cs.algs4;
 
-import com.ds.linked.MyDoubleLinkedList;
+import cn.exercise.algs4.datastructure.linked.MyDoubleLinkedList;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 

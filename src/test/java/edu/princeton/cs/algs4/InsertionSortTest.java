@@ -1,6 +1,6 @@
 package edu.princeton.cs.algs4;
 
-import com.ds.sort.InsertionSort;
+import cn.exercise.algs4.datastructure.sort.InsertionSort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

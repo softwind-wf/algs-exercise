@@ -2,7 +2,7 @@ package edu.princeton.cs.algs4;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
-import com.ds.algs4.impl.ch05.Quick3string;
+import cn.exercise.algs4.impl.ch05.Quick3string;
 
 import static org.junit.jupiter.api.Assertions.*;
 

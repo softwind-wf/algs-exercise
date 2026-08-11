@@ -1,6 +1,6 @@
 package edu.princeton.cs.algs4;
 
-import com.ds.algs4.impl.ch03.BST;
+import cn.exercise.algs4.impl.ch03.BST;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 

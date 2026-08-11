@@ -1,5 +1,6 @@
 package com.ds.sort;
 
+import cn.exercise.algs4.datastructure.sort.QuickSort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

@@ -2,8 +2,8 @@ package edu.princeton.cs.algs4;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
-import com.ds.algs4.impl.ch03.LinearProbingHashST;
-import com.ds.algs4.impl.ch03.LinearProbingHashST1;
+import cn.exercise.algs4.impl.ch03.LinearProbingHashST;
+import cn.exercise.algs4.impl.ch03.LinearProbingHashST1;
 
 import static org.junit.jupiter.api.Assertions.*;
 

@@ -1,6 +1,6 @@
 package edu.princeton.cs.algs4;
 
-import com.ds.algs4.exercises.ch02.s04.DoubleEndedPriorityQueue;
+import cn.exercise.algs4.exercises.ch02.s04.DoubleEndedPriorityQueue;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
