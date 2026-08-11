@@ -10,11 +10,14 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import javax.servlet.RequestDispatcher;
 import javax.servlet.http.HttpSession;
 import java.util.Collections;
 
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -159,6 +162,42 @@ class AuthInterceptorMockMvcTest {
         mockMvc.perform(get("/login"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("用户登录")));
+    }
+
+    /**
+     * 登录成功后 Session ID 必须变更（防会话固定攻击），
+     * 且用户属性与 CSRF token 迁移到新会话不断链。
+     */
+    @Test
+    void loginRegeneratesSessionId() throws Exception {
+        // 第一步：访问登录页建立会话并拿到 CSRF token
+        MvcResult pageResult = mockMvc.perform(get("/login"))
+                .andExpect(status().isOk())
+                .andReturn();
+        HttpSession preSession = pageResult.getRequest().getSession(false);
+        assertNotNull(preSession, "登录页应创建会话");
+        String oldSessionId = preSession.getId();
+        String csrfToken = (String) preSession.getAttribute(CsrfInterceptor.SESSION_CSRF);
+        assertNotNull(csrfToken, "登录页应下发 CSRF token");
+
+        // 第二步：携带 token 提交登录（演示账号 zhang/password）
+        MvcResult loginResult = mockMvc.perform(post("/login")
+                        .session((MockHttpSession) preSession)
+                        .param(CsrfInterceptor.PARAM_CSRF, csrfToken)
+                        .param("userId", "zhang")
+                        .param("password", "password"))
+                .andExpect(status().isFound())
+                .andReturn();
+        HttpSession postSession = loginResult.getRequest().getSession(false);
+        assertNotNull(postSession, "登录后应存在会话");
+        // 会话固定防护：Session ID 已更换
+        assertNotEquals(oldSessionId, postSession.getId(), "登录成功后 Session ID 必须变更");
+        // 用户属性已写入新会话
+        assertNotNull(postSession.getAttribute(AuthController.SESSION_USER));
+        // CSRF token 已轮换且随会话保留
+        String newToken = (String) postSession.getAttribute(CsrfInterceptor.SESSION_CSRF);
+        assertNotNull(newToken);
+        assertNotEquals(csrfToken, newToken, "登录后 CSRF token 应轮换");
     }
 
     private HttpSession sessionWithRole(String role, String refId) {

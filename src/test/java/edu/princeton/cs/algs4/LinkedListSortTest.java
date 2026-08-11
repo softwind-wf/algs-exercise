@@ -1,7 +1,7 @@
 package edu.princeton.cs.algs4;
 
-import exercise2.exercise2_2.LinkedListSort;
-import exercise2.exercise2_2.ListNode;
+import com.ds.algs4.exercises.ch02.s02.LinkedListSort;
+import com.ds.algs4.exercises.ch02.s02.ListNode;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 

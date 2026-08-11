@@ -1,6 +1,6 @@
 package edu.princeton.cs.algs4;
 
-import exercise1.exercise1_3.ThreeStackQueue;
+import com.ds.algs4.exercises.ch01.s03.ThreeStackQueue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;

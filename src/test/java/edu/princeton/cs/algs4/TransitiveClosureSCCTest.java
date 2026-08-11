@@ -2,8 +2,8 @@ package edu.princeton.cs.algs4;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
-import test4.Digraph;
-import test4.TransitiveClosureSCC;
+import com.ds.algs4.impl.ch04.Digraph;
+import com.ds.algs4.impl.ch04.TransitiveClosureSCC;
 
 import static org.junit.jupiter.api.Assertions.*;
 

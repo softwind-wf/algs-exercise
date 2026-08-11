@@ -1,6 +1,6 @@
 package edu.princeton.cs.algs4;
 
-import exercise1.exercise1_4.DequeWithStackAndSteque;
+import com.ds.algs4.exercises.ch01.s04.DequeWithStackAndSteque;
 import org.junit.jupiter.api.Test;
 import java.util.NoSuchElementException;
 import static org.junit.jupiter.api.Assertions.*;

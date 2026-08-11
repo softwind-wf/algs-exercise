@@ -1,6 +1,6 @@
 package edu.princeton.cs.algs4;
 
-import exercise2.exercise2_4.IndexMinPQ;
+import com.ds.algs4.exercises.ch02.s04.IndexMinPQ;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 

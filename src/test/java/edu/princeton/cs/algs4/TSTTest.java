@@ -3,8 +3,8 @@ package edu.princeton.cs.algs4;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.BeforeEach;
-import test5.StringST;
-import test5.TST;
+import com.ds.algs4.impl.ch05.StringST;
+import com.ds.algs4.impl.ch05.TST;
 
 import java.util.ArrayList;
 import java.util.List;

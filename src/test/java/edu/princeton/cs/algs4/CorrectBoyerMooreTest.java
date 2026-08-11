@@ -2,7 +2,7 @@ package edu.princeton.cs.algs4;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
-import test5.CorrectBoyerMoore;
+import com.ds.algs4.impl.ch05.CorrectBoyerMoore;
 
 import java.util.List;
 

@@ -13,7 +13,7 @@ import java.util.Queue;
  *
  * 插入采用自顶向下分裂策略：从根向下寻找插入位置时，遇到 4-节点就先分裂，把中间键上浮到父节点。
  * 由于下行过程中父节点必不为 4-节点，分裂后总有空位承接；到达的叶子也必定不满，可直接插入，
- * 整个过程无需回溯。这与 test3.TwoThreeTree（递归、自底向上合并）形成对照。
+ * 整个过程无需回溯。这与 com.ds.algs4.impl.ch03.TwoThreeTree（递归、自底向上合并）形成对照。
  *
  * 与红黑树的关系：2-3-4 树正是红黑树（left-leaning red-black BST）编码的底层多路树，
  * 理解本实现有助于理解 edu.princeton.cs.algs4.RedBlackBST 的旋转与颜色翻转。

@@ -1,6 +1,6 @@
 package edu.princeton.cs.algs4;
 
-import com.ds.stackAndQueue.MyLinkedDeque;
+import com.ds.stackqueue.MyLinkedDeque;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 

@@ -1,5 +1,14 @@
 server:
   port: 8080
+  servlet:
+    session:
+      # 会话 30 分钟无操作过期，降低会话被长期盗用的风险
+      timeout: 30m
+      cookie:
+        # JSESSIONID 禁止 JS 读取，防 XSS 窃取会话
+        http-only: true
+        # Lax：跨站顶级导航可携带、跨站子请求不携带，兼顾可用性与 CSRF 防护
+        same-site: lax
 
 spring:
   application:
