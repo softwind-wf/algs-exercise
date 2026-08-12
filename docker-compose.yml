@@ -1,0 +1,75 @@
+# ============================================================
+# 一键部署：docker compose up -d
+#   app        —— 大学网站（Flyway 启动时自动迁移 university 库）
+#   mysql      —— MySQL 8，首次启动自动建 university 库（utf8mb4）
+#   prometheus —— 抓取 /actuator/prometheus 指标（监控面板：http://localhost:9090）
+#   alertmanager —— 告警路由（接收端按需配置，见 docker/alertmanager.yml）
+#
+# 只想起 app + mysql：docker compose up -d app mysql
+# 查看健康：curl http://localhost:8080/actuator/health
+# ============================================================
+services:
+  app:
+    build: .
+    image: university-web:latest
+    container_name: university-web
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      # 容器网络内通过服务名访问 MySQL；连接串覆盖 application.yml 默认值
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/university?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      DB_USER: root
+      DB_PASSWORD: root
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0
+    container_name: university-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: university
+      TZ: Asia/Shanghai
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -proot --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  # ---------- 可选监控告警栈（不想要可只起 app mysql） ----------
+  prometheus:
+    image: prom/prometheus:v2.45.6
+    container_name: university-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: university-alertmanager
+    volumes:
+      - ./docker/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
+  prometheus-data:

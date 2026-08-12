@@ -41,3 +41,26 @@ mybatis:
   type-aliases-package: com.ds.university.entity
   configuration:
     map-underscore-to-camel-case: true
+
+# ============================================================
+# 运维：Actuator 健康检查与监控指标
+#   /actuator/health            —— 存活探针（含 db 检查），供 Docker/K8s/负载均衡探活
+#   /actuator/health/liveness   —— 存活状态（K8s livenessProbe）
+#   /actuator/health/readiness  —— 就绪状态（K8s readinessProbe）
+#   /actuator/prometheus        —— Prometheus 格式指标，供监控告警栈抓取
+# 仅暴露以上端点，其余（env/beans 等敏感端点）默认不对外；
+# 生产环境建议用防火墙/内网隔离 8080 的 /actuator 路径。
+# ============================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    db:
+      enabled: true

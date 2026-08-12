@@ -67,6 +67,18 @@
 			<artifactId>flyway-mysql</artifactId>
 		</dependency>
 
+		<!-- 运维：Actuator 健康检查/探针/运行指标（/actuator/health 等，版本由 spring-boot 父 POM 统一管理） -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+
+		<!-- 运维：Prometheus 指标格式导出（/actuator/prometheus），供监控告警栈抓取 -->
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-prometheus</artifactId>
+		</dependency>
+
 		<!-- 开发期热重载：类路径变更自动重启，模板/静态资源即时生效（打包时自动排除） -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

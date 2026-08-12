@@ -1,0 +1,53 @@
+# 告警规则：由 Prometheus 按 evaluation_interval 求值，触发后推给 Alertmanager
+groups:
+  - name: university-web-alerts
+    rules:
+      # 应用下线：抓取失败持续 1 分钟（含进程挂了/健康检查不过）
+      - alert: UniversityAppDown
+        expr: up{job="university-web"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "大学网站应用下线"
+          description: "university-web 实例 {{ $labels.instance }} 已 1 分钟无法抓取指标，立即检查容器/进程与健康端点 /actuator/health"
+
+      # 5xx 错误率超过 5% 持续 5 分钟
+      - alert: UniversityHighErrorRate
+        expr: |
+          (
+            sum(rate(http_server_requests_seconds_count{job="university-web",status=~"5.."}[5m]))
+            /
+            sum(rate(http_server_requests_seconds_count{job="university-web"}[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "大学网站 5xx 错误率过高"
+          description: "近 5 分钟 5xx 占比超过 5%，请查看应用日志排查异常"
+
+      # 请求延迟：95 分位超过 2 秒持续 5 分钟
+      - alert: UniversityHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_server_requests_seconds_bucket{job="university-web"}[5m])) by (le)
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "大学网站响应变慢"
+          description: "95 分位延迟超过 2 秒，检查慢 SQL / 连接池 / GC"
+
+      # JVM 老年代内存接近上限，可能即将频繁 Full GC 或 OOM
+      - alert: UniversityJvmMemoryPressure
+        expr: |
+          jvm_memory_used_bytes{job="university-web",area="heap"}
+          / jvm_memory_max_bytes{job="university-web",area="heap"} > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "JVM 堆内存使用率超过 90%"
+          description: "实例 {{ $labels.instance }} 堆内存持续高位，考虑扩容 -Xmx 或排查内存泄漏"
