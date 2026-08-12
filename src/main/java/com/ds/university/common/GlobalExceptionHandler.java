@@ -7,6 +7,9 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import javax.servlet.http.HttpServletResponse;
+import javax.validation.ConstraintViolation;
+import javax.validation.ConstraintViolationException;
+import java.util.stream.Collectors;
 
 /**
  * 全局异常处理：页面请求统一跳转到 error 视图。
@@ -21,6 +24,21 @@ public class GlobalExceptionHandler {
     public String handleBusiness(BusinessException e, Model model) {
         model.addAttribute("errorCode", e.getCode());
         model.addAttribute("message", e.getMessage());
+        return "error";
+    }
+
+    /**
+     * 兜底：正常路径下 service 层的约束违例已被 ValidationExceptionAspect 转译为 BusinessException，
+     * 此处仅拦截绕过切面的漏网场景（如未来新增非 service 包的 @Validated 调用）。
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public String handleConstraintViolation(ConstraintViolationException e, Model model) {
+        String message = e.getConstraintViolations().stream()
+                .map(ConstraintViolation::getMessage)
+                .distinct()
+                .collect(Collectors.joining("；"));
+        model.addAttribute("errorCode", ErrorCode.PARAM_ERROR.getCode());
+        model.addAttribute("message", message);
         return "error";
     }
 

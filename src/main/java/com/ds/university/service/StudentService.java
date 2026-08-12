@@ -21,7 +21,10 @@ import com.ds.university.vo.TranscriptVO;
 import com.ds.university.vo.WeeklyScheduleVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,6 +38,7 @@ import java.util.stream.Collectors;
 
 /** 学生中心业务：选课/退课、成绩单、导师 */
 @Service
+@Validated
 public class StudentService {
 
     private static final List<String> SEMESTERS = Arrays.asList("Fall", "Spring", "Summer");
@@ -205,8 +209,12 @@ public class StudentService {
 
     /** 选课（事务内锁定开课班行，防并发超选） */
     @Transactional
-    public void enroll(String studentId, String courseId, String secId, String semester, Integer year) {
-        validateEnrollParams(courseId, secId, semester, year);
+    public void enroll(String studentId,
+                       @NotBlank(message = "选课参数不完整") String courseId,
+                       @NotBlank(message = "选课参数不完整") String secId,
+                       @NotBlank(message = "选课参数不完整") String semester,
+                       @NotNull(message = "选课参数不完整") Integer year) {
+        validateTerm(semester, year);
 
         // 1. 同一学期同一课程只能选一个班（含完全重复选课）
         if (takesMapper.countCourseEnrollment(studentId, courseId, semester, year) > 0) {
@@ -244,8 +252,12 @@ public class StudentService {
 
     /** 退课（退课后重算已修总学分） */
     @Transactional
-    public void drop(String studentId, String courseId, String secId, String semester, Integer year) {
-        validateEnrollParams(courseId, secId, semester, year);
+    public void drop(String studentId,
+                     @NotBlank(message = "选课参数不完整") String courseId,
+                     @NotBlank(message = "选课参数不完整") String secId,
+                     @NotBlank(message = "选课参数不完整") String semester,
+                     @NotNull(message = "选课参数不完整") Integer year) {
+        validateTerm(semester, year);
 
         if (takesMapper.exists(studentId, courseId, secId, semester, year) == 0) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "未选择该开课班");
@@ -330,14 +342,6 @@ public class StudentService {
             throw new BusinessException(ErrorCode.NOT_FOUND);
         }
         return student;
-    }
-
-    private void validateEnrollParams(String courseId, String secId, String semester, Integer year) {
-        if (courseId == null || courseId.isEmpty() || secId == null || secId.isEmpty()
-                || semester == null || semester.isEmpty() || year == null) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "选课参数不完整");
-        }
-        validateTerm(semester, year);
     }
 
     private void validateTerm(String semester, Integer year) {

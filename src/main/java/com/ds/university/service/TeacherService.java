@@ -13,12 +13,16 @@ import com.ds.university.vo.SectionVO;
 import com.ds.university.vo.TeacherDashboardVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import java.util.Arrays;
 import java.util.List;
 
 /** 教师中心业务：授课列表、班级名单、成绩录入 */
 @Service
+@Validated
 public class TeacherService {
 
     /** 合法成绩取值（空串表示未出成绩/清除成绩） */
@@ -58,8 +62,11 @@ public class TeacherService {
     }
 
     /** 班级名单：校验教师确实讲授该开课班 */
-    public RosterVO roster(String instructorId, String courseId, String secId,
-                           String semester, Integer year) {
+    public RosterVO roster(String instructorId,
+                           @NotBlank(message = "开课班参数不完整") String courseId,
+                           @NotBlank(message = "开课班参数不完整") String secId,
+                           @NotBlank(message = "开课班参数不完整") String semester,
+                           @NotNull(message = "开课班参数不完整") Integer year) {
         requireTeaching(instructorId, courseId, secId, semester, year);
         RosterVO vo = new RosterVO();
         vo.setSection(findSection(instructorId, courseId, secId, semester, year));
@@ -69,12 +76,14 @@ public class TeacherService {
 
     /** 录入/修改成绩（grade 为空串表示清除成绩；成绩变化后重算学生已修学分） */
     @Transactional
-    public void updateGrade(String instructorId, String studentId, String courseId,
-                            String secId, String semester, Integer year, String grade) {
+    public void updateGrade(String instructorId,
+                            @NotBlank(message = "学生编号不能为空") String studentId,
+                            @NotBlank(message = "开课班参数不完整") String courseId,
+                            @NotBlank(message = "开课班参数不完整") String secId,
+                            @NotBlank(message = "开课班参数不完整") String semester,
+                            @NotNull(message = "开课班参数不完整") Integer year,
+                            String grade) {
         requireTeaching(instructorId, courseId, secId, semester, year);
-        if (studentId == null || studentId.isEmpty()) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "学生编号不能为空");
-        }
         String normalized = grade == null ? null : grade.trim();
         if (normalized != null && normalized.isEmpty()) {
             normalized = null;
@@ -97,12 +106,9 @@ public class TeacherService {
         return grade == null ? "无" : grade;
     }
 
+    /** 校验该开课班确实是当前教师的授课（格式类约束已由方法参数注解接管） */
     private void requireTeaching(String instructorId, String courseId, String secId,
                                  String semester, Integer year) {
-        if (courseId == null || courseId.isEmpty() || secId == null || secId.isEmpty()
-                || semester == null || semester.isEmpty() || year == null) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "开课班参数不完整");
-        }
         if (teacherMapper.countTeaches(instructorId, courseId, secId, semester, year) == 0) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "该开课班不是当前教师的授课");
         }

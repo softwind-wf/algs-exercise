@@ -12,7 +12,11 @@ import com.ds.university.vo.SysUserVO;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Pattern;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -24,6 +28,7 @@ import java.util.stream.Collectors;
 
 /** 账号管理：为学生/教师开户、重置密码、启用禁用。 */
 @Service
+@Validated
 public class AccountService {
 
     /** 系统默认初始密码 */
@@ -121,12 +126,10 @@ public class AccountService {
     }
 
     /** 创建账号 */
-    public void createAccount(String userId, String userType, String refId, String rawPassword) {
-        requireText(userId, "登录账号不能为空");
-        requireText(refId, "请选择要开户的学生或教师");
-        if (!"STUDENT".equals(userType) && !"INSTRUCTOR".equals(userType)) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "账号类型不正确");
-        }
+    public void createAccount(@NotBlank(message = "登录账号不能为空") String userId,
+                              @NotNull(message = "账号类型不正确") @Pattern(regexp = "STUDENT|INSTRUCTOR", message = "账号类型不正确") String userType,
+                              @NotBlank(message = "请选择要开户的学生或教师") String refId,
+                              String rawPassword) {
         String trimmedUserId = userId.trim();
         if (sysUserMapper.selectByUserId(trimmedUserId) != null) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "该登录账号已存在");
@@ -226,11 +229,5 @@ public class AccountService {
             throw new BusinessException(ErrorCode.PASSWORD_INVALID);
         }
         return pwd;
-    }
-
-    private void requireText(String value, String message) {
-        if (value == null || value.trim().isEmpty()) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, message);
-        }
     }
 }

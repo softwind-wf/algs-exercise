@@ -67,6 +67,18 @@
 			<artifactId>flyway-mysql</artifactId>
 		</dependency>
 
+		<!-- 参数校验：Bean Validation（Hibernate Validator），service 方法参数统一声明式拦截 -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+
+		<!-- AOP：校验异常转译切面（ValidationExceptionAspect）依赖 -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-aop</artifactId>
+		</dependency>
+
 		<!-- 运维：Actuator 健康检查/探针/运行指标（/actuator/health 等，版本由 spring-boot 父 POM 统一管理） -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

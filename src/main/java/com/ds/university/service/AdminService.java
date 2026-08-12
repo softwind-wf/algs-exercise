@@ -27,7 +27,14 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 
+import javax.validation.Valid;
+import javax.validation.constraints.DecimalMin;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -42,8 +49,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/** 教务管理业务：基础数据维护、排课、先修管理 */
+/** 教务管理业务：基础数据维护、排课、先修管理。
+ *  参数格式类校验由 Bean Validation 声明式拦截（约束违例统一转译为 BusinessException）。 */
 @Service
+@Validated
 public class AdminService {
 
     private static final List<String> SEMESTERS = Arrays.asList("Fall", "Spring", "Summer");
@@ -97,11 +106,9 @@ public class AdminService {
         return departmentMapper.selectAllSimple();
     }
 
-    public void createDepartment(String deptName, String building, BigDecimal budget) {
-        requireText(deptName, "系名不能为空");
-        if (budget != null && budget.signum() < 0) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "预算不能为负");
-        }
+    public void createDepartment(@NotBlank(message = "系名不能为空") String deptName,
+                                 String building,
+                                 @DecimalMin(value = "0", message = "预算不能为负") BigDecimal budget) {
         try {
             departmentMapper.insert(new Department(deptName, building, budget));
         } catch (DuplicateKeyException e) {
@@ -113,11 +120,9 @@ public class AdminService {
                 "新建院系：" + deptName + "，楼字 " + building + "，预算 " + budget);
     }
 
-    public void updateDepartment(String deptName, String building, BigDecimal budget) {
-        requireText(deptName, "系名不能为空");
-        if (budget != null && budget.signum() < 0) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "预算不能为负");
-        }
+    public void updateDepartment(@NotBlank(message = "系名不能为空") String deptName,
+                                 String building,
+                                 @DecimalMin(value = "0", message = "预算不能为负") BigDecimal budget) {
         departmentMapper.update(new Department(deptName, building, budget));
         auditService.record(AuditService.ACTION_UPDATE, AuditService.TARGET_DEPARTMENT, deptName,
                 "更新院系：" + deptName + "，楼字 " + building + "，预算 " + budget);
@@ -139,16 +144,10 @@ public class AdminService {
         return courseMapper.selectAll(null, null);
     }
 
-    public void createCourse(String courseId, String title, String deptName, BigDecimal credits) {
-        requireText(courseId, "课程号不能为空");
-        requireText(title, "课程名不能为空");
-        requireText(deptName, "所属院系不能为空");
-        if (courseId.length() > 8) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "课程号不能超过 8 个字符");
-        }
-        if (credits == null || credits.signum() <= 0) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "学分必须大于 0");
-        }
+    public void createCourse(@NotBlank(message = "课程号不能为空") @Size(max = 8, message = "课程号不能超过 8 个字符") String courseId,
+                             @NotBlank(message = "课程名不能为空") String title,
+                             @NotBlank(message = "所属院系不能为空") String deptName,
+                             @NotNull(message = "学分必须大于 0") @DecimalMin(value = "0", inclusive = false, message = "学分必须大于 0") BigDecimal credits) {
         if (departmentMapper.selectById(deptName) == null) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "所属院系不存在");
         }
@@ -163,13 +162,10 @@ public class AdminService {
                 "新建课程：" + courseId + " " + title + "（" + deptName + "，" + credits + " 学分）");
     }
 
-    public void updateCourse(String courseId, String title, String deptName, BigDecimal credits) {
-        requireText(courseId, "课程号不能为空");
-        requireText(title, "课程名不能为空");
-        requireText(deptName, "所属院系不能为空");
-        if (credits == null || credits.signum() <= 0) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "学分必须大于 0");
-        }
+    public void updateCourse(@NotBlank(message = "课程号不能为空") @Size(max = 8, message = "课程号不能超过 8 个字符") String courseId,
+                             @NotBlank(message = "课程名不能为空") String title,
+                             @NotBlank(message = "所属院系不能为空") String deptName,
+                             @NotNull(message = "学分必须大于 0") @DecimalMin(value = "0", inclusive = false, message = "学分必须大于 0") BigDecimal credits) {
         if (departmentMapper.selectById(deptName) == null) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "所属院系不存在");
         }
@@ -195,16 +191,10 @@ public class AdminService {
     }
 
 @Transactional
-    public void createInstructor(String id, String name, String deptName, BigDecimal salary) {
-        requireText(id, "工号不能为空");
-        requireText(name, "姓名不能为空");
-        requireText(deptName, "所属院系不能为空");
-        if (id.length() > 5) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "工号不能超过 5 个字符");
-        }
-        if (salary != null && salary.signum() < 0) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "工资不能为负");
-        }
+    public void createInstructor(@NotBlank(message = "工号不能为空") @Size(max = 5, message = "工号不能超过 5 个字符") String id,
+                                 @NotBlank(message = "姓名不能为空") String name,
+                                 @NotBlank(message = "所属院系不能为空") String deptName,
+                                 @DecimalMin(value = "0", message = "工资不能为负") BigDecimal salary) {
         if (departmentMapper.selectById(deptName) == null) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "所属院系不存在");
         }
@@ -220,13 +210,10 @@ public class AdminService {
                 "新建教师：" + id + " " + name + "（" + deptName + "）");
     }
 
-    public void updateInstructor(String id, String name, String deptName, BigDecimal salary) {
-        requireText(id, "工号不能为空");
-        requireText(name, "姓名不能为空");
-        requireText(deptName, "所属院系不能为空");
-        if (salary != null && salary.signum() < 0) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "工资不能为负");
-        }
+    public void updateInstructor(@NotBlank(message = "工号不能为空") @Size(max = 5, message = "工号不能超过 5 个字符") String id,
+                                 @NotBlank(message = "姓名不能为空") String name,
+                                 @NotBlank(message = "所属院系不能为空") String deptName,
+                                 @DecimalMin(value = "0", message = "工资不能为负") BigDecimal salary) {
         if (departmentMapper.selectById(deptName) == null) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "所属院系不存在");
         }
@@ -254,16 +241,10 @@ public class AdminService {
     }
 
 @Transactional
-    public void createStudent(String id, String name, String deptName, Integer totCred) {
-        requireText(id, "学号不能为空");
-        requireText(name, "姓名不能为空");
-        requireText(deptName, "所属院系不能为空");
-        if (id.length() > 5) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "学号不能超过 5 个字符");
-        }
-        if (totCred != null && totCred < 0) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "已修学分不能为负");
-        }
+    public void createStudent(@NotBlank(message = "学号不能为空") @Size(max = 5, message = "学号不能超过 5 个字符") String id,
+                              @NotBlank(message = "姓名不能为空") String name,
+                              @NotBlank(message = "所属院系不能为空") String deptName,
+                              @Min(value = 0, message = "已修学分不能为负") Integer totCred) {
         if (departmentMapper.selectById(deptName) == null) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "所属院系不存在");
         }
@@ -279,13 +260,10 @@ public class AdminService {
                 "新建学生：" + id + " " + name + "（" + deptName + "）");
     }
 
-    public void updateStudent(String id, String name, String deptName, Integer totCred) {
-        requireText(id, "学号不能为空");
-        requireText(name, "姓名不能为空");
-        requireText(deptName, "所属院系不能为空");
-        if (totCred != null && totCred < 0) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "已修学分不能为负");
-        }
+    public void updateStudent(@NotBlank(message = "学号不能为空") @Size(max = 5, message = "学号不能超过 5 个字符") String id,
+                              @NotBlank(message = "姓名不能为空") String name,
+                              @NotBlank(message = "所属院系不能为空") String deptName,
+                              @Min(value = 0, message = "已修学分不能为负") Integer totCred) {
         if (departmentMapper.selectById(deptName) == null) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "所属院系不存在");
         }
@@ -312,12 +290,9 @@ public class AdminService {
         return classroomMapper.selectAll();
     }
 
-    public void createClassroom(String building, String roomNumber, Integer capacity) {
-        requireText(building, "教学楼不能为空");
-        requireText(roomNumber, "教室号不能为空");
-        if (capacity == null || capacity <= 0) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "容量必须大于 0");
-        }
+    public void createClassroom(@NotBlank(message = "教学楼不能为空") String building,
+                                @NotBlank(message = "教室号不能为空") String roomNumber,
+                                @NotNull(message = "容量必须大于 0") @Min(value = 1, message = "容量必须大于 0") Integer capacity) {
         try {
             classroomMapper.insert(new Classroom(building, roomNumber, capacity));
         } catch (DuplicateKeyException e) {
@@ -330,12 +305,9 @@ public class AdminService {
                 "新建教室：" + building + " " + roomNumber + "，容量 " + capacity);
     }
 
-    public void updateClassroom(String building, String roomNumber, Integer capacity) {
-        requireText(building, "教学楼不能为空");
-        requireText(roomNumber, "教室号不能为空");
-        if (capacity == null || capacity <= 0) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "容量必须大于 0");
-        }
+    public void updateClassroom(@NotBlank(message = "教学楼不能为空") String building,
+                                @NotBlank(message = "教室号不能为空") String roomNumber,
+                                @NotNull(message = "容量必须大于 0") @Min(value = 1, message = "容量必须大于 0") Integer capacity) {
         classroomMapper.update(new Classroom(building, roomNumber, capacity));
         auditService.record(AuditService.ACTION_UPDATE, AuditService.TARGET_CLASSROOM,
                 building + "/" + roomNumber,
@@ -398,7 +370,7 @@ public class AdminService {
         return options;
     }
 
-    public void createSection(Section section, String instructorId) {
+    public void createSection(@Valid Section section, String instructorId) {
         validateSection(section, instructorId);
         try {
             sectionMapper.insert(section);
@@ -412,7 +384,7 @@ public class AdminService {
                 "新建开课班：" + sectionDesc(section) + "，授课教师 " + orNone(instructorId));
     }
 
-    public void updateSection(Section section, String instructorId) {
+    public void updateSection(@Valid Section section, String instructorId) {
         validateSection(section, instructorId);
         sectionMapper.update(section);
         assignInstructor(section, instructorId);
@@ -465,19 +437,7 @@ public class AdminService {
     }
 
     /** 创建暂未排课的开课班（教室/时间段留空，等待拖拽排课） */
-    public void createUnassignedSection(Section section, String instructorId) {
-        if (section.getCourseId() == null || section.getCourseId().isEmpty()
-                || section.getSecId() == null || section.getSecId().isEmpty()
-                || section.getSemester() == null || section.getSemester().isEmpty()
-                || section.getYear() == null) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "开课班参数不完整");
-        }
-        if (!SEMESTERS.contains(section.getSemester())) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "学期仅支持 Fall / Spring / Summer");
-        }
-        if (section.getYear() < 2000 || section.getYear() > 2100) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "年份不合法");
-        }
+    public void createUnassignedSection(@Valid Section section, String instructorId) {
         if (courseMapper.selectById(section.getCourseId()) == null) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "课程不存在");
         }
@@ -497,7 +457,7 @@ public class AdminService {
     }
 
     /** 拖拽排课：把开课班放入指定教室+时间段（含冲突校验），未指定教师则保留原教师 */
-    public void assignSchedule(Section section, String instructorId) {
+    public void assignSchedule(@Valid Section section, String instructorId) {
         if (sectionMapper.selectById(section.getCourseId(), section.getSecId(),
                 section.getSemester(), section.getYear()) == null) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "开课班不存在");
@@ -633,19 +593,9 @@ public class AdminService {
         }
         return vo;
     }
+    /** 开课班业务校验：主键格式约束已由 Section 实体上的 Bean Validation 注解接管，
+     *  此处仅保留依赖数据库的业务校验（存在性/冲突/容量） */
     private void validateSection(Section section, String instructorId) {
-        if (section.getCourseId() == null || section.getCourseId().isEmpty()
-                || section.getSecId() == null || section.getSecId().isEmpty()
-                || section.getSemester() == null || section.getSemester().isEmpty()
-                || section.getYear() == null) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "开课班参数不完整");
-        }
-        if (!SEMESTERS.contains(section.getSemester())) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "学期仅支持 Fall / Spring / Summer");
-        }
-        if (section.getYear() < 2000 || section.getYear() > 2100) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "年份不合法");
-        }
         if (courseMapper.selectById(section.getCourseId()) == null) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "课程不存在");
         }
@@ -709,9 +659,8 @@ public class AdminService {
         return prereqMapper.selectAll();
     }
 
-    public void addPrereq(String courseId, String prereqId) {
-        requireText(courseId, "课程不能为空");
-        requireText(prereqId, "先修课程不能为空");
+    public void addPrereq(@NotBlank(message = "课程不能为空") String courseId,
+                          @NotBlank(message = "先修课程不能为空") String prereqId) {
         if (courseId.equals(prereqId)) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "课程不能作为自己的先修");
         }
@@ -783,13 +732,6 @@ public class AdminService {
     public List<String> buildingNames() {
         return classrooms().stream().map(Classroom::getBuilding)
                 .distinct().sorted().collect(Collectors.toList());
-    }
-
-
-    private void requireText(String value, String message) {
-        if (value == null || value.isEmpty()) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, message);
-        }
     }
 
     /** 开课班审计标识：组合键 */

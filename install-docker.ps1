@@ -1,29 +1,39 @@
-# Docker Desktop 一键安装脚本（必须以管理员身份运行）
-# 步骤：启用 WSL2 → winget 安装 Docker Desktop
+# Docker Desktop one-click installer (MUST run as Administrator)
+# Steps: enable WSL2 (no distro) -> install Docker Desktop from LOCAL package (env DOCKER_PKG)
+# NOTE: keep this file ASCII-only, PowerShell 5.1 mis-reads UTF-8 without BOM.
+# Usage: $env:DOCKER_PKG='D:\path\Docker Desktop Installer.exe' then run this script.
 $ErrorActionPreference = 'Continue'
 $log = 'D:\downloads\algs4-master\algs4-master\docker-install.log'
-"=== $(Get-Date) 开始安装 ===" | Out-File $log -Encoding utf8
+"=== $(Get-Date) start ===" | Out-File $log -Encoding utf8
 
-# 1. 检查管理员权限
+# 1. admin check
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 "IsAdmin: $isAdmin" | Out-File $log -Append -Encoding utf8
 if (-not $isAdmin) {
-    "ERROR: 请右键本脚本选择【使用管理员身份运行】" | Out-File $log -Append -Encoding utf8
-    Write-Host "ERROR: 需要管理员权限，请右键以管理员身份运行" -ForegroundColor Red
+    "ERROR: need admin, right-click PowerShell and Run as Administrator" | Out-File $log -Append -Encoding utf8
+    Write-Host "ERROR: need admin privileges. Run this script in an elevated PowerShell." -ForegroundColor Red
     exit 1
 }
 
-# 2. 安装 WSL2（含 VirtualMachinePlatform 与 WSL 内核，--no-launch 避免立即打开发行版）
-"--- wsl --install ---" | Out-File $log -Append -Encoding utf8
-wsl --install --no-launch *>&1 | Out-File $log -Append -Encoding utf8
+# 2. install WSL2 only (features + kernel). No Ubuntu distro: Docker Desktop ships its own.
+"--- wsl --install --no-distribution ---" | Out-File $log -Append -Encoding utf8
+wsl --install --no-distribution *>&1 | Out-File $log -Append -Encoding utf8
 "wsl install exit code: $LASTEXITCODE" | Out-File $log -Append -Encoding utf8
 
-# 3. winget 安装 Docker Desktop（自动接受协议）
-"--- winget install Docker.DockerDesktop ---" | Out-File $log -Append -Encoding utf8
-winget install --id Docker.DockerDesktop -e --accept-source-agreements --accept-package-agreements --disable-interactivity *>&1 | Out-File $log -Append -Encoding utf8
-"winget exit code: $LASTEXITCODE" | Out-File $log -Append -Encoding utf8
+# 3. install Docker Desktop from user's local installer package
+$pkg = $env:DOCKER_PKG
+"--- install Docker Desktop from local package ---" | Out-File $log -Append -Encoding utf8
+if ($pkg -and (Test-Path $pkg)) {
+    "Using package: $pkg" | Out-File $log -Append -Encoding utf8
+    $p = Start-Process $pkg -ArgumentList 'install','--accept-license','--quiet' -Wait -PassThru
+    "installer exit code: $($p.ExitCode)" | Out-File $log -Append -Encoding utf8
+} else {
+    "DOCKER_PKG not set or not found, fallback to winget" | Out-File $log -Append -Encoding utf8
+    winget install --id Docker.DockerDesktop -e --accept-source-agreements --accept-package-agreements --disable-interactivity *>&1 | Out-File $log -Append -Encoding utf8
+    "winget exit code: $LASTEXITCODE" | Out-File $log -Append -Encoding utf8
+}
 
-# 4. 结果检查
+# 4. result check
 "Docker Desktop exe exists: $(Test-Path 'C:\Program Files\Docker\Docker\Docker Desktop.exe')" | Out-File $log -Append -Encoding utf8
-"=== $(Get-Date) 结束 ===" | Out-File $log -Append -Encoding utf8
-Write-Host "安装流程结束，日志见 docker-install.log。若 WSL 是新启用，需要重启电脑后才能启动 Docker Desktop。" -ForegroundColor Green
+"=== $(Get-Date) end ===" | Out-File $log -Append -Encoding utf8
+Write-Host "DONE. Log: docker-install.log. If WSL was newly enabled, REBOOT first, then start Docker Desktop." -ForegroundColor Green
