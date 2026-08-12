@@ -1,33 +1,31 @@
 # ============================================================
-# University Website 镜像构建（多阶段）
-# 阶段 1：Maven + JDK 8 构建可执行 jar（跳过测试，CI 已保证测试通过）
-# 阶段 2：JRE 8 运行时镜像，体积小、攻击面小
-#
-# 构建：docker build -t university-web .
-# 运行（连外部 MySQL）：
-#   docker run -p 8080:8080 \
-#     -e SPRING_DATASOURCE_URL='jdbc:mysql://host:3306/university?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true' \
-#     -e DB_USER=root -e DB_PASSWORD=root university-web
-# 推荐直接用根目录 docker-compose.yml 一键起 app + MySQL + 监控栈。
+# 大学网站（Spring Boot 2.7 + JDK 8）多阶段构建
+# 阶段一：Maven 编译打包；阶段二：精简 JRE 运行
 # ============================================================
-
-FROM maven:3.8-openjdk-8 AS build
+FROM maven:3.8-eclipse-temurin-8 AS builder
 WORKDIR /build
-# 先拷 pom 利用 Docker 层缓存预热依赖
-COPY pom.xml .
-RUN mvn -q -B dependency:go-offline
-COPY src ./src
-RUN mvn -q -B clean package -DskipTests \
-    && find target -maxdepth 1 -name '*.jar' ! -name '*.original' -exec mv {} target/app.jar \;
 
+# 先只拷贝 pom 预取依赖，利用 Docker 层缓存加速后续构建
+COPY docker/maven-settings.xml /root/.m2/settings.xml
+COPY pom.xml .
+RUN mvn -B dependency:go-offline -q || true
+
+COPY src ./src
+RUN mvn -B package -DskipTests -q
+
+# ------------------------------------------------------------
 FROM eclipse-temurin:8-jre
 WORKDIR /app
-# curl 供容器 HEALTHCHECK 探活 /actuator/health
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
-COPY --from=build /build/target/app.jar app.jar
-# 时区与编码：业务时间均为 Asia/Shanghai
-ENV TZ=Asia/Shanghai JAVA_TOOL_OPTIONS="-Dfile.encoding=UTF-8"
+
+# 以非 root 用户运行，降低容器逃逸风险
+RUN useradd -r -u 1001 appuser
+
+ARG JAR_FILE=target/algs4-1.0.0.0.jar
+COPY --from=builder /build/${JAR_FILE} /app/app.jar
+
+USER appuser
 EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-  CMD curl -fs http://localhost:8080/actuator/health || exit 1
-ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# 生产 profile：模板缓存开启；数据库连接由 compose 环境变量注入
+ENV SPRING_PROFILES_ACTIVE=prod
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
