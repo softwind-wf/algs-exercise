@@ -28,22 +28,25 @@
         </div>
     </form>
 
-    <div class="table-responsive bg-white border rounded-3 shadow-sm">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-            <tr><th>课程号</th><th>课程名</th><th>所属系</th><th class="text-end">学分</th></tr>
-            </thead>
-            <tbody>
-            <tr th:each="c : ${courses.records}">
-                <td><a th:href="@{/courses/{id}(id=${c.courseId})}" th:text="${c.courseId}">课程号</a></td>
-                <td th:text="${c.title}">课程名</td>
-                <td><a th:href="@{/departments/{name}(name=${c.deptName})}" th:text="${c.deptName}">系</a></td>
-                <td class="text-end" th:text="${c.credits}">学分</td>
-            </tr>
-            </tbody>
-        </table>
+    <div class="row g-4">
+        <div class="col-md-6 col-lg-4" th:each="c : ${courses.records}">
+            <a class="list-card" th:href="@{/courses/{id}(id=${c.courseId})}">
+                <div class="list-card-media">
+                    <img th:src="@{/images/depts/{slug}.jpg(slug=${#strings.replace(#strings.replace(c.deptName, '.', ''), ' ', '')})}"
+                         th:alt="${c.deptName}" loading="lazy">
+                    <span class="list-card-badge" th:text="${c.courseId}">课程号</span>
+                </div>
+                <div class="list-card-body">
+                    <h2 class="list-card-title" th:text="${c.title}">课程名</h2>
+                    <div class="list-card-meta">
+                        <span th:text="${c.deptName}">系</span>
+                        <span th:text="${c.credits} + ' 学分'">学分</span>
+                    </div>
+                </div>
+            </a>
+        </div>
     </div>
-    <p class="hint mt-2" th:if="${#lists.isEmpty(courses.records)}">没有符合条件的课程。</p>
+    <p class="hint mt-3" th:if="${#lists.isEmpty(courses.records)}">没有符合条件的课程。</p>
 
     <div class="d-flex flex-wrap align-items-center justify-content-between mt-3 gap-2">
         <p class="hint mb-0" th:if="${courses.total > 0}">

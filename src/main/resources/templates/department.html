@@ -5,40 +5,47 @@
 <nav th:replace="fragments/layout :: nav"></nav>
 
 <main class="container">
-    <h1 class="page-title" th:text="${detail.department.deptName}">系名</h1>
-    <p class="text-secondary">教学楼：<span th:text="${detail.department.building}">楼</span> ·
-       预算：<span th:text="${detail.department.budget}">预算</span></p>
+    <div class="detail-hero mt-3">
+        <img th:src="@{/images/depts/{slug}.jpg(slug=${#strings.replace(#strings.replace(detail.department.deptName, '.', ''), ' ', '')})}"
+             th:alt="${detail.department.deptName}">
+        <div class="detail-hero-overlay">
+            <h1 th:text="${detail.department.deptName}">系名</h1>
+            <div class="detail-hero-meta">
+                <span th:text="'教学楼 ' + ${detail.department.building}">教学楼</span>
+                <span th:text="'预算 $' + ${#numbers.formatInteger(detail.department.budget, 0, 'COMMA')}">预算</span>
+                <span th:text="'教师 ' + ${detail.instructors.size()}">教师</span>
+                <span th:text="'课程 ' + ${detail.courses.size()}">课程</span>
+            </div>
+        </div>
+    </div>
 
     <h2 class="h5 mt-4">教师（<span th:text="${detail.instructors.size()}">0</span>）</h2>
-    <div class="table-responsive bg-white border rounded-3 shadow-sm">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-            <tr><th>编号</th><th>姓名</th><th class="text-end">工资</th></tr>
-            </thead>
-            <tbody>
-            <tr th:each="i : ${detail.instructors}">
-                <td><a th:href="@{/instructors/{id}(id=${i.id})}" th:text="${i.id}">编号</a></td>
-                <td th:text="${i.name}">姓名</td>
-                <td class="text-end" th:text="${i.salary}">工资</td>
-            </tr>
-            </tbody>
-        </table>
+    <div class="row g-4">
+        <div class="col-md-6 col-lg-3" th:each="i : ${detail.instructors}">
+            <a class="instructor-card" th:href="@{/instructors/{id}(id=${i.id})}">
+                <div class="instructor-avatar" th:text="${#strings.substring(i.name, 0, 1)}">首字母</div>
+                <h2 class="instructor-name" th:text="${i.name}">姓名</h2>
+                <p class="instructor-id" th:text="'编号 ' + ${i.id}">编号</p>
+                <div class="instructor-meta">
+                    <span th:text="'$' + ${#numbers.formatInteger(i.salary, 0, 'COMMA')}">工资</span>
+                </div>
+            </a>
+        </div>
     </div>
 
     <h2 class="h5 mt-4">课程（<span th:text="${detail.courses.size()}">0</span>）</h2>
-    <div class="table-responsive bg-white border rounded-3 shadow-sm">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-            <tr><th>课程号</th><th>课程名</th><th class="text-end">学分</th></tr>
-            </thead>
-            <tbody>
-            <tr th:each="c : ${detail.courses}">
-                <td><a th:href="@{/courses/{id}(id=${c.courseId})}" th:text="${c.courseId}">课程号</a></td>
-                <td th:text="${c.title}">课程名</td>
-                <td class="text-end" th:text="${c.credits}">学分</td>
-            </tr>
-            </tbody>
-        </table>
+    <div class="row g-4">
+        <div class="col-md-6 col-lg-4" th:each="c : ${detail.courses}">
+            <a class="list-card" th:href="@{/courses/{id}(id=${c.courseId})}">
+                <div class="list-card-body">
+                    <h2 class="list-card-title" th:text="${c.title}">课程名</h2>
+                    <div class="list-card-meta">
+                        <span th:text="${c.courseId}">课程号</span>
+                        <span th:text="${c.credits} + ' 学分'">学分</span>
+                    </div>
+                </div>
+            </a>
+        </div>
     </div>
 </main>
 

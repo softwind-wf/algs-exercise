@@ -14,7 +14,11 @@
     <!-- 顶部信息条 -->
     <div class="topbar">
         <div class="container d-flex justify-content-between align-items-center">
-            <span>欢迎访问大学教务信息网站</span>
+            <span class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="fw-semibold text-white">明德笃志 · 博学创新</span>
+                <span class="d-none d-md-inline opacity-50">|</span>
+                <span class="d-none d-md-inline">欢迎访问大学教务信息网站</span>
+            </span>
             <span class="d-flex gap-3">
                 <a th:href="@{/}">首页</a>
                 <a th:href="@{/login}" th:if="${session.loginUser == null}">登录</a>
@@ -67,6 +71,7 @@
 </nav>
 
 <footer th:fragment="footer" class="university-footer pt-5 mt-4">
+    <img th:src="@{/images/derrick.svg}" class="footer-derrick" alt="">
     <div class="container">
         <div class="row g-4">
             <div class="col-lg-4">
@@ -77,6 +82,7 @@
                     大学教务信息网站
                 </h5>
                 <p class="small">数据驱动的大学教学演示系统，基于 Spring Boot + Spring MVC + MyBatis 构建，覆盖教学管理全流程。</p>
+                <p class="small text-white-50 mb-0">明德笃志 · 博学创新　｜　为祖国加油 · 为民族争气</p>
             </div>
             <div class="col-6 col-lg-2">
                 <h6>快速导航</h6>

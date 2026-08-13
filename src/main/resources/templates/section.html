@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('开课班详情')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <!-- 横幅 -->
+    <div class="detail-hero mt-3">
+        <img th:src="@{/images/depts/{slug}.jpg(slug=${#strings.replace(#strings.replace(detail.section.deptName, '.', ''), ' ', '')})}"
+             th:alt="${detail.section.courseTitle}">
+        <div class="detail-hero-overlay">
+            <h1 th:text="${detail.section.courseTitle}">课程名</h1>
+            <div class="detail-hero-meta">
+                <span>
+                    <a th:href="@{/courses/{id}(id=${detail.section.courseId})}" class="text-white text-decoration-none"
+                       th:text="${detail.section.courseId}">课程号</a>
+                </span>
+                <span th:text="'开课号 ' + ${detail.section.secId}">开课号</span>
+                <span th:text="${detail.section.year} + ' ' + ${detail.section.semester}">学期</span>
+                <span th:text="${detail.section.deptName}">系</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 基本信息 -->
+    <div class="row g-4 mt-2">
+        <div class="col-lg-7">
+            <div class="card shadow-sm h-100">
+                <div class="card-header">上课信息</div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-3 text-secondary">教室</dt>
+                        <dd class="col-sm-9" th:text="${detail.section.building + ' ' + detail.section.roomNumber}">教室</dd>
+                        <dt class="col-sm-3 text-secondary">时间段标识</dt>
+                        <dd class="col-sm-9" th:text="${detail.section.timeSlotId != null ? detail.section.timeSlotId : '未排时间'}">时间段</dd>
+                        <dt class="col-sm-3 text-secondary">授课教师</dt>
+                        <dd class="col-sm-9" th:text="${detail.section.instructorNames != null ? detail.section.instructorNames : '待定'}">教师</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="card shadow-sm h-100">
+                <div class="card-header">选课情况</div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-secondary">已选</span>
+                        <span class="fw-bold text-primary" th:text="${detail.section.enrolled} + ' / ' + ${detail.section.capacity}">0 / 0</span>
+                    </div>
+                    <div class="enroll-bar">
+                        <div class="enroll-bar-track">
+                            <div class="enroll-bar-fill"
+                                 th:style="${'width:' + ((detail.section.capacity != null and detail.section.capacity > 0 and detail.section.enrolled != null) ? (detail.section.enrolled * 100 / detail.section.capacity) : 0) + '%'}"></div>
+                        </div>
+                    </div>
+                    <p class="hint mt-3 mb-0" th:text="'教室容量 ' + ${detail.section.capacity} + ' 人'">容量</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 时间槽明细 -->
+    <h2 class="h5 mt-4">时间槽明细</h2>
+    <div class="row g-3">
+        <div class="col-6 col-md-4 col-lg-3" th:each="t : ${detail.timeSlots}">
+            <div class="card text-center shadow-sm">
+                <div class="card-body py-3">
+                    <div class="fw-bold text-primary" th:switch="${t.day}">
+                        <span th:case="'M'">周一</span>
+                        <span th:case="'T'">周二</span>
+                        <span th:case="'W'">周三</span>
+                        <span th:case="'R'">周四</span>
+                        <span th:case="'F'">周五</span>
+                        <span th:case="'S'">周六</span>
+                        <span th:case="'U'">周日</span>
+                        <span th:case="*" th:text="${t.day}">周</span>
+                    </div>
+                    <div class="small text-secondary" th:text="${t.startTime} + ' - ' + ${t.endTime}">时间</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <p class="hint" th:if="${#lists.isEmpty(detail.timeSlots)}">暂无时间段。</p>
+
+    <!-- 选课学生名单 -->
+    <h2 class="h5 mt-4">选课学生（<span th:text="${detail.students.size()}">0</span>）</h2>
+    <div class="row g-4">
+        <div class="col-md-6 col-lg-3" th:each="s : ${detail.students}">
+            <div class="instructor-card">
+                <div class="instructor-avatar" th:text="${#strings.substring(s.name, 0, 1)}">首字母</div>
+                <h2 class="instructor-name" th:text="${s.name}">姓名</h2>
+                <p class="instructor-id" th:text="${s.id}">学号</p>
+                <div class="instructor-meta">
+                    <span th:text="${s.deptName}">系</span>
+                    <span th:text="${s.grade != null and s.grade != '' ? '成绩 ' + s.grade : '未出分'}">成绩</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <p class="hint" th:if="${#lists.isEmpty(detail.students)}">暂无选课学生。</p>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

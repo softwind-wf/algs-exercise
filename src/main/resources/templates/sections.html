@@ -38,31 +38,32 @@
         </div>
     </form>
 
-    <div class="table-responsive bg-white border rounded-3 shadow-sm">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-            <tr>
-                <th>课程</th><th>开课号</th><th>学期</th><th>年份</th><th>教室</th><th>时间段</th><th>教师</th><th class="text-end">选课/容量</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each="s : ${sections.records}">
-                <td>
-                    <a th:href="@{/courses/{id}(id=${s.courseId})}" th:text="${s.courseId}">课程号</a>
-                    <span class="dim" th:text="${s.courseTitle}">课程名</span>
-                </td>
-                <td th:text="${s.secId}">开课号</td>
-                <td th:text="${s.semester}">学期</td>
-                <td th:text="${s.year}">年份</td>
-                <td th:text="${s.building + ' ' + s.roomNumber}">教室</td>
-                <td th:text="${s.timeSlotId}">时间段</td>
-                <td th:text="${s.instructorNames}">教师</td>
-                <td class="text-end" th:text="${s.enrolled} + '/' + ${s.capacity}">选课/容量</td>
-            </tr>
-            </tbody>
-        </table>
+    <div class="row g-4">
+        <div class="col-md-6 col-lg-4" th:each="s : ${sections.records}">
+            <a class="list-card" th:href="@{/sections/{courseId}/{secId}/{semester}/{year}(courseId=${s.courseId}, secId=${s.secId}, semester=${s.semester}, year=${s.year})}">
+                <div class="list-card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+                        <h2 class="list-card-title mb-0" th:text="${s.courseTitle}">课程名</h2>
+                        <span class="section-term" th:text="${s.year} + ' ' + ${s.semester}">学期</span>
+                    </div>
+                    <p class="list-card-sub mb-2" th:text="${s.courseId} + ' · 开课号 ' + ${s.secId}">课程号</p>
+                    <div class="list-card-meta mb-3">
+                        <span th:text="'教室 ' + ${s.building + ' ' + s.roomNumber}">教室</span>
+                        <span th:text="'时段 ' + ${s.timeSlotId}">时段</span>
+                        <span th:text="'教师 ' + ${s.instructorNames}">教师</span>
+                    </div>
+                    <div class="enroll-bar">
+                        <div class="enroll-bar-track">
+                            <div class="enroll-bar-fill"
+                                 th:style="${'width:' + ((s.capacity != null and s.capacity > 0 and s.enrolled != null) ? (s.enrolled * 100 / s.capacity) : 0) + '%'}"></div>
+                        </div>
+                        <span class="enroll-text" th:text="${s.enrolled} + ' / ' + ${s.capacity} + ' 人'">选课</span>
+                    </div>
+                </div>
+            </a>
+        </div>
     </div>
-    <p class="hint mt-2" th:if="${#lists.isEmpty(sections.records)}">没有符合条件的开课班。</p>
+    <p class="hint mt-3" th:if="${#lists.isEmpty(sections.records)}">没有符合条件的开课班。</p>
 
     <div class="d-flex flex-wrap align-items-center justify-content-between mt-3 gap-2">
         <p class="hint mb-0" th:if="${sections.total > 0}">

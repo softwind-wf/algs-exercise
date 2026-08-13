@@ -1,6 +1,8 @@
 :root {
     --university-primary: #1f3a5f;
     --university-accent: #2b4d7a;
+    --university-petrol: #c8102e;
+    --university-petrol-rgb: 200, 16, 46;
 }
 
 body {
@@ -116,6 +118,7 @@ code {
 .admin-sidebar .nav-link:hover {
     background: #eef1f6;
     color: var(--university-primary);
+    box-shadow: inset 3px 0 0 rgba(200, 16, 46, 0.35);
 }
 
 .admin-sidebar .nav-link.active {
@@ -406,6 +409,7 @@ code {
     color: #cfe0f0;
     font-size: 0.85rem;
     padding: 0.3rem 0;
+    border-top: 3px solid var(--university-petrol);
 }
 
 .topbar a {
@@ -422,7 +426,9 @@ code {
 .home-hero {
     position: relative;
     overflow: hidden;
-    background: linear-gradient(135deg, #16283f 0%, var(--university-primary) 48%, var(--university-accent) 100%);
+    background:
+        linear-gradient(115deg, rgba(18, 35, 58, 0.93) 0%, rgba(31, 58, 95, 0.82) 48%, rgba(43, 77, 122, 0.66) 100%),
+        url("../images/hero-library.jpg") center/cover no-repeat;
     color: #fff;
     padding: 3.25rem 0;
 }
@@ -446,13 +452,15 @@ code {
 .hero-deco-2 {
     width: 260px;
     height: 260px;
-    background: #2fa8a0;
+    background: var(--university-petrol);
     bottom: -130px;
     left: -70px;
 }
 
 .hero-slogan {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
     background: rgba(255, 255, 255, 0.14);
     border: 1px solid rgba(255, 255, 255, 0.35);
     padding: 0.32rem 0.95rem;
@@ -494,6 +502,7 @@ code {
     background: rgba(255, 255, 255, 0.18);
     color: #fff;
     transform: translateY(-2px);
+    border-color: rgba(200, 16, 46, 0.65);
 }
 
 .hero-stat-num {
@@ -638,6 +647,7 @@ code {
 
 .rank-badge.rank-1 {
     background: #d4a017;
+    box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.22);
 }
 
 .rank-badge.rank-2 {
@@ -668,6 +678,8 @@ code {
     background: #17283e;
     color: #c9d4e2;
     border-top: none;
+    position: relative;
+    overflow: hidden;
 }
 
 .university-footer h5,
@@ -820,12 +832,28 @@ body {
 }
 
 .stat-card {
+    position: relative;
+    overflow: hidden;
     transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.stat-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--university-primary), var(--university-accent), var(--university-petrol));
 }
 
 .stat-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 10px 24px rgba(31, 58, 95, 0.14);
+    box-shadow: 0 10px 24px rgba(31, 58, 95, 0.16);
+}
+
+.stat-card:hover .num {
+    color: var(--university-petrol);
 }
 
 /* ===== 表格 ===== */
@@ -982,7 +1010,7 @@ body {
 /* ===== 管理后台侧边栏 ===== */
 .admin-sidebar .nav-link.active {
     background: linear-gradient(90deg, var(--university-primary), var(--university-accent));
-    box-shadow: 0 2px 8px rgba(31, 58, 95, 0.25);
+    box-shadow: 0 2px 8px rgba(31, 58, 95, 0.25), inset 3px 0 0 var(--university-petrol);
 }
 
 /* ===== 登录页 ===== */
@@ -997,7 +1025,7 @@ body {
     content: "";
     display: block;
     height: 6px;
-    background: linear-gradient(90deg, var(--university-primary), var(--university-accent), #2fa8a0);
+    background: linear-gradient(90deg, var(--university-primary), var(--university-accent), var(--university-petrol));
 }
 
 .login-logo {
@@ -1039,4 +1067,493 @@ body {
     color: var(--university-primary);
     font-size: 1.8rem;
     font-weight: 800;
+}
+
+/* =====================================================================
+   SWPU 石油红主题点缀 + 校训气质（模仿西南石油大学门户视觉）
+   ===================================================================== */
+
+/* 石油红工具类 */
+.text-petrol { color: var(--university-petrol) !important; }
+.bg-petrol { background-color: var(--university-petrol) !important; }
+
+.text-bg-petrol {
+    color: #fff !important;
+    background-color: var(--university-petrol) !important;
+}
+
+.badge-petrol {
+    background: linear-gradient(135deg, #d32029, var(--university-petrol));
+    color: #fff;
+    border-radius: 0.45rem;
+    padding: 0.4em 0.65em;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+/* 校训 / 精神口号 */
+.hero-motto {
+    font-size: 1.05rem;
+    letter-spacing: 0.35em;
+    color: rgba(255, 255, 255, 0.92);
+    position: relative;
+    padding-left: 0.85rem;
+}
+
+.hero-motto::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 1.1em;
+    background: var(--university-petrol);
+    border-radius: 2px;
+}
+
+/* 主标题下方石油红细线 */
+.hero-title {
+    position: relative;
+}
+
+.hero-title::after {
+    content: "";
+    display: block;
+    width: 3.5rem;
+    height: 3px;
+    margin-top: 0.5rem;
+    background: linear-gradient(90deg, var(--university-petrol), rgba(200, 16, 46, 0.2));
+    border-radius: 2px;
+}
+
+/* 品牌 Logo：石油红底部描边点缀 */
+.brand-logo {
+    box-shadow: inset 0 -3px 0 rgba(200, 16, 46, 0.55);
+}
+
+/* =====================================================================
+   石油主题装饰插画（井架 / 油滴）+ 照片背景
+   ===================================================================== */
+
+/* 井架剪影水印（hero 右侧） */
+.hero-derrick {
+    position: absolute;
+    right: 1.25rem;
+    bottom: -1rem;
+    height: 300px;
+    width: auto;
+    opacity: 0.12;
+    pointer-events: none;
+    filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.25));
+}
+
+/* 油滴小图标（hero slogan 内） */
+.hero-oil {
+    width: 1rem;
+    height: 1rem;
+    color: var(--university-petrol);
+    flex: 0 0 auto;
+}
+
+/* 井架剪影水印（页脚） */
+.footer-derrick {
+    position: absolute;
+    right: 2rem;
+    bottom: 1rem;
+    height: 220px;
+    width: auto;
+    opacity: 0.06;
+    pointer-events: none;
+}
+
+/* ===== 登录页背景照片 ===== */
+.login-page {
+    background:
+        linear-gradient(rgba(18, 35, 58, 0.86), rgba(31, 58, 95, 0.78)),
+        url("../images/login-campus.jpg") center/cover fixed no-repeat;
+}
+
+/* ===== 首页主内容区：校园环境背景（柔和过渡，缓解与页头/页脚的反差） ===== */
+.home-main {
+    background:
+        linear-gradient(rgba(255, 255, 255, 0.68), rgba(244, 247, 251, 0.74)),
+        url("../images/campus-scene.jpg") center/cover no-repeat;
+    border-top: 1px solid rgba(200, 16, 46, 0.15);
+}
+
+/* =====================================================================
+   院系图文卡片
+   ===================================================================== */
+.dept-card {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border: 1px solid #e3e8f0;
+    border-radius: 0.9rem;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    height: 100%;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.dept-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 14px 32px rgba(31, 58, 95, 0.16);
+    border-color: var(--university-accent);
+    color: inherit;
+}
+
+.dept-card-media {
+    position: relative;
+    height: 168px;
+    overflow: hidden;
+}
+
+.dept-card-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+.dept-card:hover .dept-card-media img {
+    transform: scale(1.07);
+}
+
+.dept-card-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(18, 35, 58, 0) 40%, rgba(18, 35, 58, 0.72) 100%);
+    display: flex;
+    align-items: flex-end;
+    padding: 0.7rem 0.85rem;
+}
+
+.dept-card-building {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+
+.dept-card-building svg {
+    width: 0.9rem;
+    height: 0.9rem;
+}
+
+.dept-card-body {
+    padding: 1rem 1.1rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.dept-card-name {
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--university-primary);
+    margin-bottom: 0.45rem;
+    position: relative;
+    padding-left: 0.7rem;
+}
+
+.dept-card-name::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 1rem;
+    background: var(--university-petrol);
+    border-radius: 2px;
+}
+
+.dept-card-desc {
+    font-size: 0.88rem;
+    color: #5b6b7f;
+    line-height: 1.65;
+    margin-bottom: 0.85rem;
+    flex: 1;
+}
+
+.dept-card-meta {
+    display: flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+    border-top: 1px dashed #e3e8f0;
+    padding-top: 0.7rem;
+}
+
+.dept-card-meta span {
+    font-size: 0.75rem;
+    color: #7a8699;
+    background: #f3f6fa;
+    border-radius: 999px;
+    padding: 0.22rem 0.6rem;
+    font-weight: 600;
+}
+
+/* ===== 详情页图文横幅（院系/课程/教师通用） ===== */
+.detail-hero {
+    position: relative;
+    height: 200px;
+    border-radius: 0.9rem;
+    overflow: hidden;
+    box-shadow: 0 6px 20px rgba(31, 58, 95, 0.14);
+}
+
+.detail-hero img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.detail-hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(18, 35, 58, 0.82) 0%, rgba(18, 35, 58, 0.45) 55%, rgba(18, 35, 58, 0.18) 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 1.4rem 1.6rem;
+    color: #fff;
+}
+
+.detail-hero h1 {
+    color: #fff;
+    font-size: 1.6rem;
+    font-weight: 800;
+    margin-bottom: 0.6rem;
+}
+
+.detail-hero-meta {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.detail-hero-meta span {
+    font-size: 0.82rem;
+    background: rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    padding: 0.28rem 0.75rem;
+}
+
+/* 教师详情横幅：大号首字母头像 */
+.detail-avatar {
+    width: 3.8rem;
+    height: 3.8rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: #fff;
+    background: linear-gradient(135deg, var(--university-accent), var(--university-primary));
+    box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.35);
+    flex: 0 0 auto;
+}
+
+/* =====================================================================
+   列表图文卡片（课程 / 开课班 / 教师）
+   ===================================================================== */
+.list-card {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border: 1px solid #e3e8f0;
+    border-radius: 0.9rem;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    height: 100%;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.list-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 14px 32px rgba(31, 58, 95, 0.15);
+    border-color: var(--university-accent);
+    color: inherit;
+}
+
+.list-card-media {
+    position: relative;
+    height: 120px;
+    overflow: hidden;
+}
+
+.list-card-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+.list-card:hover .list-card-media img {
+    transform: scale(1.07);
+}
+
+.list-card-badge {
+    position: absolute;
+    left: 0.85rem;
+    bottom: 0.85rem;
+    background: var(--university-petrol);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 0.4rem;
+    padding: 0.2rem 0.55rem;
+    letter-spacing: 0.03em;
+}
+
+.list-card-body {
+    padding: 0.95rem 1.05rem 1.05rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.list-card-title {
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: #1d2b3c;
+    line-height: 1.35;
+    margin-bottom: 0.5rem;
+}
+
+.list-card-sub {
+    font-size: 0.82rem;
+    color: #8a93a0;
+}
+
+.list-card-meta {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-top: auto;
+}
+
+.list-card-meta span {
+    font-size: 0.76rem;
+    color: #6b7a8f;
+    background: #f3f6fa;
+    border-radius: 999px;
+    padding: 0.2rem 0.55rem;
+    font-weight: 600;
+}
+
+/* 开课班：学期徽章 + 选课进度 */
+.section-term {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--university-primary);
+    background: #eef3fa;
+    border-radius: 0.4rem;
+    padding: 0.2rem 0.5rem;
+    white-space: nowrap;
+}
+
+.enroll-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: auto;
+}
+
+.enroll-bar-track {
+    flex: 1;
+    height: 6px;
+    background: #eef1f6;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.enroll-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--university-accent), var(--university-primary));
+    border-radius: 999px;
+}
+
+.enroll-text {
+    font-size: 0.76rem;
+    color: #6b7a8f;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* 教师卡片 */
+.instructor-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    background: #fff;
+    border: 1px solid #e3e8f0;
+    border-radius: 0.9rem;
+    padding: 1.4rem 1rem;
+    text-decoration: none;
+    color: inherit;
+    height: 100%;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.instructor-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 14px 32px rgba(31, 58, 95, 0.15);
+    border-color: var(--university-accent);
+    color: inherit;
+}
+
+.instructor-avatar {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #fff;
+    background: linear-gradient(135deg, var(--university-accent), var(--university-primary));
+    box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.18);
+    margin-bottom: 0.75rem;
+}
+
+.instructor-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #1d2b3c;
+    margin-bottom: 0.15rem;
+}
+
+.instructor-id {
+    font-size: 0.8rem;
+    color: #8a93a0;
+    margin-bottom: 0.6rem;
+}
+
+.instructor-meta {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: auto;
+}
+
+.instructor-meta span {
+    font-size: 0.76rem;
+    color: #6b7a8f;
+    background: #f3f6fa;
+    border-radius: 999px;
+    padding: 0.2rem 0.55rem;
+    font-weight: 600;
 }

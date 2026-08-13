@@ -2,6 +2,7 @@ package com.ds.university.mapper;
 
 import com.ds.university.entity.Section;
 
+import com.ds.university.vo.SectionStudentVO;
 import com.ds.university.vo.SectionVO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -39,6 +40,18 @@ public interface SectionMapper {
     @Select("SELECT DISTINCT year FROM section ORDER BY year DESC")
     List<Integer> selectYears();
 
+
+    /** 开课班详情（含课程名/教师/选课人数/容量/所属系） */
+    SectionVO selectDetail(@Param("courseId") String courseId,
+                           @Param("secId") String secId,
+                           @Param("semester") String semester,
+                           @Param("year") Integer year);
+
+    /** 开课班选课学生名单（含成绩） */
+    List<SectionStudentVO> selectStudents(@Param("courseId") String courseId,
+                                          @Param("secId") String secId,
+                                          @Param("semester") String semester,
+                                          @Param("year") Integer year);
 
     /** 开课班详情（含开课班实体字段） */
     Section selectById(@Param("courseId") String courseId,

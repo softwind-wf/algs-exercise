@@ -11,6 +11,7 @@ public class SectionVO {
     private String roomNumber;
     private String timeSlotId;
     private String courseTitle;
+    private String deptName;
     private String instructorNames;
     private String instructorId;
     private Integer enrolled;
@@ -78,6 +79,14 @@ public class SectionVO {
 
     public void setCourseTitle(String courseTitle) {
         this.courseTitle = courseTitle;
+    }
+
+    public String getDeptName() {
+        return deptName;
+    }
+
+    public void setDeptName(String deptName) {
+        this.deptName = deptName;
     }
 
     public String getInstructorNames() {

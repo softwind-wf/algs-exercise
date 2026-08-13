@@ -9,10 +9,15 @@
     <div class="container position-relative">
         <div class="hero-deco hero-deco-1"></div>
         <div class="hero-deco hero-deco-2"></div>
+        <img th:src="@{/images/derrick.svg}" class="hero-derrick" alt="">
         <div class="row align-items-center g-4">
             <div class="col-lg-7">
-                <span class="hero-slogan">数据驱动的大学教学演示系统</span>
-                <h1 class="hero-title mt-3 mb-3">大学教务信息网站</h1>
+                <span class="hero-slogan">
+                    <svg class="hero-oil" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.7c3.3 3.9 7 7.2 7 11.1A7 7 0 0 1 5 13.8c0-3.9 3.7-7.2 7-11.1z"/></svg>
+                    为祖国加油 · 为民族争气
+                </span>
+                <h1 class="hero-title mt-3 mb-2">大学教务信息网站</h1>
+                <p class="hero-motto mb-3">明德笃志 · 博学创新</p>
                 <p class="hero-desc mb-4">
                     基于 university 数据库（11 张业务表 + 5 张权限表），提供院系、课程、开课班、
                     排课看板、选课退课、成绩管理、统计报表等一体化教学服务。
@@ -59,6 +64,8 @@
     </div>
 </section>
 
+<!-- ===== 主内容区（校园环境背景） ===== -->
+<div class="home-main">
 <!-- ===== 快捷服务 ===== -->
 <section class="container py-4" th:with="isAdmin=${session.loginUser != null and #lists.contains(session.loginUser.roles, 'ADMIN')}">
     <div class="d-flex align-items-end justify-content-between mb-3">
@@ -141,7 +148,7 @@
                             <a th:href="@{/courses/{id}(id=${c.courseId})}" class="fw-semibold text-truncate d-block" th:text="${c.title}">课程名称</a>
                             <small class="text-muted" th:text="${c.courseId} + ' · ' + ${c.credits} + ' 学分'">CS-101 · 4 学分</small>
                         </div>
-                        <span class="badge rounded-pill text-bg-primary-subtle text-primary flex-shrink-0" th:text="'选课 ' + ${c.enrollmentCount}">选课 12</span>
+                        <span class="badge rounded-pill text-bg-petrol flex-shrink-0" th:text="'选课 ' + ${c.enrollmentCount}">选课 12</span>
                     </li>
                     <li class="home-list-item text-muted" th:if="${#lists.isEmpty(hotCourses)}">暂无课程数据</li>
                 </ul>
@@ -192,7 +199,7 @@
             <div class="home-panel">
                 <div class="home-panel-header">
                     <span>系统公告</span>
-                    <span class="badge rounded-pill text-bg-warning">NEW</span>
+                    <span class="badge rounded-pill text-bg-petrol">NEW</span>
                 </div>
                 <ul class="notice-list list-unstyled mb-0 p-3">
                     <li>演示账号：<code>zhang</code>（学生）/ <code>katz</code>（教师）/ <code>admin</code>（管理员），密码均为 <code>password</code>。</li>
@@ -205,6 +212,7 @@
         </div>
     </div>
 </section>
+</div>
 
 <footer th:replace="fragments/layout :: footer"></footer>
 </body>

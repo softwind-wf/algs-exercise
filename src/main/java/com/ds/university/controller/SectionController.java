@@ -5,6 +5,7 @@ import com.ds.university.service.SectionService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -34,5 +35,15 @@ public class SectionController {
         model.addAttribute("year", year);
         model.addAttribute("courseId", courseId);
         return "sections";
+    }
+
+    @GetMapping("/{courseId}/{secId}/{semester}/{year}")
+    public String detail(@PathVariable String courseId,
+                         @PathVariable String secId,
+                         @PathVariable String semester,
+                         @PathVariable int year,
+                         Model model) {
+        model.addAttribute("detail", sectionService.detail(courseId, secId, semester, year));
+        return "section";
     }
 }
