@@ -45,8 +45,11 @@ services:
     volumes:
       # 头像文件持久化：容器重建/升级不丢用户上传的头像
       - uploads-data:/app/uploads
+      # 应用日志持久化：容器重建后仍可追溯历史日志
+      - logs-data:/app/logs
     restart: unless-stopped
 
 volumes:
   mysql-data:
   uploads-data:
+  logs-data:

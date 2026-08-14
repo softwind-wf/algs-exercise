@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('在线用户')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container-fluid admin-shell px-0">
+    <div class="row g-0">
+        <div class="col-md-3 col-lg-2">
+            <aside th:replace="admin/_fragments :: adminNav('online')"></aside>
+        </div>
+        <div class="col-md-9 col-lg-10">
+            <div class="admin-content p-4">
+                <h1 class="page-title">在线用户</h1>
+                <p class="text-secondary">基于会话监听器统计：当前已登录且会话有效的用户（退出登录或会话超时自动剔除）。</p>
+
+                <div class="alert alert-info py-2 mt-3">
+                    当前在线用户 <strong><span id="onlineCount" th:text="${onlineCount}">0</span></strong> 人
+                    （含访客在内的总会话数 <span th:text="${totalSessions}">0</span> 个，仅作参考）
+                </div>
+
+                <div class="table-responsive bg-white border rounded-3 shadow-sm mt-3">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                        <tr>
+                            <th>登录账号</th>
+                            <th>姓名</th>
+                            <th>类型</th>
+                            <th>登录时间</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="u : ${onlineUsers}">
+                            <td class="fw-semibold" th:text="${u.userId}">账号</td>
+                            <td th:text="${u.displayName != null ? u.displayName : u.userId}">姓名</td>
+                            <td>
+                                <span class="badge" th:classappend="${u.userType == 'ADMIN'} ? 'text-bg-danger'
+                                        : (${u.userType == 'INSTRUCTOR'} ? 'text-bg-primary' : 'text-bg-success')"
+                                      th:switch="${u.userType}">
+                                    <span th:case="'ADMIN'">管理员</span>
+                                    <span th:case="'INSTRUCTOR'">教师</span>
+                                    <span th:case="*">学生</span>
+                                </span>
+                            </td>
+                            <td class="text-secondary" th:text="${u.loginTimeText}">时间</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="hint mt-2" th:if="${#lists.isEmpty(onlineUsers)}">当前没有在线用户。</p>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+    // 每 30 秒自动刷新在线人数（不整页刷新）
+    setInterval(function () {
+        fetch('/admin/online/count', { headers: { 'Accept': 'application/json' } })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (res && res.code === 0) {
+                    var el = document.getElementById('onlineCount');
+                    if (el) { el.textContent = res.data; }
+                }
+            })
+            .catch(function () { /* 忽略瞬时失败，下一轮再试 */ });
+    }, 30000);
+</script>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

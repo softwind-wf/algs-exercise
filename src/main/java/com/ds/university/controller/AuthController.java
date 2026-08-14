@@ -2,6 +2,7 @@ package com.ds.university.controller;
 
 import com.ds.university.common.BusinessException;
 import com.ds.university.config.CsrfInterceptor;
+import com.ds.university.config.OnlineUserTracker;
 import com.ds.university.service.AuthService;
 import com.ds.university.vo.LoginUser;
 import org.springframework.stereotype.Controller;
@@ -20,9 +21,11 @@ public class AuthController {
     public static final String SESSION_USER = "loginUser";
 
     private final AuthService authService;
+    private final OnlineUserTracker onlineUserTracker;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, OnlineUserTracker onlineUserTracker) {
         this.authService = authService;
+        this.onlineUserTracker = onlineUserTracker;
     }
 
     @GetMapping("/login")
@@ -44,6 +47,8 @@ public class AuthController {
             session.setAttribute(SESSION_USER, loginUser);
             // 登录成功后轮换 CSRF token，避免登录前 token 被绑定到已认证会话
             CsrfInterceptor.rotateToken(session);
+            // 注册为在线用户（会话监听器统计）
+            onlineUserTracker.login(session, loginUser);
             if (loginUser.getRoles().contains("ADMIN")) {
                 return "redirect:/admin";
             }

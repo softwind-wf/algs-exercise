@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('在线聊天')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
+        <h1 class="page-title mb-0">在线聊天</h1>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span id="chatConnState" class="badge text-bg-secondary">连接中…</span>
+            <button id="chatContactsBtn" class="btn btn-sm btn-outline-primary" type="button">联系人</button>
+            <div class="position-relative">
+                <input type="search" id="chatSearch" class="form-control form-control-sm"
+                       style="width: 240px;" placeholder="搜索同学 / 老师（姓名或账号）…"
+                       autocomplete="off">
+                <div class="chat-user-dropdown" id="chatUserDropdown" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+    <p class="text-secondary">与同学或老师一对一在线交流；消息会保存，可随时查看历史记录。可用搜索框查找全校用户，或点"联系人"按同学/老师/院系浏览。</p>
+
+    <div class="card shadow-sm mt-2 chat-shell">
+        <div class="row g-0">
+            <!-- 会话列表 -->
+            <div class="col-md-4 chat-conv-col">
+                <div class="chat-conv-list" id="chatConvList"></div>
+                <p class="hint p-3 mb-0" id="chatConvEmpty">暂无会话，从右侧选择同学或老师发起聊天。</p>
+            </div>
+            <!-- 聊天窗口 -->
+            <div class="col-md-8 chat-window-col">
+                <div class="chat-window-header d-flex align-items-center justify-content-between gap-2">
+                    <div id="chatWindowHeader"><span class="text-secondary">选择一个会话开始聊天</span></div>
+                    <button id="chatClearBtn" class="btn btn-sm btn-outline-danger flex-shrink-0" type="button"
+                            style="display: none;">清空记录</button>
+                </div>
+                <div class="chat-msgs" id="chatMsgs"></div>
+                <div class="chat-input-bar">
+                    <input type="text" id="chatInput" class="form-control" maxlength="500"
+                           placeholder="输入消息…（Enter 发送）" disabled autocomplete="off">
+                    <button id="chatSend" class="btn btn-primary flex-shrink-0" disabled>发送</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- 联系人模态框：常用联系人（智能分组）+ 按院系浏览。
+     必须放在 chat.js 脚本标签之前：脚本在解析到时立即执行，会读取这些元素 -->
+<div class="modal fade" id="contactModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">联系人</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="nav nav-tabs mb-3">
+                    <li class="nav-item"><button type="button" class="nav-link active" id="tabSmartBtn">常用联系人</button></li>
+                    <li class="nav-item"><button type="button" class="nav-link" id="tabDeptBtn">按院系浏览</button></li>
+                </ul>
+
+                <div id="tabSmartPane">
+                    <p class="hint" id="smartGroupEmpty" style="display: none;">暂无可展示的联系人分组。</p>
+                    <div id="smartGroups"></div>
+                </div>
+
+                <div id="tabDeptPane" style="display: none;">
+                    <div class="d-flex gap-2 mb-2 flex-wrap">
+                        <select id="deptSelect" class="form-select form-select-sm" style="width: 220px;">
+                            <option value="">— 选择院系 —</option>
+                        </select>
+                        <input type="search" id="deptSearch" class="form-control form-control-sm"
+                               style="width: 200px;" placeholder="组内搜索姓名 / 账号…" autocomplete="off">
+                    </div>
+                    <div id="deptUsers"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    var chatData = {
+        me: [[${myUserId}]],
+        myName: [[${myName}]],
+        // 以下两个为服务端 ObjectMapper 预序列化的 JSON，用非转义 JS 内联（小括号形式）
+        // 直接作为数组字面量（已按 JSON 规范转义，安全）
+        conversations: [(${conversationsJson})],
+        groups: [(${groupsJson})],
+        depts: [(${deptsJson})]
+    };
+</script>
+<script th:src="@{/js/chat.js(v=6)}"></script>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

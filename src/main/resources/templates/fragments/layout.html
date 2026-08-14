@@ -6,7 +6,10 @@
     <title th:text="${title}">大学教务信息网站</title>
     <meta name="_csrf" th:content="${csrfToken}"/>
     <link rel="stylesheet" th:href="@{/vendor/bootstrap/bootstrap.min.css}">
-    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="stylesheet" th:href="@{/css/style.css(v=3)}">
+    <!-- Bootstrap JS 必须在 head 片段内加载（defer 不阻塞解析）：
+         之前放在 footer 元素外导致 th:replace 片段不包含它，全站 JS 组件从未生效 -->
+    <script th:src="@{/vendor/bootstrap/bootstrap.bundle.min.js}" defer></script>
 </head>
 <body>
 
@@ -131,7 +134,5 @@
         </div>
     </div>
 </footer>
-
-<script th:src="@{/vendor/bootstrap/bootstrap.bundle.min.js}"></script>
 </body>
 </html>

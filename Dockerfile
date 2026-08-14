@@ -25,7 +25,7 @@ COPY --from=builder /build/${JAR_FILE} /app/app.jar
 
 # 头像上传目录：提前创建并授权给运行用户；
 # 数据持久化由 docker-compose.yml 的 uploads-data 命名卷挂载到 /app/uploads
-RUN mkdir -p /app/uploads && chown -R appuser:appuser /app/uploads
+RUN mkdir -p /app/uploads /app/logs && chown -R appuser:appuser /app/uploads /app/logs
 
 USER appuser
 EXPOSE 8080

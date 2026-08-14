@@ -40,6 +40,12 @@ spring:
     validate-on-migrate: true
   thymeleaf:
     encoding: UTF-8
+  web:
+    resources:
+      cache:
+        # 静态资源禁用长缓存：模板通过 ?v=N 版本号强制刷新（改 JS/CSS 后升级版本号即可），
+        # 避免浏览器启发式缓存导致部署后页面仍用旧脚本
+        period: 0
 
 mybatis:
   mapper-locations: classpath:mapper/university/*.xml

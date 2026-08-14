@@ -14,8 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Flyway 迁移集成测试：应用启动时自动执行 classpath:db/migration 下的
  * 版本化脚本（V1 业务表 / V2 账号权限 / V3 审计日志 / V4 收编 instructor.phone_number /
  * V5 用户头像 sys_user.avatar / V6 系统公告 sys_announcement /
- * V7 公告增强：类型/定时发布/到期下线），验证：
- * 1. flyway_schema_history 中 V1-V7 均成功应用；
+ * V7 公告增强：类型/定时发布/到期下线 / V8 站内聊天 chat_message），验证：
+ * 1. flyway_schema_history 中 V1-V8 均成功应用；
  * 2. 各脚本对应的关键表与关键列真实存在。
  * 线上升级不再依赖手工 SQL，schema 漂移可被 validate-on-migrate 拦截。
  */
@@ -25,10 +25,10 @@ class FlywayMigrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    /** V1-V7 迁移都记录在案且 success=1 */
+    /** V1-V8 迁移都记录在案且 success=1 */
     @Test
     void allMigrationsAppliedSuccessfully() {
-        for (String version : new String[]{"1", "2", "3", "4", "5", "6", "7"}) {
+        for (String version : new String[]{"1", "2", "3", "4", "5", "6", "7", "8"}) {
             Integer success = jdbcTemplate.queryForObject(
                     "SELECT success FROM flyway_schema_history WHERE version = ? AND type = 'SQL'",
                     Integer.class, version);
@@ -36,13 +36,14 @@ class FlywayMigrationTest {
         }
     }
 
-    /** 迁移产物真实存在：业务表、RBAC 表、审计表、公告表、头像列、Flyway 历史表 */
+    /** 迁移产物真实存在：业务表、RBAC 表、审计表、公告表、聊天表、头像列、Flyway 历史表 */
     @Test
     void migratedTablesExist() {
         List<String> tables = jdbcTemplate.queryForList(
                 "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE()",
                 String.class);
-        for (String expected : new String[]{"department", "sys_user", "audit_log", "sys_announcement", "flyway_schema_history"}) {
+        for (String expected : new String[]{"department", "sys_user", "audit_log", "sys_announcement",
+                "chat_message", "flyway_schema_history"}) {
             assertTrue(tables.contains(expected), "表 " + expected + " 应由 Flyway 迁移创建/保留");
         }
         Integer avatarColumns = jdbcTemplate.queryForObject(
@@ -58,7 +59,7 @@ class FlywayMigrationTest {
         assertEquals(3, annColumns, "sys_announcement 的 category/publish_time/expire_time 列应由 V7 迁移添加");
     }
 
-    /** 幂等性兜底：当前版本应为 7，且没有失败记录 */
+    /** 幂等性兜底：当前版本应为 8，且没有失败记录 */
     @Test
     void noFailedMigrationAndVersionIsLatest() {
         Integer failedCount = jdbcTemplate.queryForObject(
@@ -69,6 +70,6 @@ class FlywayMigrationTest {
         String latest = jdbcTemplate.queryForObject(
                 "SELECT version FROM flyway_schema_history WHERE type = 'SQL' ORDER BY installed_rank DESC LIMIT 1",
                 String.class);
-        assertEquals("7", latest, "最新已应用迁移版本应为 7");
+        assertEquals("8", latest, "最新已应用迁移版本应为 8");
     }
 }

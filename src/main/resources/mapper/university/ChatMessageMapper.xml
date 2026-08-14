@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ds.university.mapper.ChatMessageMapper">
+
+    <sql id="baseColumns">
+        id, from_user, from_name, to_user, to_name, content, read_flag, create_time,
+        DATE_FORMAT(create_time, '%Y-%m-%d %H:%i') AS create_time_text
+    </sql>
+
+    <insert id="insert" parameterType="com.ds.university.entity.ChatMessage" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO chat_message (from_user, from_name, to_user, to_name, content)
+        VALUES (#{fromUser}, #{fromName}, #{toUser}, #{toName}, #{content})
+    </insert>
+
+    <select id="selectHistory" resultType="com.ds.university.entity.ChatMessage">
+        SELECT <include refid="baseColumns"/>
+        FROM chat_message
+        WHERE (from_user = #{userA} AND to_user = #{userB})
+           OR (from_user = #{userB} AND to_user = #{userA})
+        ORDER BY id DESC
+        LIMIT #{limit}
+    </select>
+
+    <update id="markRead">
+        UPDATE chat_message
+        SET read_flag = 1
+        WHERE from_user = #{fromUser} AND to_user = #{toUser} AND read_flag = 0
+    </update>
+
+    <delete id="deleteConversation">
+        DELETE FROM chat_message
+        WHERE (from_user = #{userA} AND to_user = #{userB})
+           OR (from_user = #{userB} AND to_user = #{userA})
+    </delete>
+
+    <select id="countUnread" resultType="int">
+        SELECT COUNT(*) FROM chat_message
+        WHERE to_user = #{toUser} AND read_flag = 0
+    </select>
+
+    <select id="selectConversations" resultType="com.ds.university.vo.ChatConversationVO">
+        SELECT t.partner_id AS partnerId,
+               m.from_name  AS fromName,
+               m.to_name    AS toName,
+               m.content    AS lastContent,
+               DATE_FORMAT(m.create_time, '%Y-%m-%d %H:%i') AS lastTimeText,
+               t.unread     AS unread
+        FROM (
+            SELECT CASE WHEN from_user = #{me} THEN to_user ELSE from_user END AS partner_id,
+                   MAX(id) AS last_id,
+                   SUM(CASE WHEN to_user = #{me} AND read_flag = 0 THEN 1 ELSE 0 END) AS unread
+            FROM chat_message
+            WHERE from_user = #{me} OR to_user = #{me}
+            GROUP BY partner_id
+        ) t
+        JOIN chat_message m ON m.id = t.last_id
+        ORDER BY t.last_id DESC
+    </select>
+
+    <select id="selectChatUsers" resultType="com.ds.university.vo.ChatUserVO">
+        SELECT u.user_id   AS userId,
+               u.user_type AS userType,
+               COALESCE(s.name, i.name) AS userName
+        FROM sys_user u
+        LEFT JOIN student s ON u.ref_id = s.id AND u.user_type = 'STUDENT'
+        LEFT JOIN instructor i ON u.ref_id = i.id AND u.user_type = 'INSTRUCTOR'
+        WHERE u.user_type IN ('STUDENT', 'INSTRUCTOR') AND u.enabled = 1
+        ORDER BY u.user_type, u.user_id
+    </select>
+
+    <!-- 综合查询：关键字（姓名/账号）/院系/角色均可选，LIMIT 限流避免全量返回 -->
+    <select id="searchChatUsers" resultType="com.ds.university.vo.ChatUserVO">
+        SELECT u.user_id   AS userId,
+               u.user_type AS userType,
+               COALESCE(s.name, i.name) AS userName
+        FROM sys_user u
+        LEFT JOIN student s ON u.ref_id = s.id AND u.user_type = 'STUDENT'
+        LEFT JOIN instructor i ON u.ref_id = i.id AND u.user_type = 'INSTRUCTOR'
+        WHERE u.user_type IN ('STUDENT', 'INSTRUCTOR') AND u.enabled = 1
+        <if test="dept != null and dept != ''">
+            AND COALESCE(s.dept_name, i.dept_name) = #{dept}
+        </if>
+        <if test="role != null and role != ''">
+            AND u.user_type = #{role}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (u.user_id LIKE CONCAT('%', #{keyword}, '%')
+                 OR COALESCE(s.name, i.name) LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY u.user_type, u.user_id
+        LIMIT #{limit}
+    </select>
+
+    <!-- 我的同学：与我至少同修一个开课班的学生 -->
+    <select id="selectClassmates" resultType="com.ds.university.vo.ChatUserVO">
+        SELECT DISTINCT u.user_id AS userId,
+                        'STUDENT'  AS userType,
+                        s.name     AS userName
+        FROM takes t
+        JOIN takes t2 ON t2.course_id = t.course_id AND t2.sec_id = t.sec_id
+                      AND t2.semester = t.semester AND t2.year = t.year
+        JOIN student s ON s.id = t2.id
+        JOIN sys_user u ON u.ref_id = s.id AND u.user_type = 'STUDENT'
+        WHERE t.id = #{studentId} AND t2.id &lt;&gt; #{studentId} AND u.enabled = 1
+        ORDER BY s.name
+        LIMIT #{limit}
+    </select>
+
+    <!-- 我的老师：我选课开课班的授课教师 -->
+    <select id="selectMyTeachers" resultType="com.ds.university.vo.ChatUserVO">
+        SELECT DISTINCT u.user_id AS userId,
+                        'INSTRUCTOR' AS userType,
+                        i.name     AS userName
+        FROM takes t
+        JOIN teaches tc ON tc.course_id = t.course_id AND tc.sec_id = t.sec_id
+                       AND tc.semester = t.semester AND tc.year = t.year
+        JOIN instructor i ON i.id = tc.id
+        JOIN sys_user u ON u.ref_id = i.id AND u.user_type = 'INSTRUCTOR'
+        WHERE t.id = #{studentId} AND u.enabled = 1
+        ORDER BY i.name
+        LIMIT #{limit}
+    </select>
+
+    <!-- 我的学生：我授课开课班里的学生 -->
+    <select id="selectMyStudents" resultType="com.ds.university.vo.ChatUserVO">
+        SELECT DISTINCT u.user_id AS userId,
+                        'STUDENT'  AS userType,
+                        s.name     AS userName
+        FROM teaches tc
+        JOIN takes t ON t.course_id = tc.course_id AND t.sec_id = tc.sec_id
+                    AND t.semester = tc.semester AND t.year = tc.year
+        JOIN student s ON s.id = t.id
+        JOIN sys_user u ON u.ref_id = s.id AND u.user_type = 'STUDENT'
+        WHERE tc.id = #{instructorId} AND u.enabled = 1
+        ORDER BY s.name
+        LIMIT #{limit}
+    </select>
+
+    <!-- 我的同事：同院系的其他教师 -->
+    <select id="selectColleagues" resultType="com.ds.university.vo.ChatUserVO">
+        SELECT u.user_id AS userId,
+               'INSTRUCTOR' AS userType,
+               i.name     AS userName
+        FROM instructor i
+        JOIN sys_user u ON u.ref_id = i.id AND u.user_type = 'INSTRUCTOR'
+        WHERE i.dept_name = (SELECT dept_name FROM instructor WHERE id = #{instructorId})
+          AND i.id &lt;&gt; #{instructorId} AND u.enabled = 1
+        ORDER BY i.name
+        LIMIT #{limit}
+    </select>
+
+    <!-- 院系列表（含师生人数），供"按院系浏览"联系人 -->
+    <select id="selectDepartments" resultType="com.ds.university.vo.ChatDeptVO">
+        SELECT d.dept_name AS deptName,
+               COUNT(DISTINCT s.id) AS studentCount,
+               COUNT(DISTINCT i.id) AS instructorCount
+        FROM department d
+        LEFT JOIN student s ON s.dept_name = d.dept_name
+        LEFT JOIN instructor i ON i.dept_name = d.dept_name
+        GROUP BY d.dept_name
+        ORDER BY d.dept_name
+    </select>
+
+</mapper>

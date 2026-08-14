@@ -81,6 +81,15 @@
                             </div>
                         </div>
                     </div>
+                    <div class="col">
+                        <div class="card stat-card h-100 shadow-sm">
+                            <div class="card-body text-center">
+                                <div class="num text-success" th:text="${onlineCount}">0</div>
+                                <div class="label">在线用户</div>
+                                <a class="stretched-link" th:href="@{/admin/online}">查看</a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -4,6 +4,7 @@ import com.ds.university.common.ForbiddenException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.servlet.view.RedirectView;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -57,13 +58,27 @@ public class CsrfInterceptor implements HandlerInterceptor {
     @Override
     public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler,
                            ModelAndView modelAndView) {
-        // 注入模板变量 ${csrfToken}，供 meta 标签与 hidden 表单字段使用
-        if (modelAndView != null && !modelAndView.getModel().containsKey("csrfToken")) {
-            HttpSession session = request.getSession(false);
-            if (session != null && session.getAttribute(SESSION_CSRF) != null) {
-                modelAndView.getModel().put("csrfToken", session.getAttribute(SESSION_CSRF));
-            }
+        // 注入模板变量 ${csrfToken}，供 meta 标签与 hidden 表单字段使用。
+        // 跳过重定向视图：redirect:xxx 会把 model 属性序列化为 URL 查询参数（?csrfToken=...），
+        // 导致 token 泄露到浏览器历史 / 访问日志 / Referer 头，属已知反模式；
+        // 目标页面由新请求渲染，届时会重新注入 token，功能不受影响。
+        if (modelAndView == null || modelAndView.getModel().containsKey("csrfToken")
+                || isRedirectView(modelAndView)) {
+            return;
         }
+        HttpSession session = request.getSession(false);
+        if (session != null && session.getAttribute(SESSION_CSRF) != null) {
+            modelAndView.getModel().put("csrfToken", session.getAttribute(SESSION_CSRF));
+        }
+    }
+
+    /** 是否为重定向视图（viewName 以 redirect: 开头，或显式设置的 RedirectView） */
+    private boolean isRedirectView(ModelAndView modelAndView) {
+        if (modelAndView.getView() instanceof RedirectView) {
+            return true;
+        }
+        String viewName = modelAndView.getViewName();
+        return viewName != null && viewName.startsWith("redirect:");
     }
 
     /** 登录成功后轮换 token，防止登录前的 token 被攻击者绑定到已认证会话 */

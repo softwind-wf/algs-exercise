@@ -36,6 +36,12 @@
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
+		<!-- WebSocket：站内在线聊天（原生 WebSocket + JSON 协议，前端零依赖） -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-websocket</artifactId>
+		</dependency>
+
 		<!-- 服务端渲染模板 -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

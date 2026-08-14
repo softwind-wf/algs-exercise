@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ============================================================
+     应用日志配置（Spring Boot 专用：logback-spring.xml）
+     输出：
+       1. 控制台（开发期主出口，%clr 颜色由 Spring 按环境自动开关）
+       2. logs/application.log —— 按天 + 10MB 滚动，保留 30 天（上限 2GB）
+       3. logs/error.log     —— 仅 ERROR，滚动规则同上（上限 1GB）
+     日志目录：环境变量 LOG_DIR 覆盖，默认 ./logs（相对应用启动目录；
+     Docker 部署时挂载卷见 docker-compose.yml 的 logs-data）。
+     MyBatis SQL 级别由 application-dev/prod.yml 的 logging.level 控制（dev=debug / prod=warn）。
+     ============================================================ -->
+<configuration>
+
+    <property name="LOG_DIR" value="${LOG_DIR:-logs}"/>
+
+    <!-- 自定义 logback-spring.xml 不会自动注册 Spring 的转换器，需显式声明 %clr / %wEx -->
+    <conversionRule conversionWord="clr"
+                    converterClass="org.springframework.boot.logging.logback.ColorConverter"/>
+    <conversionRule conversionWord="wEx"
+                    converterClass="org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxyConverter"/>
+
+    <!-- 控制台：开发期主出口，颜色随环境自动开关 -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %clr(%5p) [%thread] %clr(%-40.40logger{39}) %clr(:) %m%n%wEx</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 应用日志文件：按天 + 大小滚动 -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/application.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/application.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>2GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5p [%thread] %-40.40logger{39} : %m%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 错误日志：仅 ERROR 级别，便于快速定位线上问题 -->
+    <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/error.log</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/error.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5p [%thread] %-40.40logger{39} : %m%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 全局 INFO；错误同时进 application.log 与 error.log（additivity 默认 true） -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+        <appender-ref ref="ERROR_FILE"/>
+    </root>
+
+</configuration>
