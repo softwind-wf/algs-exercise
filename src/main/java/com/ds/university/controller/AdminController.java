@@ -5,6 +5,7 @@ import com.ds.university.common.Result;
 import com.ds.university.entity.Section;
 import com.ds.university.service.AdminService;
 import com.ds.university.service.AccountService;
+import com.ds.university.service.AnnouncementService;
 import com.ds.university.service.AuditService;
 import com.ds.university.service.StatsReportService;
 import com.ds.university.service.TermDefaults;
@@ -30,15 +31,17 @@ public class AdminController {
     private final StatsReportService statsReportService;
     private final TermDefaults termDefaults;
     private final AuditService auditService;
+    private final AnnouncementService announcementService;
 
     public AdminController(AdminService adminService, StatsReportService statsReportService,
                            AccountService accountService, TermDefaults termDefaults,
-                           AuditService auditService) {
+                           AuditService auditService, AnnouncementService announcementService) {
         this.adminService = adminService;
         this.statsReportService = statsReportService;
         this.accountService = accountService;
         this.termDefaults = termDefaults;
         this.auditService = auditService;
+        this.announcementService = announcementService;
     }
 
     /** 教务管理首页：统计概览 */
@@ -636,5 +639,74 @@ public class AdminController {
             ra.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/admin/prereqs";
+    }
+
+    // ========== 系统公告 ==========
+
+    @GetMapping("/announcements")
+    public String announcements(@RequestParam(required = false) Integer edit, Model model) {
+        model.addAttribute("announcements", announcementService.listAll());
+        model.addAttribute("categories", announcementService.categoryLabels());
+        if (edit != null) {
+            model.addAttribute("editAnnouncement", announcementService.getById(edit));
+        }
+        return "admin/announcements";
+    }
+
+    @PostMapping("/announcements")
+    public String createAnnouncement(@RequestParam String title,
+                                     @RequestParam String content,
+                                     @RequestParam(required = false) String category,
+                                     @RequestParam(required = false) Integer pinned,
+                                     @RequestParam(required = false) String publishTime,
+                                     @RequestParam(required = false) String expireTime,
+                                     RedirectAttributes ra) {
+        try {
+            announcementService.create(title, content, category, pinned, publishTime, expireTime);
+            ra.addFlashAttribute("success", "公告已发布");
+        } catch (BusinessException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/announcements";
+    }
+
+    @PostMapping("/announcements/update")
+    public String updateAnnouncement(@RequestParam Integer id,
+                                     @RequestParam String title,
+                                     @RequestParam String content,
+                                     @RequestParam(required = false) String category,
+                                     @RequestParam(required = false) Integer pinned,
+                                     @RequestParam(required = false) String publishTime,
+                                     @RequestParam(required = false) String expireTime,
+                                     RedirectAttributes ra) {
+        try {
+            announcementService.update(id, title, content, category, pinned, publishTime, expireTime);
+            ra.addFlashAttribute("success", "公告已更新");
+        } catch (BusinessException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/announcements";
+    }
+
+    @PostMapping("/announcements/toggle")
+    public String toggleAnnouncement(@RequestParam Integer id, RedirectAttributes ra) {
+        try {
+            boolean enabled = announcementService.toggleEnabled(id);
+            ra.addFlashAttribute("success", enabled ? "公告已发布（对外可见）" : "公告已下线（对外不可见）");
+        } catch (BusinessException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/announcements";
+    }
+
+    @PostMapping("/announcements/delete")
+    public String deleteAnnouncement(@RequestParam Integer id, RedirectAttributes ra) {
+        try {
+            announcementService.delete(id);
+            ra.addFlashAttribute("success", "公告已删除");
+        } catch (BusinessException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/announcements";
     }
 }

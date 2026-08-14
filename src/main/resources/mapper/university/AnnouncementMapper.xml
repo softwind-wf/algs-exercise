@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ds.university.mapper.AnnouncementMapper">
+
+    <sql id="baseColumns">
+        id, title, content, category, pinned, enabled, publish_time, expire_time, create_time, update_time,
+        DATE_FORMAT(create_time, '%Y-%m-%d %H:%i') AS create_time_text,
+        DATE_FORMAT(publish_time, '%Y-%m-%d %H:%i') AS publish_time_text,
+        DATE_FORMAT(expire_time, '%Y-%m-%d %H:%i') AS expire_time_text
+    </sql>
+
+    <sql id="visibleCondition">
+        enabled = 1
+        AND (publish_time IS NULL OR publish_time &lt;= NOW())
+        AND (expire_time IS NULL OR expire_time &gt; NOW())
+    </sql>
+
+    <select id="selectAll" resultType="com.ds.university.entity.Announcement">
+        SELECT <include refid="baseColumns"/>
+        FROM sys_announcement
+        ORDER BY pinned DESC, COALESCE(publish_time, create_time) DESC, id DESC
+    </select>
+
+    <select id="selectPublished" resultType="com.ds.university.entity.Announcement">
+        SELECT <include refid="baseColumns"/>
+        FROM sys_announcement
+        WHERE <include refid="visibleCondition"/>
+        <if test="category != null and category != ''">
+            AND category = #{category}
+        </if>
+        ORDER BY pinned DESC, COALESCE(publish_time, create_time) DESC, id DESC
+        <if test="limit != null">
+            LIMIT #{limit}
+        </if>
+    </select>
+
+    <select id="selectPublishedById" resultType="com.ds.university.entity.Announcement">
+        SELECT <include refid="baseColumns"/>
+        FROM sys_announcement
+        WHERE id = #{id} AND <include refid="visibleCondition"/>
+    </select>
+
+    <select id="selectById" resultType="com.ds.university.entity.Announcement">
+        SELECT <include refid="baseColumns"/>
+        FROM sys_announcement
+        WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.ds.university.entity.Announcement" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_announcement (title, content, category, pinned, enabled, publish_time, expire_time)
+        VALUES (#{title}, #{content}, #{category}, #{pinned}, 1, #{publishTime}, #{expireTime})
+    </insert>
+
+    <update id="update" parameterType="com.ds.university.entity.Announcement">
+        UPDATE sys_announcement
+        SET title = #{title},
+            content = #{content},
+            category = #{category},
+            pinned = #{pinned},
+            publish_time = #{publishTime},
+            expire_time = #{expireTime},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateEnabled">
+        UPDATE sys_announcement
+        SET enabled = #{enabled}, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="clearExpireTime">
+        UPDATE sys_announcement
+        SET expire_time = NULL, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="delete">
+        DELETE FROM sys_announcement WHERE id = #{id}
+    </delete>
+
+</mapper>

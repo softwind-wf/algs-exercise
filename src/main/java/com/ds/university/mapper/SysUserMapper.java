@@ -21,6 +21,9 @@ public interface SysUserMapper {
     /** 更新密码（BCrypt 哈希） */
     int updatePassword(@Param("userId") String userId, @Param("password") String password);
 
+    /** 更新头像文件名（null 表示移除头像） */
+    int updateAvatar(@Param("userId") String userId, @Param("avatar") String avatar);
+
     /** 全部账号 */
     List<SysUser> selectAll();
 

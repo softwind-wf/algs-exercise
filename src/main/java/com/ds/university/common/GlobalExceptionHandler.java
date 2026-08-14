@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.ConstraintViolation;
@@ -48,6 +49,14 @@ public class GlobalExceptionHandler {
         model.addAttribute("errorCode", HttpServletResponse.SC_FORBIDDEN);
         model.addAttribute("message", e.getMessage());
         return "error/403";
+    }
+
+    /** 上传文件超过 Spring multipart 上限（进入 Controller 前即被拦截），给出友好提示 */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public String handleMaxUploadSize(MaxUploadSizeExceededException e, Model model) {
+        model.addAttribute("errorCode", ErrorCode.PARAM_ERROR.getCode());
+        model.addAttribute("message", "上传的图片大小超过限制（最大 5MB）");
+        return "error";
     }
 
     @ExceptionHandler(Exception.class)

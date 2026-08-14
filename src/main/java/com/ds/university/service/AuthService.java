@@ -52,6 +52,7 @@ public class AuthService {
         loginUser.setUserId(user.getUserId());
         loginUser.setUserType(user.getUserType());
         loginUser.setRefId(user.getRefId());
+        loginUser.setAvatar(user.getAvatar());
         loginUser.setRoles(roles);
         loginUser.setPermissions(permissions);
         return loginUser;

@@ -9,6 +9,8 @@ public class SysUserVO {
     private String userId;
     private String userType;
     private String refId;
+    /** 头像文件名（/uploads/avatars/{文件名} 访问），null 表示未设置 */
+    private String avatar;
     private Integer enabled;
     private String createTimeText;
     private List<String> roles = new ArrayList<>();
@@ -37,6 +39,14 @@ public class SysUserVO {
 
     public void setRefId(String refId) {
         this.refId = refId;
+    }
+
+    public String getAvatar() {
+        return avatar;
+    }
+
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
     }
 
     public Integer getEnabled() {

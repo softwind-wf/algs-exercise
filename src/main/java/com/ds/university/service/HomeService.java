@@ -1,5 +1,7 @@
 package com.ds.university.service;
 
+import com.ds.university.entity.Announcement;
+import com.ds.university.mapper.AnnouncementMapper;
 import com.ds.university.mapper.CourseMapper;
 import com.ds.university.mapper.DepartmentMapper;
 import com.ds.university.mapper.SectionMapper;
@@ -10,7 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-/** 首页内容聚合：热门课程、最新开课班、院系一览 */
+/** 首页内容聚合：热门课程、最新开课班、院系一览、系统公告 */
 @Service
 public class HomeService {
 
@@ -20,11 +22,14 @@ public class HomeService {
     private final CourseMapper courseMapper;
     private final SectionMapper sectionMapper;
     private final DepartmentMapper departmentMapper;
+    private final AnnouncementMapper announcementMapper;
 
-    public HomeService(CourseMapper courseMapper, SectionMapper sectionMapper, DepartmentMapper departmentMapper) {
+    public HomeService(CourseMapper courseMapper, SectionMapper sectionMapper,
+                       DepartmentMapper departmentMapper, AnnouncementMapper announcementMapper) {
         this.courseMapper = courseMapper;
         this.sectionMapper = sectionMapper;
         this.departmentMapper = departmentMapper;
+        this.announcementMapper = announcementMapper;
     }
 
     /** 热门课程（按累计选课人数降序） */
@@ -40,5 +45,10 @@ public class HomeService {
     /** 院系一览（含教师数/课程数） */
     public List<DepartmentVO> departments() {
         return departmentMapper.selectAllWithStats();
+    }
+
+    /** 系统公告（首页面板展示已发布，置顶优先） */
+    public List<Announcement> announcements() {
+        return announcementMapper.selectPublished(null, AnnouncementService.HOME_LIMIT);
     }
 }

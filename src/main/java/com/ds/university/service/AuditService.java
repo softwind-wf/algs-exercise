@@ -44,12 +44,14 @@ public class AuditService {
     public static final String ACTION_ACCOUNT_TOGGLE = "ACCOUNT_TOGGLE";
     public static final String ACTION_PASSWORD_RESET = "PASSWORD_RESET";
     public static final String ACTION_ACCOUNT_BATCH_CREATE = "ACCOUNT_BATCH_CREATE";
+    public static final String ACTION_AVATAR_UPDATE = "AVATAR_UPDATE";
+    public static final String ACTION_AVATAR_REMOVE = "AVATAR_REMOVE";
 
     /** 全部操作类型（页面筛选下拉用，顺序即展示顺序） */
     public static final List<String> ALL_ACTIONS = Arrays.asList(
             ACTION_GRADE_UPDATE, ACTION_DELETE, ACTION_CREATE, ACTION_UPDATE,
             ACTION_ACCOUNT_CREATE, ACTION_ACCOUNT_BATCH_CREATE, ACTION_PASSWORD_RESET,
-            ACTION_ACCOUNT_TOGGLE, ACTION_ACCOUNT_DELETE);
+            ACTION_ACCOUNT_TOGGLE, ACTION_ACCOUNT_DELETE, ACTION_AVATAR_UPDATE, ACTION_AVATAR_REMOVE);
 
     // ---- 对象类型 ----
     public static final String TARGET_DEPARTMENT = "DEPARTMENT";
@@ -61,6 +63,7 @@ public class AuditService {
     public static final String TARGET_PREREQ = "PREREQ";
     public static final String TARGET_ACCOUNT = "ACCOUNT";
     public static final String TARGET_GRADE = "GRADE";
+    public static final String TARGET_ANNOUNCEMENT = "ANNOUNCEMENT";
 
     private final AuditLogMapper auditLogMapper;
 

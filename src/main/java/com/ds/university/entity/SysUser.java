@@ -9,6 +9,8 @@ public class SysUser {
     private String password;
     private String userType;
     private String refId;
+    /** 头像文件名（存储在 uploads 目录，通过 /uploads/avatars/{文件名} 访问），null 表示未设置 */
+    private String avatar;
     private Integer enabled;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
@@ -43,6 +45,14 @@ public class SysUser {
 
     public void setRefId(String refId) {
         this.refId = refId;
+    }
+
+    public String getAvatar() {
+        return avatar;
+    }
+
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
     }
 
     public Integer getEnabled() {

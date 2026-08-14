@@ -67,6 +67,7 @@ public class AccountService {
             vo.setUserId(user.getUserId());
             vo.setUserType(user.getUserType());
             vo.setRefId(user.getRefId());
+            vo.setAvatar(user.getAvatar());
             vo.setEnabled(user.getEnabled());
             vo.setCreateTimeText(user.getCreateTime() == null ? null : TIME_FMT.format(user.getCreateTime()));
             vo.setRoles(sysUserMapper.selectRoleIds(user.getUserId()));

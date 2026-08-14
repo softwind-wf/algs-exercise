@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('公告管理')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container-fluid admin-shell px-0">
+    <div class="row g-0">
+        <div class="col-md-3 col-lg-2">
+            <aside th:replace="admin/_fragments :: adminNav('announcements')"></aside>
+        </div>
+        <div class="col-md-9 col-lg-10">
+            <div class="admin-content p-4">
+                <h1 class="page-title">公告管理</h1>
+                <p class="text-secondary">发布 / 编辑系统公告。支持按类型分类、定时发布（发布时间晚于当前时间则到时自动对外可见）、到期自动下线（到期后对外不可见）。</p>
+
+                <div class="alert alert-success py-2 mt-3" th:if="${success}" th:text="${success}">成功提示</div>
+                <div class="alert alert-danger py-2 mt-3" th:if="${error}" th:text="${error}">错误提示</div>
+
+                <div class="card shadow-sm mt-3">
+                    <div class="card-body">
+                        <h2 class="h5" th:text="${editAnnouncement != null} ? '编辑公告' : '发布公告'">发布公告</h2>
+                        <form method="post"
+                              th:action="@{${editAnnouncement != null} ? '/admin/announcements/update' : '/admin/announcements'}">
+                            <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
+                            <input type="hidden" name="id" th:value="${editAnnouncement != null ? editAnnouncement.id : ''}"/>
+                            <div class="row g-3">
+                                <div class="col-md-8">
+                                    <label class="form-label mb-1" for="title">标题</label>
+                                    <input class="form-control" type="text" id="title" name="title" maxlength="100"
+                                           th:value="${editAnnouncement != null} ? ${editAnnouncement.title}"
+                                           placeholder="公告标题（100 字以内）" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label mb-1" for="category">类型</label>
+                                    <select class="form-select" id="category" name="category">
+                                        <option th:each="c : ${categories}" th:value="${c.key}" th:text="${c.value}"
+                                                th:selected="${editAnnouncement != null and editAnnouncement.category == c.key}">类型</option>
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label mb-1" for="content">内容</label>
+                                    <textarea class="form-control" id="content" name="content" rows="5" maxlength="2000"
+                                              placeholder="公告内容（2000 字以内，支持换行）" required
+                                              th:text="${editAnnouncement != null} ? ${editAnnouncement.content}">公告内容</textarea>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label mb-1" for="publishTime">定时发布时间（可选）</label>
+                                    <input class="form-control" type="datetime-local" id="publishTime" name="publishTime"
+                                           th:value="${editAnnouncement != null ? editAnnouncement.publishTimeInput : ''}">
+                                    <div class="form-text">留空表示立即发布；填未来时间则到点自动对外可见。</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label mb-1" for="expireTime">到期时间（可选）</label>
+                                    <input class="form-control" type="datetime-local" id="expireTime" name="expireTime"
+                                           th:value="${editAnnouncement != null ? editAnnouncement.expireTimeInput : ''}">
+                                    <div class="form-text">留空表示永不过期；到期后自动下线（对外不可见）。</div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="pinned" name="pinned" value="1"
+                                               th:checked="${editAnnouncement != null and editAnnouncement.pinned == 1}">
+                                        <label class="form-check-label" for="pinned">置顶展示</label>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary"
+                                            th:text="${editAnnouncement != null} ? '保存修改' : '发布'">发布</button>
+                                    <a class="btn btn-outline-secondary" th:if="${editAnnouncement != null}"
+                                       th:href="@{/admin/announcements}">取消</a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="table-responsive bg-white border rounded-3 shadow-sm mt-4">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                        <tr>
+                            <th style="width: 60px;">ID</th>
+                            <th>标题</th>
+                            <th style="width: 100px;">类型</th>
+                            <th style="width: 90px;">置顶</th>
+                            <th style="width: 110px;">状态</th>
+                            <th style="width: 160px;">发布时间</th>
+                            <th style="width: 160px;">到期时间</th>
+                            <th class="text-end" style="width: 220px;">操作</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="a : ${announcements}">
+                            <td class="text-secondary" th:text="${a.id}">1</td>
+                            <td>
+                                <span class="fw-semibold" th:text="${a.title}">标题</span>
+                                <small class="text-secondary d-block text-truncate" style="max-width: 380px;"
+                                       th:text="${a.content}">内容预览</small>
+                            </td>
+                            <td>
+                                <span class="badge text-bg-secondary" th:switch="${a.category}">
+                                    <span th:case="'NEWS'">新闻动态</span>
+                                    <span th:case="'ACTIVITY'">活动</span>
+                                    <span th:case="'OTHER'">其他</span>
+                                    <span th:case="*">通知</span>
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge text-bg-petrol" th:if="${a.pinned == 1}">置顶</span>
+                                <span class="text-secondary" th:if="${a.pinned != 1}">—</span>
+                            </td>
+                            <td>
+                                <span class="badge"
+                                      th:classappend="${a.statusText == '已发布'} ? 'text-bg-success'
+                                              : (${a.statusText == '定时发布'} ? 'text-bg-warning'
+                                              : (${a.statusText == '已过期'} ? 'text-bg-secondary' : 'text-bg-secondary'))"
+                                      th:text="${a.statusText}">状态</span>
+                            </td>
+                            <td class="text-secondary" th:text="${a.publishTimeText != null ? a.publishTimeText : '立即'}">时间</td>
+                            <td class="text-secondary" th:text="${a.expireTimeText != null ? a.expireTimeText : '永久'}">时间</td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-secondary"
+                                   th:href="@{/admin/announcements(edit=${a.id})}">编辑</a>
+                                <form class="d-inline" method="post" th:action="@{/admin/announcements/toggle}">
+                                    <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
+                                    <input type="hidden" name="id" th:value="${a.id}">
+                                    <button type="submit" class="btn btn-sm"
+                                            th:classappend="${a.statusText == '已过期'} ? 'btn-outline-success'
+                                                    : (${a.enabled == 1} ? 'btn-outline-warning' : 'btn-outline-success')"
+                                            th:text="${a.statusText == '已过期'} ? '重新发布' : (${a.enabled == 1} ? '下线' : '发布')">下线</button>
+                                </form>
+                                <form class="d-inline" method="post" th:action="@{/admin/announcements/delete}"
+                                      onsubmit="return confirm('确定删除该公告吗？');">
+                                    <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
+                                    <input type="hidden" name="id" th:value="${a.id}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="hint mt-2" th:if="${#lists.isEmpty(announcements)}">暂无公告，请先发布。</p>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

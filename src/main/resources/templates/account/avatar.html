@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('设置头像')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <div class="card login-card shadow-sm mt-5">
+        <div class="card-body p-4">
+            <h1 class="h4 text-center mb-4">设置头像</h1>
+            <div class="alert alert-success py-2" th:if="${success}" th:text="${success}">成功提示</div>
+            <div class="alert alert-danger py-2" th:if="${error}" th:text="${error}">错误提示</div>
+
+            <div class="avatar-preview-box justify-content-center mb-4">
+                <img th:classappend="${session.loginUser.avatar == null} ? 'd-none' : ''"
+                     th:src="${session.loginUser.avatar != null} ? @{/uploads/avatars/{file}(file=${session.loginUser.avatar})} : ''"
+                     class="avatar-lg" alt="当前头像" id="avatarPreview">
+                <span id="avatarPlaceholder"
+                      th:classappend="${session.loginUser.avatar != null} ? 'd-none' : ''"
+                      class="avatar-lg-placeholder"
+                      th:text="${#strings.substring(session.loginUser.userId, 0, 1)}">?</span>
+            </div>
+
+            <form method="post" th:action="@{/account/avatar}" enctype="multipart/form-data">
+                <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
+                <div class="mb-3">
+                    <label class="form-label" for="file">选择图片</label>
+                    <input class="form-control" type="file" id="file" name="file" accept="image/*" required
+                           onchange="previewAvatar(this)">
+                    <div class="form-text">支持 JPG / PNG / GIF / WebP，大小不超过 5MB。上传后立即生效，导航栏等处会显示你的头像。</div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">上传头像</button>
+            </form>
+
+            <form method="post" th:action="@{/account/avatar/remove}" class="mt-3"
+                  th:if="${session.loginUser.avatar != null}"
+                  onsubmit="return confirm('确定移除当前头像吗？');">
+                <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
+                <button type="submit" class="btn btn-outline-danger w-100">移除头像</button>
+            </form>
+
+            <p class="text-center mt-3 mb-0">
+                <a th:href="@{/account/password}">修改密码</a> ·
+                <a th:href="@{/}">返回首页</a>
+            </p>
+        </div>
+    </div>
+</main>
+
+<script>
+    function previewAvatar(input) {
+        var file = input.files && input.files[0];
+        if (!file) {
+            return;
+        }
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            var img = document.getElementById('avatarPreview');
+            var placeholder = document.getElementById('avatarPlaceholder');
+            img.src = e.target.result;
+            img.classList.remove('d-none');
+            if (placeholder) {
+                placeholder.classList.add('d-none');
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+</script>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

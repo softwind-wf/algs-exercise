@@ -24,6 +24,7 @@ public class HomeController {
         model.addAttribute("hotCourses", homeService.hotCourses());
         model.addAttribute("latestSections", homeService.latestSections());
         model.addAttribute("departments", homeService.departments());
+        model.addAttribute("announcements", homeService.announcements());
         return "index";
     }
 }

@@ -1557,3 +1557,50 @@ body {
     padding: 0.2rem 0.55rem;
     font-weight: 600;
 }
+
+/* ===== 头像 ===== */
+.avatar-nav {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    flex-shrink: 0;
+}
+
+.avatar-nav-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--university-accent);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.avatar-lg {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.avatar-lg-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: var(--university-accent);
+    color: #fff;
+    font-size: 2.2rem;
+    font-weight: 600;
+}
+
+.avatar-preview-box {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}

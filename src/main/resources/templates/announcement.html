@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('公告详情')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <div class="card login-card shadow-sm mt-4">
+        <div class="card-body p-4">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="badge text-bg-secondary" th:switch="${announcement.category}">
+                    <span th:case="'NEWS'">新闻动态</span>
+                    <span th:case="'ACTIVITY'">活动</span>
+                    <span th:case="'OTHER'">其他</span>
+                    <span th:case="*">通知</span>
+                </span>
+                <h1 class="h4 mb-0" th:text="${announcement.title}">公告标题</h1>
+                <span class="badge rounded-pill text-bg-petrol" th:if="${announcement.pinned == 1}">置顶</span>
+            </div>
+            <small class="text-secondary d-block mt-2" th:text="'发布于 ' + ${announcement.createTimeText}">发布于 2026-08-14 10:00</small>
+            <hr>
+            <p class="mb-4" style="white-space: pre-line" th:text="${announcement.content}">公告内容</p>
+            <a th:href="@{/announcements}" class="btn btn-outline-primary btn-sm">← 返回公告列表</a>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

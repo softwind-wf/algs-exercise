@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('系统公告')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
+        <h1 class="page-title mb-0">系统公告</h1>
+        <a th:href="@{/}" class="text-decoration-none small text-muted">← 返回首页</a>
+    </div>
+    <p class="text-secondary">教务系统发布的公告与通知</p>
+
+    <!-- 类型筛选 -->
+    <div class="d-flex flex-wrap gap-2 mt-2">
+        <a class="btn btn-sm" th:classappend="${selCategory == ''} ? 'btn-primary' : 'btn-outline-primary'"
+           th:href="@{/announcements}">全部</a>
+        <a class="btn btn-sm" th:each="c : ${categories}"
+           th:classappend="${selCategory == c.key} ? 'btn-primary' : 'btn-outline-primary'"
+           th:href="@{/announcements(category=${c.key})}" th:text="${c.value}">类型</a>
+    </div>
+
+    <div class="card shadow-sm mt-3" th:each="n : ${announcements}">
+        <div class="card-body">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="badge text-bg-secondary" th:switch="${n.category}">
+                    <span th:case="'NEWS'">新闻动态</span>
+                    <span th:case="'ACTIVITY'">活动</span>
+                    <span th:case="'OTHER'">其他</span>
+                    <span th:case="*">通知</span>
+                </span>
+                <a th:href="@{/announcements/{id}(id=${n.id})}" class="h5 mb-0 text-decoration-none"
+                   th:text="${n.title}">公告标题</a>
+                <span class="badge rounded-pill text-bg-petrol" th:if="${n.pinned == 1}">置顶</span>
+            </div>
+            <small class="text-secondary d-block mt-1" th:text="'发布于 ' + ${n.createTimeText}">发布于 2026-08-14 10:00</small>
+            <p class="mt-2 mb-0 text-truncate" style="white-space: pre-line" th:text="${n.content}">公告内容</p>
+        </div>
+    </div>
+    <p class="hint mt-3" th:if="${#lists.isEmpty(announcements)}">暂无公告。</p>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

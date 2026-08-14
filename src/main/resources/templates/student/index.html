@@ -17,14 +17,22 @@
     </div>
 
     <div class="card shadow-sm mt-3">
-        <div class="card-body">
-            <h2 class="h5 mb-3" th:text="${dashboard.student.name}">学生姓名</h2>
-            <p class="text-secondary mb-1">
-                学号：<span th:text="${dashboard.student.id}">学号</span> ·
-                主修系：<span th:text="${dashboard.student.deptName}">系</span> ·
-                已修学分：<span th:text="${dashboard.student.totCred}">学分</span> ·
-                导师：<span th:text="${dashboard.advisorName ?: '未分配'}">导师</span>
-            </p>
+        <div class="card-body d-flex align-items-center gap-3">
+            <img th:if="${session.loginUser.avatar != null}"
+                 th:src="@{/uploads/avatars/{file}(file=${session.loginUser.avatar})}"
+                 class="avatar-lg" alt="头像">
+            <span th:unless="${session.loginUser.avatar != null}"
+                  class="avatar-lg-placeholder"
+                  th:text="${#strings.substring(session.loginUser.userId, 0, 1)}">?</span>
+            <div>
+                <h2 class="h5 mb-1" th:text="${dashboard.student.name}">学生姓名</h2>
+                <p class="text-secondary mb-0">
+                    学号：<span th:text="${dashboard.student.id}">学号</span> ·
+                    主修系：<span th:text="${dashboard.student.deptName}">系</span> ·
+                    已修学分：<span th:text="${dashboard.student.totCred}">学分</span> ·
+                    导师：<span th:text="${dashboard.advisorName ?: '未分配'}">导师</span>
+                </p>
+            </div>
         </div>
     </div>
 

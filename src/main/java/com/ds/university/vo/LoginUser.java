@@ -11,6 +11,8 @@ public class LoginUser {
     private String userId;
     private String userType;
     private String refId;
+    /** 头像文件名（null 表示未设置），登录时装载、上传/移除后同步更新会话 */
+    private String avatar;
     private List<String> roles = new ArrayList<String>();
     private List<String> permissions = new ArrayList<String>();
 
@@ -44,6 +46,14 @@ public class LoginUser {
 
     public void setRefId(String refId) {
         this.refId = refId;
+    }
+
+    public String getAvatar() {
+        return avatar;
+    }
+
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
     }
 
     public List<String> getRoles() {

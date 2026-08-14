@@ -199,14 +199,21 @@
             <div class="home-panel">
                 <div class="home-panel-header">
                     <span>系统公告</span>
-                    <span class="badge rounded-pill text-bg-petrol">NEW</span>
+                    <a th:href="@{/announcements}" class="small text-decoration-none">更多 →</a>
                 </div>
                 <ul class="notice-list list-unstyled mb-0 p-3">
-                    <li>演示账号：<code>zhang</code>（学生）/ <code>katz</code>（教师）/ <code>admin</code>（管理员），密码均为 <code>password</code>。</li>
-                    <li>学生中心支持在线选课 / 退课、成绩单查询与导师查看。</li>
-                    <li>教师中心支持授课列表、班级名单与成绩录入。</li>
-                    <li>教务管理提供基础数据维护、排课看板（拖拽排课）、先修管理与统计报表。</li>
-                    <li>建议使用 Chrome / Edge 浏览器获得最佳体验。</li>
+                    <li th:each="n : ${announcements}">
+                        <span class="badge text-bg-secondary me-1" th:switch="${n.category}">
+                            <span th:case="'NEWS'">新闻</span>
+                            <span th:case="'ACTIVITY'">活动</span>
+                            <span th:case="'OTHER'">其他</span>
+                            <span th:case="*">通知</span>
+                        </span>
+                        <a th:href="@{/announcements/{id}(id=${n.id})}" class="fw-semibold" th:text="${n.title}">公告标题</a>
+                        <span class="badge rounded-pill text-bg-petrol ms-1" th:if="${n.pinned == 1}">置顶</span>
+                        <small class="text-muted d-block" th:text="${n.createTimeText}">2026-08-14 10:00</small>
+                    </li>
+                    <li class="text-muted" th:if="${#lists.isEmpty(announcements)}">暂无公告</li>
                 </ul>
             </div>
         </div>

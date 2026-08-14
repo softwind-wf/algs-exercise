@@ -23,6 +23,7 @@
                 <a th:href="@{/}">首页</a>
                 <a th:href="@{/login}" th:if="${session.loginUser == null}">登录</a>
                 <a th:href="@{/account/password}" th:if="${session.loginUser != null}">修改密码</a>
+                <a th:href="@{/account/avatar}" th:if="${session.loginUser != null}">设置头像</a>
                 <a th:href="@{/logout}" th:if="${session.loginUser != null}">退出登录</a>
             </span>
         </div>
@@ -58,8 +59,19 @@
                         <a class="nav-link" th:href="@{/admin}">教务管理</a>
                     </li>
                 </ul>
-                <ul class="navbar-nav" th:if="${session.loginUser != null}">
-                    <li class="nav-item"><span class="nav-link disabled" th:text="'欢迎：' + ${session.loginUser.userId}">欢迎</span></li>
+                <ul class="navbar-nav align-items-lg-center" th:if="${session.loginUser != null}">
+                    <li class="nav-item">
+                        <a class="nav-link d-flex align-items-center gap-2" th:href="@{/account/avatar}"
+                           title="设置头像">
+                            <img th:if="${session.loginUser.avatar != null}"
+                                 th:src="@{/uploads/avatars/{file}(file=${session.loginUser.avatar})}"
+                                 class="avatar-nav" alt="头像">
+                            <span th:unless="${session.loginUser.avatar != null}"
+                                  class="avatar-nav avatar-nav-placeholder"
+                                  th:text="${#strings.substring(session.loginUser.userId, 0, 1)}">?</span>
+                            <span th:text="'欢迎：' + ${session.loginUser.userId}">欢迎</span>
+                        </a>
+                    </li>
                     <li class="nav-item"><a class="nav-link" th:href="@{/logout}">退出</a></li>
                 </ul>
                 <ul class="navbar-nav" th:unless="${session.loginUser != null}">

@@ -3,7 +3,7 @@
 <mapper namespace="com.ds.university.mapper.SysUserMapper">
 
     <select id="selectByUserId" resultType="com.ds.university.entity.SysUser">
-        SELECT user_id, password, user_type, ref_id, enabled, create_time, update_time
+        SELECT user_id, password, user_type, ref_id, avatar, enabled, create_time, update_time
         FROM sys_user
         WHERE user_id = #{userId}
     </select>
@@ -32,8 +32,15 @@
         WHERE user_id = #{userId}
     </update>
 
+    <update id="updateAvatar">
+        UPDATE sys_user
+        SET avatar = #{avatar},
+            update_time = NOW()
+        WHERE user_id = #{userId}
+    </update>
+
     <select id="selectAll" resultType="com.ds.university.entity.SysUser">
-        SELECT user_id, password, user_type, ref_id, enabled, create_time, update_time
+        SELECT user_id, password, user_type, ref_id, avatar, enabled, create_time, update_time
         FROM sys_user
         ORDER BY create_time DESC
     </select>
@@ -43,7 +50,7 @@
     </select>
 
     <select id="selectByRefId" resultType="com.ds.university.entity.SysUser">
-        SELECT user_id, password, user_type, ref_id, enabled, create_time, update_time
+        SELECT user_id, password, user_type, ref_id, avatar, enabled, create_time, update_time
         FROM sys_user
         WHERE user_type = #{userType} AND ref_id = #{refId}
     </select>

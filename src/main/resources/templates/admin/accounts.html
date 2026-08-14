@@ -73,6 +73,7 @@
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                         <tr>
+                            <th>头像</th>
                             <th>登录账号</th>
                             <th>类型</th>
                             <th>关联人员</th>
@@ -84,6 +85,14 @@
                         </thead>
                         <tbody>
                         <tr th:each="a : ${accounts}">
+                            <td class="text-center">
+                                <img th:if="${a.avatar != null}"
+                                     th:src="@{/uploads/avatars/{file}(file=${a.avatar})}"
+                                     class="avatar-nav" alt="头像">
+                                <span th:unless="${a.avatar != null}"
+                                      class="avatar-nav avatar-nav-placeholder"
+                                      th:text="${#strings.substring(a.userId, 0, 1)}">?</span>
+                            </td>
                             <td th:text="${a.userId}">账号</td>
                             <td>
                                 <span th:switch="${a.userType}">
