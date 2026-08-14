@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('学习论坛')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
+        <div>
+            <h1 class="page-title mb-0">学习论坛</h1>
+            <p class="text-secondary mb-0">学生与教师的学习交流社区：发帖提问、分享经验、回复讨论。</p>
+        </div>
+        <a class="btn btn-primary" th:href="@{/forum/new}" th:if="${session.loginUser != null}">发帖</a>
+        <a class="btn btn-outline-primary" th:href="@{/login}" th:if="${session.loginUser == null}">登录后可发帖</a>
+    </div>
+
+    <div class="alert alert-success py-2 mt-3" th:if="${success}" th:text="${success}">成功提示</div>
+    <div class="alert alert-danger py-2 mt-3" th:if="${error}" th:text="${error}">错误提示</div>
+
+    <!-- 板块分类 + 搜索 -->
+    <div class="d-flex flex-wrap gap-2 mt-3">
+        <a class="btn btn-sm" th:classappend="${selCategory == ''} ? 'btn-primary' : 'btn-outline-primary'"
+           th:href="@{/forum(keyword=${keyword})}">全部</a>
+        <a class="btn btn-sm" th:each="c : ${categories}"
+           th:classappend="${selCategory == c.key} ? 'btn-primary' : 'btn-outline-primary'"
+           th:href="@{/forum(keyword=${keyword}, category=${c.key})}" th:text="${c.value}">板块</a>
+    </div>
+    <form method="get" th:action="@{/forum}" class="d-flex gap-2 mt-2">
+        <input type="hidden" name="category" th:value="${selCategory}"/>
+        <input type="search" class="form-control" name="keyword" th:value="${keyword}"
+               placeholder="搜索标题 / 内容…" style="max-width: 320px;" autocomplete="off">
+        <button type="submit" class="btn btn-outline-secondary">搜索</button>
+        <a th:href="@{/forum}" class="btn btn-outline-secondary" th:if="${keyword != '' or selCategory != ''}">清除</a>
+    </form>
+
+    <!-- 帖子列表 -->
+    <div class="bg-white border rounded-3 shadow-sm mt-3">
+        <div class="forum-row forum-row-head">
+            <div class="flex-grow-1">主题</div>
+            <div class="forum-cell-author">作者</div>
+            <div class="forum-cell-reply text-center">回复</div>
+            <div class="forum-cell-reply text-center">点赞</div>
+            <div class="forum-cell-time">最后回复</div>
+        </div>
+        <div class="forum-row" th:each="p : ${posts.records}">
+            <div class="flex-grow-1 pe-2">
+                <span class="badge text-bg-petrol" th:if="${p.pinned == 1}">置顶</span>
+                <span class="badge text-bg-warning" th:if="${p.featured == 1}">精华</span>
+                <a th:href="@{/forum/{id}(id=${p.id})}" class="fw-semibold text-decoration-none"
+                   th:text="${p.title}">帖子标题</a>
+                <small class="text-secondary d-block">
+                    <span th:switch="${p.category}">
+                        <span th:case="'COURSE'">课程答疑</span>
+                        <span th:case="'CAMPUS'">校园生活</span>
+                        <span th:case="'SHARE'">资源共享</span>
+                        <span th:case="'SUGGEST'">意见建议</span>
+                        <span th:case="*">学习交流</span>
+                    </span>
+                    · <span th:text="${p.createdTimeText}">时间</span>
+                </small>
+            </div>
+            <div class="forum-cell-author" th:text="${p.authorName}">作者</div>
+            <div class="forum-cell-reply text-center">
+                <span class="badge rounded-pill text-bg-secondary" th:text="${p.replyCount}">0</span>
+            </div>
+            <div class="forum-cell-reply text-center">
+                <span class="badge rounded-pill text-bg-light text-dark border"
+                      th:text="'赞 ' + ${p.likeCount}">赞 0</span>
+            </div>
+            <div class="forum-cell-time text-secondary"
+                 th:text="${p.lastReplyTimeText != null ? p.lastReplyTimeText : '—'}">时间</div>
+        </div>
+        <div class="p-3 text-secondary" th:if="${#lists.isEmpty(posts.records)}">暂无帖子，来发第一帖吧。</div>
+    </div>
+
+    <!-- 分页 -->
+    <nav class="mt-3" th:if="${posts.totalPages > 1}">
+        <ul class="pagination pagination-sm justify-content-center">
+            <li class="page-item" th:classappend="${!posts.hasPrev} ? 'disabled'">
+                <a class="page-link" th:href="@{/forum(keyword=${keyword}, category=${selCategory}, page=${posts.prevPage})}">上一页</a>
+            </li>
+            <li class="page-item" th:each="n : ${posts.pageNumbers}"
+                th:classappend="${n == posts.page} ? 'active' : ''">
+                <a class="page-link" th:if="${n == 0}" href="javascript:void(0)">…</a>
+                <a class="page-link" th:unless="${n == 0}"
+                   th:href="@{/forum(keyword=${keyword}, category=${selCategory}, page=${n})}"
+                   th:text="${n}">1</a>
+            </li>
+            <li class="page-item" th:classappend="${!posts.hasNext} ? 'disabled'">
+                <a class="page-link" th:href="@{/forum(keyword=${keyword}, category=${selCategory}, page=${posts.nextPage})}">下一页</a>
+            </li>
+        </ul>
+    </nav>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

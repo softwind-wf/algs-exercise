@@ -64,6 +64,7 @@ public class AuditService {
     public static final String TARGET_ACCOUNT = "ACCOUNT";
     public static final String TARGET_GRADE = "GRADE";
     public static final String TARGET_ANNOUNCEMENT = "ANNOUNCEMENT";
+    public static final String TARGET_FORUM = "FORUM";
 
     private final AuditLogMapper auditLogMapper;
 

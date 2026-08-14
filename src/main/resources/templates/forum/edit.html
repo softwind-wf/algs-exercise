@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('编辑帖子')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <div class="card login-card shadow-sm mt-4">
+        <div class="card-body p-4">
+            <h1 class="h4 text-center mb-4">编辑帖子</h1>
+            <div class="alert alert-danger py-2" th:if="${error}" th:text="${error}">错误提示</div>
+            <form method="post" th:action="@{/forum/{id}/edit(id=${post.id})}">
+                <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
+                <div class="mb-3">
+                    <label class="form-label" for="title">标题</label>
+                    <input class="form-control" type="text" id="title" name="title" maxlength="100"
+                           th:value="${post.title}" required autofocus>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="category">板块</label>
+                    <select class="form-select" id="category" name="category">
+                        <option th:each="c : ${categories}" th:value="${c.key}" th:text="${c.value}"
+                                th:selected="${post.category == c.key}">板块</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="content">正文</label>
+                    <textarea class="form-control" id="content" name="content" rows="8" maxlength="2000"
+                              required th:text="${post.content}">正文</textarea>
+                    <div class="form-text">正文中可用 @账号 提及同学或老师（如 @zhang）。</div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">保存修改</button>
+                    <a class="btn btn-outline-secondary" th:href="@{/forum/{id}(id=${post.id})}">取消</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('帖子详情')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
+        <a th:href="@{/forum}" class="text-decoration-none small text-muted">← 返回论坛</a>
+        <div class="d-flex align-items-center gap-2">
+            <div class="alert alert-success py-1 px-2 small mb-0" th:if="${success}" th:text="${success}">成功</div>
+            <div class="alert alert-danger py-1 px-2 small mb-0" th:if="${error}" th:text="${error}">错误</div>
+        </div>
+    </div>
+
+    <!-- 帖子 -->
+    <div class="card shadow-sm mt-2">
+        <div class="card-body p-4">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="badge text-bg-petrol" th:if="${post.pinned == 1}">置顶</span>
+                <span class="badge text-bg-warning" th:if="${post.featured == 1}">精华</span>
+                <h1 class="h4 mb-0" th:text="${post.title}">帖子标题</h1>
+                <span class="badge rounded-pill text-bg-secondary" th:text="'回复 ' + ${post.replyCount}">回复 0</span>
+            </div>
+            <small class="text-secondary d-block mt-1">
+                <span th:switch="${post.category}">
+                    <span th:case="'COURSE'">课程答疑</span>
+                    <span th:case="'CAMPUS'">校园生活</span>
+                    <span th:case="'SHARE'">资源共享</span>
+                    <span th:case="'SUGGEST'">意见建议</span>
+                    <span th:case="*">学习交流</span>
+                </span>
+                · <span th:text="${post.authorName}">作者</span>
+                · <span th:text="${post.authorUser}">账号</span>
+                · 发布于 <span th:text="${post.createdTimeText}">时间</span>
+            </small>
+            <hr>
+            <!-- 内容为服务端渲染的安全 HTML（已转义 + @提及徽标），用 utext 输出 -->
+            <p style="white-space: pre-line" th:utext="${post.renderedContent}">正文</p>
+
+            <div class="d-flex align-items-center gap-2 flex-wrap mt-3">
+                <form method="post" th:action="@{/forum/{id}/like(id=${post.id})}">
+                    <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
+                    <button type="submit" class="btn btn-sm"
+                            th:classappend="${post.liked == true} ? 'btn-primary' : 'btn-outline-primary'"
+                            th:text="${post.liked == true} ? '已赞 (' + ${post.likeCount} + ')' : '点赞 (' + ${post.likeCount} + ')'">点赞</button>
+                </form>
+
+                <a class="btn btn-sm btn-outline-secondary"
+                   th:if="${session.loginUser != null and (session.loginUser.userId == post.authorUser or #lists.contains(session.loginUser.roles, 'ADMIN'))}"
+                   th:href="@{/forum/{id}/edit(id=${post.id})}">编辑</a>
+
+                <form method="post" th:action="@{/forum/{id}/pin(id=${post.id})}"
+                      th:if="${session.loginUser != null and #lists.contains(session.loginUser.roles, 'ADMIN')}">
+                    <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
+                    <button type="submit" class="btn btn-sm btn-outline-warning"
+                            th:text="${post.pinned == 1} ? '取消置顶' : '置顶'">置顶</button>
+                </form>
+                <form method="post" th:action="@{/forum/{id}/feature(id=${post.id})}"
+                      th:if="${session.loginUser != null and #lists.contains(session.loginUser.roles, 'ADMIN')}">
+                    <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
+                    <button type="submit" class="btn btn-sm btn-outline-warning"
+                            th:text="${post.featured == 1} ? '取消加精' : '加精'">加精</button>
+                </form>
+
+                <form method="post" th:action="@{/forum/{id}/delete(id=${post.id})}"
+                      th:if="${session.loginUser != null and (session.loginUser.userId == post.authorUser or #lists.contains(session.loginUser.roles, 'ADMIN'))}"
+                      onsubmit="return confirm('确定删除该帖及全部回复吗？');">
+                    <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
+                    <button type="submit" class="btn btn-sm btn-outline-danger">删除本帖</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 回复 -->
+    <h2 class="h5 mt-4 mb-2">全部回复（<span th:text="${#lists.size(replies)}">0</span>）</h2>
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <div class="forum-reply" th:each="r : ${replies}">
+                <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                    <small class="text-secondary">
+                        <span class="fw-semibold text-dark" th:text="${r.authorName}">作者</span>
+                        <span th:text="'（' + ${r.authorUser} + '） · ' + ${r.createdTimeText}">信息</span>
+                    </small>
+                    <form method="post" th:action="@{/forum/reply/{rid}/delete(rid=${r.id})}"
+                          th:if="${session.loginUser != null and (session.loginUser.userId == r.authorUser or #lists.contains(session.loginUser.roles, 'ADMIN'))}"
+                          onsubmit="return confirm('确定删除这条回复吗？');">
+                        <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
+                        <input type="hidden" name="postId" th:value="${post.id}"/>
+                        <button type="submit" class="btn btn-sm btn-link text-danger p-0">删除</button>
+                    </form>
+                </div>
+                <p class="mb-0" style="white-space: pre-line" th:utext="${r.renderedContent}">回复内容</p>
+            </div>
+            <p class="text-secondary mb-0" th:if="${#lists.isEmpty(replies)}">暂无回复，来抢沙发。</p>
+        </div>
+    </div>
+
+    <!-- 回复表单（需登录） -->
+    <div class="card shadow-sm mt-3" th:if="${session.loginUser != null}">
+        <div class="card-body p-4">
+            <h3 class="h6 mb-3">发表回复</h3>
+            <form method="post" th:action="@{/forum/{id}/reply(id=${post.id})}">
+                <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
+                <div class="mb-3">
+                    <textarea class="form-control" name="content" rows="4" maxlength="1000"
+                              placeholder="回复内容（1000 字以内，支持换行）。提及某人请输入 @账号" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">回复</button>
+            </form>
+        </div>
+    </div>
+    <p class="hint mt-3" th:if="${session.loginUser == null}">
+        <a th:href="@{/login}">登录</a>后可参与回复与点赞。
+    </p>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

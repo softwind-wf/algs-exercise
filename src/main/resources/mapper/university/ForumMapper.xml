@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ds.university.mapper.ForumMapper">
+
+    <sql id="postColumns">
+        f.id, f.title, f.content, f.category, f.pinned, f.featured, f.like_count,
+        f.author_user, f.author_name, f.reply_count, f.last_reply_time,
+        f.created_time, f.updated_time,
+        DATE_FORMAT(f.created_time, '%Y-%m-%d %H:%i') AS created_time_text,
+        DATE_FORMAT(f.last_reply_time, '%Y-%m-%d %H:%i') AS last_reply_time_text,
+        EXISTS (SELECT 1 FROM forum_like fl WHERE fl.post_id = f.id AND fl.user_id = #{me}) AS liked
+    </sql>
+
+    <insert id="insertPost" parameterType="com.ds.university.entity.ForumPost" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO forum_post (title, content, category, author_user, author_name)
+        VALUES (#{title}, #{content}, #{category}, #{authorUser}, #{authorName})
+    </insert>
+
+    <update id="updatePost" parameterType="com.ds.university.entity.ForumPost">
+        UPDATE forum_post
+        SET title = #{title},
+            content = #{content},
+            category = #{category}
+        WHERE id = #{id}
+    </update>
+
+    <select id="countPosts" resultType="long">
+        SELECT COUNT(*) FROM forum_post f
+        <where>
+            <if test="keyword != null and keyword != ''">
+                (f.title LIKE CONCAT('%', #{keyword}, '%') OR f.content LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="category != null and category != ''">
+                AND f.category = #{category}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectPostPage" resultType="com.ds.university.entity.ForumPost">
+        SELECT <include refid="postColumns"/>
+        FROM forum_post f
+        <where>
+            <if test="keyword != null and keyword != ''">
+                (f.title LIKE CONCAT('%', #{keyword}, '%') OR f.content LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="category != null and category != ''">
+                AND f.category = #{category}
+            </if>
+        </where>
+        ORDER BY f.pinned DESC, COALESCE(f.last_reply_time, f.created_time) DESC, f.id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="selectPostById" resultType="com.ds.university.entity.ForumPost">
+        SELECT <include refid="postColumns"/>
+        FROM forum_post f
+        WHERE f.id = #{id}
+    </select>
+
+    <update id="updatePostActivity">
+        UPDATE forum_post
+        SET reply_count = #{replyCount},
+            last_reply_time = #{lastReplyTime}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updatePinned">
+        UPDATE forum_post SET pinned = #{pinned} WHERE id = #{id}
+    </update>
+
+    <update id="updateFeatured">
+        UPDATE forum_post SET featured = #{featured} WHERE id = #{id}
+    </update>
+
+    <delete id="deletePost">
+        DELETE FROM forum_post WHERE id = #{id}
+    </delete>
+
+    <!-- ===== 点赞 ===== -->
+
+    <insert id="insertLike">
+        INSERT IGNORE INTO forum_like (post_id, user_id) VALUES (#{postId}, #{userId})
+    </insert>
+
+    <delete id="deleteLike">
+        DELETE FROM forum_like WHERE post_id = #{postId} AND user_id = #{userId}
+    </delete>
+
+    <select id="countLike" resultType="int">
+        SELECT COUNT(*) FROM forum_like WHERE post_id = #{postId} AND user_id = #{userId}
+    </select>
+
+    <update id="updateLikeCount">
+        UPDATE forum_post SET like_count = like_count + #{delta} WHERE id = #{id}
+    </update>
+
+    <!-- ===== 回复 ===== -->
+
+    <insert id="insertReply" parameterType="com.ds.university.entity.ForumReply" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO forum_reply (post_id, content, author_user, author_name)
+        VALUES (#{postId}, #{content}, #{authorUser}, #{authorName})
+    </insert>
+
+    <select id="selectRepliesByPost" resultType="com.ds.university.entity.ForumReply">
+        SELECT id, post_id, content, author_user, author_name, created_time,
+               DATE_FORMAT(created_time, '%Y-%m-%d %H:%i') AS created_time_text
+        FROM forum_reply
+        WHERE post_id = #{postId}
+        ORDER BY id ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectReplyById" resultType="com.ds.university.entity.ForumReply">
+        SELECT id, post_id, content, author_user, author_name, created_time,
+               DATE_FORMAT(created_time, '%Y-%m-%d %H:%i') AS created_time_text
+        FROM forum_reply
+        WHERE id = #{id}
+    </select>
+
+    <delete id="deleteReply">
+        DELETE FROM forum_reply WHERE id = #{id}
+    </delete>
+
+</mapper>
