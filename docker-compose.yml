@@ -58,6 +58,10 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       MULTI_INSTANCE_ENABLED: "true"
+      # 独立会话 cookie 名：浏览器 cookie 不区分端口，若本机同时运行 IDEA 本地实例(8443)
+      # 与 Docker 实例(8080)，两者会共用同一个 JSESSIONID 互相踢下线。
+      # 此处给 Docker 实例单独命名 cookie，实现两实例会话互不干扰。
+      SERVER_SERVLET_SESSION_COOKIE_NAME: JSESSIONID_DOCKER
       TZ: Asia/Shanghai
     ports:
       - "${APP_PORT:-8080}:8080"

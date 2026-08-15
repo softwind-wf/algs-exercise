@@ -1,3 +1,10 @@
+/**
+ * ============================================================
+ * 本文件为原创代码，版权归 YOUR_NAME 所有，仅供购买者学习使用。
+ * 未经授权禁止复制、转售、二次分发。
+ * @author YOUR_NAME
+ * ============================================================
+ */
 package com.ds.university.config;
 
 import com.ds.university.controller.AuthController;
