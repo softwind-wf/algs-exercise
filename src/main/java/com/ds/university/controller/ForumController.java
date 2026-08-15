@@ -31,10 +31,10 @@ public class ForumController {
         this.forumService = forumService;
     }
 
-    /** 帖子列表（关键字搜索 + 分类筛选 + 分页） */
+    /** 帖子列表（关键字搜索 + 板块筛选 + 分页） */
     @GetMapping
     public String list(@RequestParam(required = false) String keyword,
-                       @RequestParam(required = false) String category,
+                       @RequestParam(required = false) Integer category,
                        @RequestParam(required = false) Integer page,
                        @RequestParam(required = false) Integer size,
                        HttpSession session, Model model) {
@@ -42,7 +42,7 @@ public class ForumController {
         model.addAttribute("posts", forumService.page(keyword, category,
                 page == null ? 1 : page, size == null ? 0 : size, me == null ? null : me.getUserId()));
         model.addAttribute("keyword", keyword == null ? "" : keyword);
-        model.addAttribute("selCategory", category == null ? "" : category);
+        model.addAttribute("selCategory", category == null ? 0 : category);
         model.addAttribute("categories", forumService.categories());
         return "forum/list";
     }
@@ -61,7 +61,7 @@ public class ForumController {
     @PostMapping
     public String create(@RequestParam String title,
                          @RequestParam String content,
-                         @RequestParam(required = false) String category,
+                         @RequestParam(required = false) Integer category,
                          HttpSession session, RedirectAttributes ra) {
         LoginUser user = currentUser(session);
         if (user == null) {
@@ -100,7 +100,7 @@ public class ForumController {
     public String update(@PathVariable Long id,
                          @RequestParam String title,
                          @RequestParam String content,
-                         @RequestParam(required = false) String category,
+                         @RequestParam(required = false) Integer category,
                          HttpSession session, RedirectAttributes ra) {
         LoginUser user = currentUser(session);
         if (user == null) {
@@ -116,13 +116,21 @@ public class ForumController {
         }
     }
 
-    /** 帖子详情（帖子 + 全部回复 + 回复表单 + 点赞/编辑/管理按钮） */
+    /** 帖子编辑历史页 */
+    @GetMapping("/{id}/history")
+    public String history(@PathVariable Long id, Model model) {
+        model.addAttribute("post", forumService.getPost(id, null));
+        model.addAttribute("history", forumService.history(id));
+        return "forum/history";
+    }
+
+    /** 帖子详情（帖子 + 回复 + 点赞人 + 操作按钮） */
     @GetMapping("/{id}")
     public String detail(@PathVariable Long id, HttpSession session, Model model) {
         LoginUser me = currentUser(session);
         model.addAttribute("post", forumService.getPost(id, me == null ? null : me.getUserId()));
         model.addAttribute("replies", forumService.replies(id));
-        model.addAttribute("categories", forumService.categories());
+        model.addAttribute("likers", forumService.likers(id));
         return "forum/detail";
     }
 

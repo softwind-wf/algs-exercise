@@ -1901,3 +1901,36 @@ body {
     color: var(--university-primary);
     font-weight: 600;
 }
+
+/* 点赞人列表 */
+.forum-liker {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid #f0f2f5;
+}
+
+.forum-liker:last-child {
+    border-bottom: none;
+}
+
+/* 站内通知 */
+.notice-item {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid #eef1f5;
+    background: #fbfcfe;
+}
+
+.notice-item:hover {
+    background: #f4f7fb;
+}
+
+.notice-read {
+    background: #fff;
+}
+
+.notice-read .summary-text {
+    color: #8a93a0;
+}

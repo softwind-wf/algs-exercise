@@ -3,24 +3,25 @@
 <mapper namespace="com.ds.university.mapper.ForumMapper">
 
     <sql id="postColumns">
-        f.id, f.title, f.content, f.category, f.pinned, f.featured, f.like_count,
+        f.id, f.title, f.content, f.category_id, f.pinned, f.featured, f.like_count,
         f.author_user, f.author_name, f.reply_count, f.last_reply_time,
         f.created_time, f.updated_time,
+        fc.name AS category_name,
         DATE_FORMAT(f.created_time, '%Y-%m-%d %H:%i') AS created_time_text,
         DATE_FORMAT(f.last_reply_time, '%Y-%m-%d %H:%i') AS last_reply_time_text,
         EXISTS (SELECT 1 FROM forum_like fl WHERE fl.post_id = f.id AND fl.user_id = #{me}) AS liked
     </sql>
 
     <insert id="insertPost" parameterType="com.ds.university.entity.ForumPost" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO forum_post (title, content, category, author_user, author_name)
-        VALUES (#{title}, #{content}, #{category}, #{authorUser}, #{authorName})
+        INSERT INTO forum_post (title, content, category_id, author_user, author_name)
+        VALUES (#{title}, #{content}, #{categoryId}, #{authorUser}, #{authorName})
     </insert>
 
     <update id="updatePost" parameterType="com.ds.university.entity.ForumPost">
         UPDATE forum_post
         SET title = #{title},
             content = #{content},
-            category = #{category}
+            category_id = #{categoryId}
         WHERE id = #{id}
     </update>
 
@@ -28,10 +29,17 @@
         SELECT COUNT(*) FROM forum_post f
         <where>
             <if test="keyword != null and keyword != ''">
-                (f.title LIKE CONCAT('%', #{keyword}, '%') OR f.content LIKE CONCAT('%', #{keyword}, '%'))
+                <choose>
+                    <when test="fulltext">
+                        MATCH(f.title, f.content) AGAINST (#{keyword} IN BOOLEAN MODE)
+                    </when>
+                    <otherwise>
+                        (f.title LIKE CONCAT('%', #{keyword}, '%') OR f.content LIKE CONCAT('%', #{keyword}, '%'))
+                    </otherwise>
+                </choose>
             </if>
-            <if test="category != null and category != ''">
-                AND f.category = #{category}
+            <if test="categoryId != null">
+                AND f.category_id = #{categoryId}
             </if>
         </where>
     </select>
@@ -39,12 +47,20 @@
     <select id="selectPostPage" resultType="com.ds.university.entity.ForumPost">
         SELECT <include refid="postColumns"/>
         FROM forum_post f
+        LEFT JOIN forum_category fc ON fc.id = f.category_id
         <where>
             <if test="keyword != null and keyword != ''">
-                (f.title LIKE CONCAT('%', #{keyword}, '%') OR f.content LIKE CONCAT('%', #{keyword}, '%'))
+                <choose>
+                    <when test="fulltext">
+                        MATCH(f.title, f.content) AGAINST (#{keyword} IN BOOLEAN MODE)
+                    </when>
+                    <otherwise>
+                        (f.title LIKE CONCAT('%', #{keyword}, '%') OR f.content LIKE CONCAT('%', #{keyword}, '%'))
+                    </otherwise>
+                </choose>
             </if>
-            <if test="category != null and category != ''">
-                AND f.category = #{category}
+            <if test="categoryId != null">
+                AND f.category_id = #{categoryId}
             </if>
         </where>
         ORDER BY f.pinned DESC, COALESCE(f.last_reply_time, f.created_time) DESC, f.id DESC
@@ -54,6 +70,7 @@
     <select id="selectPostById" resultType="com.ds.university.entity.ForumPost">
         SELECT <include refid="postColumns"/>
         FROM forum_post f
+        LEFT JOIN forum_category fc ON fc.id = f.category_id
         WHERE f.id = #{id}
     </select>
 
@@ -93,6 +110,73 @@
     <update id="updateLikeCount">
         UPDATE forum_post SET like_count = like_count + #{delta} WHERE id = #{id}
     </update>
+
+    <select id="selectLikers" resultType="com.ds.university.vo.ForumLikeVO">
+        SELECT fl.user_id AS userId,
+               COALESCE(s.name, i.name) AS userName,
+               DATE_FORMAT(fl.created_time, '%Y-%m-%d %H:%i') AS created_time_text
+        FROM forum_like fl
+        LEFT JOIN sys_user u ON u.user_id = fl.user_id
+        LEFT JOIN student s ON u.ref_id = s.id AND u.user_type = 'STUDENT'
+        LEFT JOIN instructor i ON u.ref_id = i.id AND u.user_type = 'INSTRUCTOR'
+        WHERE fl.post_id = #{postId}
+        ORDER BY fl.created_time ASC
+        LIMIT #{limit}
+    </select>
+
+    <!-- ===== 编辑历史 ===== -->
+
+    <insert id="insertPostHistory" parameterType="com.ds.university.entity.ForumPostHistory">
+        INSERT INTO forum_post_history (post_id, title, content, category_id, edited_by)
+        VALUES (#{postId}, #{title}, #{content}, #{categoryId}, #{editedBy})
+    </insert>
+
+    <select id="selectPostHistory" resultType="com.ds.university.entity.ForumPostHistory">
+        SELECT id, post_id, title, content, category_id, edited_by, created_time,
+               DATE_FORMAT(created_time, '%Y-%m-%d %H:%i') AS created_time_text
+        FROM forum_post_history
+        WHERE post_id = #{postId}
+        ORDER BY id DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- ===== 板块（管理员维护） ===== -->
+
+    <select id="selectEnabledCategories" resultType="com.ds.university.entity.ForumCategory">
+        SELECT id, name, sort_order, enabled, created_time
+        FROM forum_category
+        WHERE enabled = 1
+        ORDER BY sort_order, id
+    </select>
+
+    <select id="selectAllCategories" resultType="com.ds.university.entity.ForumCategory">
+        SELECT id, name, sort_order, enabled, created_time
+        FROM forum_category
+        ORDER BY sort_order, id
+    </select>
+
+    <select id="selectCategoryById" resultType="com.ds.university.entity.ForumCategory">
+        SELECT id, name, sort_order, enabled, created_time
+        FROM forum_category
+        WHERE id = #{id}
+    </select>
+
+    <insert id="insertCategory" parameterType="com.ds.university.entity.ForumCategory" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO forum_category (name, sort_order)
+        VALUES (#{name}, #{sortOrder})
+    </insert>
+
+    <update id="renameCategory">
+        UPDATE forum_category SET name = #{name} WHERE id = #{id}
+    </update>
+
+    <update id="toggleCategoryEnabled">
+        UPDATE forum_category SET enabled = #{enabled} WHERE id = #{id}
+    </update>
+
+    <select id="countPostsByCategory" resultType="long">
+        SELECT COUNT(*) FROM forum_post WHERE category_id = #{categoryId}
+    </select>
 
     <!-- ===== 回复 ===== -->
 

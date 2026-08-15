@@ -1,0 +1,20 @@
+# ============================================================
+# TLS（HTTPS）profile：启用时应用以 HTTPS 服务在 8443 端口。
+# 用法：
+#   1. 生成自签名证书（一次性）：scripts/gen-keystore.ps1
+#   2. 以 tls profile 启动：
+#        IDE：Program arguments 加 --spring.profiles.active=dev,tls
+#        命令行：java -jar target/algs4-1.0.0.0.jar --spring.profiles.active=dev,tls
+#   3. 访问 https://localhost:8443
+# 生产环境：把 keystore/university.p12 替换为正式证书（或用环境变量
+#   KEYSTORE_PATH / KEYSTORE_PASSWORD / KEYSTORE_ALIAS 指向外部证书），
+#   并建议由 nginx/caddy 等反向代理终结 TLS。
+# ============================================================
+server:
+  port: 8443
+  ssl:
+    enabled: true
+    key-store: ${KEYSTORE_PATH:keystore/university.p12}
+    key-store-password: ${KEYSTORE_PASSWORD:changeit}
+    key-store-type: PKCS12
+    key-alias: ${KEYSTORE_ALIAS:university}

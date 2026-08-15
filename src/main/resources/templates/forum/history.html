@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('编辑历史')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
+        <h1 class="page-title mb-0">编辑历史</h1>
+        <a th:href="@{/forum/{id}(id=${post.id})}" class="text-decoration-none small text-muted">← 返回帖子</a>
+    </div>
+    <p class="text-secondary">
+        《<span th:text="${post.title}">标题</span>》的历次编辑记录（展示每次编辑**之前**的版本，最新在前）。
+    </p>
+
+    <div class="card shadow-sm mt-3" th:each="h : ${history}">
+        <div class="card-body">
+            <small class="text-secondary d-block">
+                <span th:text="'编辑于 ' + ${h.createdTimeText}">时间</span>
+                · 编辑者 <span th:text="${h.editedBy}">账号</span>
+                · 板块 <span th:text="${h.categoryId != null ? h.categoryId : '未分类'}">板块</span>
+            </small>
+            <h2 class="h6 mt-2 mb-1" th:text="${h.title}">旧标题</h2>
+            <p class="mb-0" style="white-space: pre-line" th:text="${h.content}">旧正文</p>
+        </div>
+    </div>
+    <p class="hint mt-3" th:if="${#lists.isEmpty(history)}">该帖尚未被编辑过。</p>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

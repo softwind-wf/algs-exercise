@@ -13,8 +13,10 @@ public class ForumPost {
     private Long id;
     private String title;
     private String content;
-    /** 分类：STUDY/COURSE/CAMPUS/SHARE/SUGGEST */
-    private String category;
+    /** 板块ID（FK→forum_category） */
+    private Integer categoryId;
+    /** 板块名称（查询 LEFT JOIN 填充） */
+    private String categoryName;
     /** 置顶：1 置顶（管理员） */
     private Integer pinned;
     /** 加精：1 精华（管理员） */
@@ -52,12 +54,20 @@ public class ForumPost {
         this.title = title;
     }
 
-    public String getCategory() {
-        return category;
+    public Integer getCategoryId() {
+        return categoryId;
     }
 
-    public void setCategory(String category) {
-        this.category = category;
+    public void setCategoryId(Integer categoryId) {
+        this.categoryId = categoryId;
+    }
+
+    public String getCategoryName() {
+        return categoryName;
+    }
+
+    public void setCategoryName(String categoryName) {
+        this.categoryName = categoryName;
     }
 
     public Integer getPinned() {

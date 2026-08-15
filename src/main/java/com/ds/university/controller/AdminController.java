@@ -1,17 +1,23 @@
 package com.ds.university.controller;
 
 import com.ds.university.common.BusinessException;
+import com.ds.university.common.ErrorCode;
 import com.ds.university.common.Result;
 import com.ds.university.config.OnlineUserTracker;
+import com.ds.university.entity.ForumCategory;
 import com.ds.university.entity.Section;
 import com.ds.university.service.AdminService;
 import com.ds.university.service.AccountService;
 import com.ds.university.service.AnnouncementService;
 import com.ds.university.service.AuditService;
 import com.ds.university.service.ChatService;
+import com.ds.university.service.ForumService;
 import com.ds.university.service.StatsReportService;
 import com.ds.university.service.TermDefaults;
+import com.ds.university.vo.LoginUser;
 import com.ds.university.vo.OnlineUserVO;
+
+import javax.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,11 +44,13 @@ public class AdminController {
     private final AnnouncementService announcementService;
     private final OnlineUserTracker onlineUserTracker;
     private final ChatService chatService;
+    private final ForumService forumService;
 
     public AdminController(AdminService adminService, StatsReportService statsReportService,
                            AccountService accountService, TermDefaults termDefaults,
                            AuditService auditService, AnnouncementService announcementService,
-                           OnlineUserTracker onlineUserTracker, ChatService chatService) {
+                           OnlineUserTracker onlineUserTracker, ChatService chatService,
+                           ForumService forumService) {
         this.adminService = adminService;
         this.statsReportService = statsReportService;
         this.accountService = accountService;
@@ -51,6 +59,7 @@ public class AdminController {
         this.announcementService = announcementService;
         this.onlineUserTracker = onlineUserTracker;
         this.chatService = chatService;
+        this.forumService = forumService;
     }
 
     /** 教务管理首页：统计概览 */
@@ -720,9 +729,7 @@ public class AdminController {
         return "redirect:/admin/announcements";
     }
 
-    // ========== 在线用户（会话监听器） ==========
-
-    /** 在线用户列表：当前已登录且会话有效的用户（退出/超时自动剔除） */
+    // ========== 在线用户（会话监听器） ==========    /** 在线用户列表：当前已登录且会话有效的用户（退出/超时自动剔除） */
     @GetMapping("/online")
     public String online(Model model) {
         List<OnlineUserVO> users = onlineUserTracker.onlineUsers();
@@ -740,5 +747,58 @@ public class AdminController {
     @ResponseBody
     public Result<Integer> onlineCount() {
         return Result.ok(onlineUserTracker.onlineCount());
+    }
+
+    // ========== 论坛板块管理 ==========
+
+    @GetMapping("/forum-categories")
+    public String forumCategories(Model model) {
+        model.addAttribute("categories", forumService.allCategories());
+        return "admin/forum-categories";
+    }
+
+    @PostMapping("/forum-categories")
+    public String createForumCategory(@RequestParam String name,
+                                      @RequestParam(required = false) Integer sortOrder,
+                                      HttpSession session, RedirectAttributes ra) {
+        try {
+            ForumCategory category = forumService.createCategory(loginUser(session), name, sortOrder);
+            ra.addFlashAttribute("success", "板块已新增：" + category.getName());
+        } catch (BusinessException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/forum-categories";
+    }
+
+    @PostMapping("/forum-categories/rename")
+    public String renameForumCategory(@RequestParam Integer id,
+                                      @RequestParam String name,
+                                      HttpSession session, RedirectAttributes ra) {
+        try {
+            forumService.renameCategory(loginUser(session), id, name);
+            ra.addFlashAttribute("success", "板块已重命名");
+        } catch (BusinessException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/forum-categories";
+    }
+
+    @PostMapping("/forum-categories/toggle")
+    public String toggleForumCategory(@RequestParam Integer id, HttpSession session, RedirectAttributes ra) {
+        try {
+            boolean enabled = forumService.toggleCategoryEnabled(loginUser(session), id);
+            ra.addFlashAttribute("success", enabled ? "板块已启用" : "板块已停用（新帖不可选，存量帖保留）");
+        } catch (BusinessException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/forum-categories";
+    }
+
+    private LoginUser loginUser(HttpSession session) {
+        LoginUser user = session == null ? null : (LoginUser) session.getAttribute(AuthController.SESSION_USER);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+        return user;
     }
 }

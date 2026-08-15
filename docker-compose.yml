@@ -27,6 +27,20 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    container_name: university-redis
+    # 多实例共享状态：在线统计 / 登录限流 / 聊天跨实例路由
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
   app:
     build: .
     image: university-web:1.0
@@ -34,11 +48,16 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/university?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
       DB_USER: university
       DB_PASSWORD: university123
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MULTI_INSTANCE_ENABLED: "true"
       TZ: Asia/Shanghai
     ports:
       - "${APP_PORT:-8080}:8080"
@@ -53,3 +72,4 @@ volumes:
   mysql-data:
   uploads-data:
   logs-data:
+  redis-data:

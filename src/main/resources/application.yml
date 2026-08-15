@@ -38,6 +38,10 @@ spring:
     baseline-version: 0
     # 已应用迁移的脚本内容被篡改时启动即失败，防止版本漂移
     validate-on-migrate: true
+  redis:
+    # 多实例共享状态用；Docker 部署用环境变量 REDIS_HOST/REDIS_PORT 覆盖（见 docker-compose.yml）
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
   thymeleaf:
     encoding: UTF-8
   web:
@@ -85,3 +89,7 @@ management:
 app:
   upload:
     avatar-dir: ${APP_UPLOAD_DIR:./uploads/avatars}
+  multi-instance:
+    # 多实例模式：true（默认）时在线统计 / 登录限流 / 聊天路由走 Redis（跨实例共享，
+    # 需先启动 Redis）；false 时退回单机内存实现（单实例部署用）。
+    enabled: ${MULTI_INSTANCE_ENABLED:true}

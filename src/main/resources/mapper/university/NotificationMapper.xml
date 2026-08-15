@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ds.university.mapper.NotificationMapper">
+
+    <insert id="insert" parameterType="com.ds.university.entity.UserNotification" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_notification (user_id, type, source_url, summary)
+        VALUES (#{userId}, #{type}, #{sourceUrl}, #{summary})
+    </insert>
+
+    <select id="selectByUser" resultType="com.ds.university.entity.UserNotification">
+        SELECT id, user_id, type, source_url, summary, read_flag, created_time,
+               DATE_FORMAT(created_time, '%Y-%m-%d %H:%i') AS created_time_text
+        FROM user_notification
+        WHERE user_id = #{userId}
+        ORDER BY id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countUnread" resultType="int">
+        SELECT COUNT(*) FROM user_notification
+        WHERE user_id = #{userId} AND read_flag = 0
+    </select>
+
+    <update id="markAllRead">
+        UPDATE user_notification SET read_flag = 1
+        WHERE user_id = #{userId} AND read_flag = 0
+    </update>
+
+    <update id="markRead">
+        UPDATE user_notification SET read_flag = 1
+        WHERE id = #{id} AND user_id = #{userId}
+    </update>
+
+</mapper>

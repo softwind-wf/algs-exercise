@@ -8,11 +8,12 @@ import com.ds.university.mapper.SectionMapper;
 import com.ds.university.vo.CourseStatVO;
 import com.ds.university.vo.DepartmentVO;
 import com.ds.university.vo.SectionVO;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-/** 首页内容聚合：热门课程、最新开课班、院系一览、系统公告 */
+/** 首页内容聚合：热门课程、最新开课班、院系一览、系统公告（60s 缓存） */
 @Service
 public class HomeService {
 
@@ -33,21 +34,25 @@ public class HomeService {
     }
 
     /** 热门课程（按累计选课人数降序） */
+    @Cacheable(cacheNames = "home", key = "'hotCourses'")
     public List<CourseStatVO> hotCourses() {
         return courseMapper.selectHotCourses(HOT_COURSE_LIMIT);
     }
 
     /** 最新开课班（按年份/学期倒序） */
+    @Cacheable(cacheNames = "home", key = "'latestSections'")
     public List<SectionVO> latestSections() {
         return sectionMapper.selectLatest(LATEST_SECTION_LIMIT);
     }
 
     /** 院系一览（含教师数/课程数） */
+    @Cacheable(cacheNames = "home", key = "'departments'")
     public List<DepartmentVO> departments() {
         return departmentMapper.selectAllWithStats();
     }
 
     /** 系统公告（首页面板展示已发布，置顶优先） */
+    @Cacheable(cacheNames = "home", key = "'announcements'")
     public List<Announcement> announcements() {
         return announcementMapper.selectPublished(null, AnnouncementService.HOME_LIMIT);
     }

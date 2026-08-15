@@ -9,6 +9,8 @@ import com.ds.university.vo.ChatConversationVO;
 import com.ds.university.vo.ChatDeptVO;
 import com.ds.university.vo.ChatGroupVO;
 import com.ds.university.vo.ChatUserVO;
+import com.ds.university.util.SearchText;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -109,12 +111,10 @@ public class ChatService {
         return users;
     }
 
-    /** 综合查询：关键字（姓名/账号）/院系/角色均可选，排除自己，服务端限流 */
+    /** 综合查询：关键字（姓名/账号）/院系/角色均可选，排除自己，服务端限流；关键字 >= 2 字走全文索引 */
     public List<ChatUserVO> searchUsers(String me, String keyword, String dept, String role, int limit) {
-        String safeKeyword = keyword == null ? "" : keyword.trim();
-        if (safeKeyword.length() > 30) {
-            safeKeyword = safeKeyword.substring(0, 30);
-        }
+        String safeKeyword = SearchText.sanitizeForBoolean(keyword);
+        boolean fulltext = SearchText.useFulltext(safeKeyword);
         String safeDept = dept == null ? "" : dept.trim();
         if (safeDept.length() > 30) {
             safeDept = safeDept.substring(0, 30);
@@ -124,7 +124,7 @@ public class ChatService {
             safeRole = "";
         }
         int safeLimit = limit <= 0 ? SEARCH_LIMIT : Math.min(limit, 50);
-        List<ChatUserVO> users = chatMessageMapper.searchChatUsers(safeKeyword, safeDept, safeRole, safeLimit);
+        List<ChatUserVO> users = chatMessageMapper.searchChatUsers(safeKeyword, safeDept, safeRole, safeLimit, fulltext);
         users.removeIf(u -> u.getUserId().equals(me));
         return users;
     }
@@ -161,7 +161,8 @@ public class ChatService {
         return chatMessageMapper.selectDepartments();
     }
 
-    /** 显示名：优先按账号类型取学生/教师姓名，未知账号退回登录名 */
+    /** 显示名：优先按账号类型取学生/教师姓名，未知账号退回登录名（10 分钟缓存，避免每条消息全表扫） */
+    @Cacheable(cacheNames = "displayName", key = "#userId")
     public String displayName(String userId) {
         if (userId == null) {
             return null;

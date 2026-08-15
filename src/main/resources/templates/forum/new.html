@@ -18,8 +18,10 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="category">板块</label>
-                    <select class="form-select" id="category" name="category">
-                        <option th:each="c : ${categories}" th:value="${c.key}" th:text="${c.value}">板块</option>
+                    <select class="form-select" id="category" name="category" required>
+                        <option value="" th:selected="${categoryId == null}">请选择板块</option>
+                        <option th:each="c : ${categories}" th:value="${c.id}" th:text="${c.name}"
+                                th:selected="${categoryId == c.id}">板块</option>
                     </select>
                 </div>
                 <div class="mb-3">

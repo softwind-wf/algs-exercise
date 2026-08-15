@@ -68,7 +68,7 @@
         ORDER BY u.user_type, u.user_id
     </select>
 
-    <!-- 综合查询：关键字（姓名/账号）/院系/角色均可选，LIMIT 限流避免全量返回 -->
+    <!-- 综合查询：关键字（登录账号精确/前缀 + 姓名全文）/院系/角色均可选，LIMIT 限流避免全量返回 -->
     <select id="searchChatUsers" resultType="com.ds.university.vo.ChatUserVO">
         SELECT u.user_id   AS userId,
                u.user_type AS userType,
@@ -84,8 +84,20 @@
             AND u.user_type = #{role}
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (u.user_id LIKE CONCAT('%', #{keyword}, '%')
-                 OR COALESCE(s.name, i.name) LIKE CONCAT('%', #{keyword}, '%'))
+            AND (
+                u.user_id = #{keyword}
+                OR u.user_id LIKE CONCAT(#{keyword}, '%')
+                <choose>
+                    <when test="fulltext">
+                        OR MATCH(s.name) AGAINST (#{keyword} IN BOOLEAN MODE)
+                        OR MATCH(i.name) AGAINST (#{keyword} IN BOOLEAN MODE)
+                    </when>
+                    <otherwise>
+                        OR s.name LIKE CONCAT('%', #{keyword}, '%')
+                        OR i.name LIKE CONCAT('%', #{keyword}, '%')
+                    </otherwise>
+                </choose>
+            )
         </if>
         ORDER BY u.user_type, u.user_id
         LIMIT #{limit}

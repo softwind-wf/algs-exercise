@@ -17,20 +17,20 @@
     <div class="alert alert-success py-2 mt-3" th:if="${success}" th:text="${success}">成功提示</div>
     <div class="alert alert-danger py-2 mt-3" th:if="${error}" th:text="${error}">错误提示</div>
 
-    <!-- 板块分类 + 搜索 -->
+    <!-- 板块筛选 + 搜索 -->
     <div class="d-flex flex-wrap gap-2 mt-3">
-        <a class="btn btn-sm" th:classappend="${selCategory == ''} ? 'btn-primary' : 'btn-outline-primary'"
+        <a class="btn btn-sm" th:classappend="${selCategory == 0} ? 'btn-primary' : 'btn-outline-primary'"
            th:href="@{/forum(keyword=${keyword})}">全部</a>
         <a class="btn btn-sm" th:each="c : ${categories}"
-           th:classappend="${selCategory == c.key} ? 'btn-primary' : 'btn-outline-primary'"
-           th:href="@{/forum(keyword=${keyword}, category=${c.key})}" th:text="${c.value}">板块</a>
+           th:classappend="${selCategory == c.id} ? 'btn-primary' : 'btn-outline-primary'"
+           th:href="@{/forum(keyword=${keyword}, category=${c.id})}" th:text="${c.name}">板块</a>
     </div>
     <form method="get" th:action="@{/forum}" class="d-flex gap-2 mt-2">
         <input type="hidden" name="category" th:value="${selCategory}"/>
         <input type="search" class="form-control" name="keyword" th:value="${keyword}"
                placeholder="搜索标题 / 内容…" style="max-width: 320px;" autocomplete="off">
         <button type="submit" class="btn btn-outline-secondary">搜索</button>
-        <a th:href="@{/forum}" class="btn btn-outline-secondary" th:if="${keyword != '' or selCategory != ''}">清除</a>
+        <a th:href="@{/forum}" class="btn btn-outline-secondary" th:if="${keyword != '' or selCategory != 0}">清除</a>
     </form>
 
     <!-- 帖子列表 -->
@@ -49,13 +49,7 @@
                 <a th:href="@{/forum/{id}(id=${p.id})}" class="fw-semibold text-decoration-none"
                    th:text="${p.title}">帖子标题</a>
                 <small class="text-secondary d-block">
-                    <span th:switch="${p.category}">
-                        <span th:case="'COURSE'">课程答疑</span>
-                        <span th:case="'CAMPUS'">校园生活</span>
-                        <span th:case="'SHARE'">资源共享</span>
-                        <span th:case="'SUGGEST'">意见建议</span>
-                        <span th:case="*">学习交流</span>
-                    </span>
+                    <span th:text="${p.categoryName != null ? p.categoryName : '未分类'}">板块</span>
                     · <span th:text="${p.createdTimeText}">时间</span>
                 </small>
             </div>

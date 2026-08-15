@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('通知')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
+        <h1 class="page-title mb-0">通知</h1>
+        <form method="post" th:action="@{/notifications/read-all}">
+            <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
+            <button type="submit" class="btn btn-sm btn-outline-primary">全部标记已读</button>
+        </form>
+    </div>
+    <div class="alert alert-success py-2 mt-3" th:if="${success}" th:text="${success}">成功提示</div>
+
+    <div class="bg-white border rounded-3 shadow-sm mt-3">
+        <div class="notice-item" th:each="n : ${notifications}"
+             th:classappend="${n.readFlag == 1} ? 'notice-read' : ''">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="badge text-bg-info"
+                      th:if="${n.type == 'FORUM_MENTION'}">@提及</span>
+                <span class="badge text-bg-secondary" th:unless="${n.type == 'FORUM_MENTION'}"
+                      th:text="${n.type}">类型</span>
+                <span class="flex-grow-1" th:text="${n.summary}">摘要</span>
+                <small class="text-secondary" th:text="${n.createdTimeText}">时间</small>
+            </div>
+            <div class="mt-1 d-flex align-items-center gap-2 flex-wrap">
+                <a class="btn btn-sm btn-outline-primary" th:href="@{${n.sourceUrl}}">查看</a>
+                <form method="post" th:action="@{/notifications/{id}/read(id=${n.id})}" th:if="${n.readFlag != 1}">
+                    <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
+                    <button type="submit" class="btn btn-sm btn-link text-secondary p-0">标记已读</button>
+                </form>
+                <small class="text-secondary" th:if="${n.readFlag == 1}">已读</small>
+            </div>
+        </div>
+        <p class="p-3 text-secondary mb-0" th:if="${#lists.isEmpty(notifications)}">暂无通知。在论坛回复或发帖中 @某人 即可收到提醒。</p>
+    </div>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

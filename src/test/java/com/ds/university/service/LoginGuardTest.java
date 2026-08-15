@@ -50,7 +50,7 @@ class LoginGuardTest {
     @BeforeEach
     void setUp() {
         clock = new MutableClock();
-        guard = new LoginGuard(clock);
+        guard = new LoginGuard(new InMemoryLoginRateStore(), clock);
     }
 
     @Test

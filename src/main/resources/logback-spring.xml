@@ -18,11 +18,16 @@
                     converterClass="org.springframework.boot.logging.logback.ColorConverter"/>
     <conversionRule conversionWord="wEx"
                     converterClass="org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxyConverter"/>
+    <!-- 日志脱敏：%mask 掩码消息、%maskEx 掩码异常堆栈（密码哈希/手机号/身份证/Session/Token 等） -->
+    <conversionRule conversionWord="mask"
+                    converterClass="com.ds.university.config.SensitiveDataMaskingConverter"/>
+    <conversionRule conversionWord="maskEx"
+                    converterClass="com.ds.university.config.SensitiveDataMaskingThrowableConverter"/>
 
     <!-- 控制台：开发期主出口，颜色随环境自动开关 -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %clr(%5p) [%thread] %clr(%-40.40logger{39}) %clr(:) %m%n%wEx</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %clr(%5p) [%thread] %clr(%-40.40logger{39}) %clr(:) %mask%n%maskEx</pattern>
             <charset>UTF-8</charset>
         </encoder>
     </appender>
@@ -37,7 +42,7 @@
             <totalSizeCap>2GB</totalSizeCap>
         </rollingPolicy>
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5p [%thread] %-40.40logger{39} : %m%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5p [%thread] %-40.40logger{39} : %mask%n%maskEx</pattern>
             <charset>UTF-8</charset>
         </encoder>
     </appender>
@@ -57,7 +62,7 @@
             <totalSizeCap>1GB</totalSizeCap>
         </rollingPolicy>
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5p [%thread] %-40.40logger{39} : %m%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5p [%thread] %-40.40logger{39} : %mask%n%maskEx</pattern>
             <charset>UTF-8</charset>
         </encoder>
     </appender>

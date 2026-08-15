@@ -23,13 +23,7 @@
                 <span class="badge rounded-pill text-bg-secondary" th:text="'回复 ' + ${post.replyCount}">回复 0</span>
             </div>
             <small class="text-secondary d-block mt-1">
-                <span th:switch="${post.category}">
-                    <span th:case="'COURSE'">课程答疑</span>
-                    <span th:case="'CAMPUS'">校园生活</span>
-                    <span th:case="'SHARE'">资源共享</span>
-                    <span th:case="'SUGGEST'">意见建议</span>
-                    <span th:case="*">学习交流</span>
-                </span>
+                <span th:text="${post.categoryName != null ? post.categoryName : '未分类'}">板块</span>
                 · <span th:text="${post.authorName}">作者</span>
                 · <span th:text="${post.authorUser}">账号</span>
                 · 发布于 <span th:text="${post.createdTimeText}">时间</span>
@@ -46,9 +40,21 @@
                             th:text="${post.liked == true} ? '已赞 (' + ${post.likeCount} + ')' : '点赞 (' + ${post.likeCount} + ')'">点赞</button>
                 </form>
 
+                <!-- 点赞人列表 -->
+                <details class="btn-group" th:if="${! #lists.isEmpty(likers)}">
+                    <summary class="btn btn-sm btn-outline-secondary" style="list-style: none;">赞过的人</summary>
+                    <div class="card shadow-sm mt-1 p-2" style="min-width: 220px;">
+                        <div class="forum-liker" th:each="l : ${likers}">
+                            <span class="fw-semibold" th:text="${l.userName}">姓名</span>
+                            <small class="text-secondary" th:text="'（' + ${l.userId} + '） ' + ${l.createdTimeText}">信息</small>
+                        </div>
+                    </div>
+                </details>
+
                 <a class="btn btn-sm btn-outline-secondary"
                    th:if="${session.loginUser != null and (session.loginUser.userId == post.authorUser or #lists.contains(session.loginUser.roles, 'ADMIN'))}"
                    th:href="@{/forum/{id}/edit(id=${post.id})}">编辑</a>
+                <a class="btn btn-sm btn-outline-secondary" th:href="@{/forum/{id}/history(id=${post.id})}">编辑历史</a>
 
                 <form method="post" th:action="@{/forum/{id}/pin(id=${post.id})}"
                       th:if="${session.loginUser != null and #lists.contains(session.loginUser.roles, 'ADMIN')}">
@@ -77,7 +83,7 @@
     <h2 class="h5 mt-4 mb-2">全部回复（<span th:text="${#lists.size(replies)}">0</span>）</h2>
     <div class="card shadow-sm">
         <div class="card-body p-4">
-            <div class="forum-reply" th:each="r : ${replies}">
+            <div class="forum-reply" th:each="r : ${replies}" th:id="'reply-' + ${r.id}">
                 <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
                     <small class="text-secondary">
                         <span class="fw-semibold text-dark" th:text="${r.authorName}">作者</span>

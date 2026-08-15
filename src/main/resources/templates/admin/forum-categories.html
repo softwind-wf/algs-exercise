@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('板块管理')"></head>
+<body>
+<nav th:replace="fragments/layout :: nav"></nav>
+
+<main class="container-fluid admin-shell px-0">
+    <div class="row g-0">
+        <div class="col-md-3 col-lg-2">
+            <aside th:replace="admin/_fragments :: adminNav('forum-categories')"></aside>
+        </div>
+        <div class="col-md-9 col-lg-10">
+            <div class="admin-content p-4">
+                <h1 class="page-title">论坛板块管理</h1>
+                <p class="text-secondary">动态维护论坛板块：新增、重命名、启用/停用。停用后新帖不可选，存量帖保留展示。</p>
+
+                <div class="alert alert-success py-2 mt-3" th:if="${success}" th:text="${success}">成功提示</div>
+                <div class="alert alert-danger py-2 mt-3" th:if="${error}" th:text="${error}">错误提示</div>
+
+                <div class="card shadow-sm mt-3">
+                    <div class="card-body">
+                        <h2 class="h5 mb-3">新增板块</h2>
+                        <form method="post" th:action="@{/admin/forum-categories}" class="d-flex gap-2 flex-wrap">
+                            <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
+                            <input class="form-control" type="text" name="name" maxlength="30"
+                                   placeholder="板块名称（30 字以内）" style="width: 220px;" required>
+                            <input class="form-control" type="number" name="sortOrder" min="0" value="99"
+                                   placeholder="排序（小在前）" style="width: 140px;">
+                            <button type="submit" class="btn btn-primary">新增</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="table-responsive bg-white border rounded-3 shadow-sm mt-4">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                        <tr>
+                            <th style="width: 60px;">ID</th>
+                            <th>板块名称</th>
+                            <th style="width: 90px;">排序</th>
+                            <th style="width: 90px;">状态</th>
+                            <th class="text-end" style="width: 200px;">操作</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="c : ${categories}">
+                            <td class="text-secondary" th:text="${c.id}">1</td>
+                            <td>
+                                <form class="d-flex gap-2" method="post" th:action="@{/admin/forum-categories/rename}">
+                                    <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
+                                    <input type="hidden" name="id" th:value="${c.id}"/>
+                                    <input class="form-control form-control-sm" type="text" name="name"
+                                           maxlength="30" th:value="${c.name}" style="width: 180px;" required>
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">重命名</button>
+                                </form>
+                            </td>
+                            <td class="text-secondary" th:text="${c.sortOrder}">0</td>
+                            <td>
+                                <span class="badge" th:classappend="${c.enabled == 1} ? 'text-bg-success' : 'text-bg-secondary'"
+                                      th:text="${c.enabled == 1} ? '启用' : '停用'">状态</span>
+                            </td>
+                            <td class="text-end">
+                                <form class="d-inline" method="post" th:action="@{/admin/forum-categories/toggle}">
+                                    <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
+                                    <input type="hidden" name="id" th:value="${c.id}">
+                                    <button type="submit" class="btn btn-sm"
+                                            th:classappend="${c.enabled == 1} ? 'btn-outline-warning' : 'btn-outline-success'"
+                                            th:text="${c.enabled == 1} ? '停用' : '启用'">停用</button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="fragments/layout :: footer"></footer>
+</body>
+</html>

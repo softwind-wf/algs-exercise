@@ -5,6 +5,7 @@ import com.ds.university.vo.DeptBudgetVO;
 import com.ds.university.vo.DeptSalaryVO;
 import com.ds.university.vo.EnrollmentReportVO;
 import com.ds.university.vo.GradeCountVO;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -29,6 +30,7 @@ public class StatsReportService {
     }
 
     /** 系经费与教师数（含相对最大值的百分比，供图表展示） */
+    @Cacheable(cacheNames = "stats", key = "'deptBudget'")
     public List<DeptBudgetVO> deptBudget() {
         List<DeptBudgetVO> rows = statsMapper.selectDeptBudget();
         BigDecimal max = rows.stream()
@@ -47,6 +49,7 @@ public class StatsReportService {
     }
 
     /** 各系教师平均工资（含相对最大值的百分比） */
+    @Cacheable(cacheNames = "stats", key = "'salaryByDept'")
     public List<DeptSalaryVO> salaryByDept() {
         List<DeptSalaryVO> rows = statsMapper.selectSalaryByDept();
         BigDecimal max = rows.stream()
@@ -72,6 +75,7 @@ public class StatsReportService {
                 .divide(max, 0, RoundingMode.HALF_UP).intValue();
     }
     /** 选课人数 vs 容量（含利用率百分比） */
+    @Cacheable(cacheNames = "stats", key = "'enrollment:' + #semester + ':' + #year + ':' + #courseId")
     public List<EnrollmentReportVO> enrollment(String semester, Integer year, String courseId) {
         List<EnrollmentReportVO> rows = statsMapper.selectEnrollment(semester, year, courseId);
         for (EnrollmentReportVO row : rows) {
@@ -86,6 +90,7 @@ public class StatsReportService {
     }
 
     /** 某课程成绩分布（按成绩档位排序，未出分最后；含占比百分比） */
+    @Cacheable(cacheNames = "stats", key = "'gradeDist:' + #courseId")
     public List<GradeCountVO> gradeDistribution(String courseId) {
         List<GradeCountVO> rows = statsMapper.selectGradeDistribution(courseId);
         int total = rows.stream().mapToInt(r -> r.getCount() == null ? 0 : r.getCount()).sum();

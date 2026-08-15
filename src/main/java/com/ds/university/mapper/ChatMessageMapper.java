@@ -35,11 +35,12 @@ public interface ChatMessageMapper {
     /** 通讯录：有登录账号且启用的学生/教师（含显示名） */
     List<ChatUserVO> selectChatUsers();
 
-    /** 综合查询：按关键字/院系/角色过滤（均可选），limit 为返回条数上限 */
+    /** 综合查询：按关键字/院系/角色过滤（均可选），limit 为返回条数上限；fulltext=true 走全文索引 */
     List<ChatUserVO> searchChatUsers(@Param("keyword") String keyword,
                                      @Param("dept") String dept,
                                      @Param("role") String role,
-                                     @Param("limit") int limit);
+                                     @Param("limit") int limit,
+                                     @Param("fulltext") boolean fulltext);
 
     /** 我的同学：与我同开课班的学生（有账号） */
     List<ChatUserVO> selectClassmates(@Param("studentId") String studentId, @Param("limit") int limit);

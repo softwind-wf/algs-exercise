@@ -1,7 +1,10 @@
 package com.ds.university.mapper;
 
+import com.ds.university.entity.ForumCategory;
 import com.ds.university.entity.ForumPost;
+import com.ds.university.entity.ForumPostHistory;
 import com.ds.university.entity.ForumReply;
+import com.ds.university.vo.ForumLikeVO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -16,18 +19,21 @@ public interface ForumMapper {
 
     int insertPost(ForumPost post);
 
-    /** 更新标题/正文/分类（作者编辑） */
+    /** 更新标题/正文/板块（作者编辑） */
     int updatePost(ForumPost post);
 
-    /** 帖子总数（keyword/category 为空表示不限制） */
-    long countPosts(@Param("keyword") String keyword, @Param("category") String category);
+    /** 帖子总数（keyword/categoryId 为空表示不限制；fulltext=true 走全文索引） */
+    long countPosts(@Param("keyword") String keyword,
+                    @Param("categoryId") Integer categoryId,
+                    @Param("fulltext") boolean fulltext);
 
     /** 帖子分页（置顶优先，其次按活跃度倒序）；me 非空时计算"我是否已点赞" */
     List<ForumPost> selectPostPage(@Param("keyword") String keyword,
-                                   @Param("category") String category,
+                                   @Param("categoryId") Integer categoryId,
                                    @Param("offset") int offset,
                                    @Param("limit") int limit,
-                                   @Param("me") String me);
+                                   @Param("me") String me,
+                                   @Param("fulltext") boolean fulltext);
 
     ForumPost selectPostById(@Param("id") Long id, @Param("me") String me);
 
@@ -54,6 +60,35 @@ public interface ForumMapper {
 
     /** 点赞数增减（delta = 1 / -1） */
     int updateLikeCount(@Param("id") Long id, @Param("delta") int delta);
+
+    /** 点赞人列表（时间正序），limit 为上限 */
+    List<ForumLikeVO> selectLikers(@Param("postId") Long postId, @Param("limit") int limit);
+
+    // ---- 编辑历史 ----
+
+    int insertPostHistory(ForumPostHistory history);
+
+    /** 某帖子的编辑历史（时间倒序，最近在前） */
+    List<ForumPostHistory> selectPostHistory(@Param("postId") Long postId, @Param("limit") int limit);
+
+    // ---- 板块（管理员维护） ----
+
+    /** 启用的板块（对外可选） */
+    List<ForumCategory> selectEnabledCategories();
+
+    /** 全部板块（管理端，含停用） */
+    List<ForumCategory> selectAllCategories();
+
+    ForumCategory selectCategoryById(@Param("id") Integer id);
+
+    int insertCategory(ForumCategory category);
+
+    int renameCategory(@Param("id") Integer id, @Param("name") String name);
+
+    int toggleCategoryEnabled(@Param("id") Integer id, @Param("enabled") Integer enabled);
+
+    /** 该板块下帖子数（停用/删除时提示） */
+    long countPostsByCategory(@Param("categoryId") Integer categoryId);
 
     // ---- 回复 ----
 

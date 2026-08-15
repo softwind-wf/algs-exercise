@@ -42,6 +42,18 @@
 			<artifactId>spring-boot-starter-websocket</artifactId>
 		</dependency>
 
+		<!-- Redis：多实例共享状态（在线统计 / 登录限流 / 聊天跨实例路由，Lettuce 客户端） -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-redis</artifactId>
+		</dependency>
+
+		<!-- Spring Cache 抽象：多实例模式 Redis 缓存（@Cacheable），单实例回退内存 -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-cache</artifactId>
+		</dependency>
+
 		<!-- 服务端渲染模板 -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

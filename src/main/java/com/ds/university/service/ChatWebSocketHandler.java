@@ -23,10 +23,13 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 聊天 WebSocket 处理器（原生 WebSocket + JSON 协议）。
  * <ul>
- *   <li>在线会话注册表：userId → WebSocketSession，消息直接路由给在线接收方；</li>
- *   <li>协议：客户端 → {type:send,to,content} / {type:history,with,limit} / {type:read,with}；
- *       服务端 → {type:chat,...} / {type:history,...} / {type:presence,users} / {type:error,message}；</li>
- *   <li>发送消息先落库（未读），再实时投递；接收方不在线则留作未读，登录后可见；</li>
+ *   <li>在线会话注册表（本实例本地）：userId → WebSocketSession；</li>
+ *   <li>协议：客户端 → {type:send,to,content} / {type:history,with,limit} / {type:read,with} / {type:clear,with}；
+ *       服务端 → {type:chat,...} / {type:history,...} / {type:presence,users} / {type:cleared,...} / {type:error,message}；</li>
+ *   <li>跨实例路由：多实例模式经 {@link ChatEventPublisher}（Redis Pub/Sub）广播，
+ *       接收方所在实例投递；单机模式本地直发；</li>
+ *   <li>在线集合：Redis SET（chat:online），跨实例一致；</li>
+ *   <li>发送消息先落库（未读），再实时投递；接收方不在线则留作未读；</li>
  *   <li>用户身份取自握手阶段写入的会话属性，不信任客户端自报身份。</li>
  * </ul>
  */
@@ -36,13 +39,21 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private static final Logger log = LoggerFactory.getLogger(ChatWebSocketHandler.class);
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
+    /** 聊天消息频道（跨实例路由） */
+    public static final String CHANNEL_MESSAGE = "chat:message";
+    /** 在线状态变更频道 */
+    public static final String CHANNEL_PRESENCE = "chat:presence";
+
     private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
     private final ChatService chatService;
     private final ObjectMapper objectMapper;
+    private final ChatEventPublisher publisher;
 
-    public ChatWebSocketHandler(ChatService chatService, ObjectMapper objectMapper) {
+    public ChatWebSocketHandler(ChatService chatService, ObjectMapper objectMapper,
+                                ChatEventPublisher publisher) {
         this.chatService = chatService;
         this.objectMapper = objectMapper;
+        this.publisher = publisher;
     }
 
     @Override
@@ -56,7 +67,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         if (previous != null && previous != session && previous.isOpen()) {
             closeQuietly(previous, CloseStatus.NORMAL);
         }
-        broadcastPresence();
+        publisher.registerOnline(userId);
+        presenceUpdate();
     }
 
     @Override
@@ -103,7 +115,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         String userId = userId(session);
         if (userId != null) {
             sessions.remove(userId, session);
-            broadcastPresence();
+            publisher.unregisterOnline(userId);
+            presenceUpdate();
         }
     }
 
@@ -119,14 +132,18 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     // ==================== 消息处理 ====================
 
-    /** 发送：校验落库 → 回执发送方 → 投递接收方（在线才推） */
+    /** 发送：校验落库 → 回执发送方 → 投递接收方（跨实例广播或本地直发） */
     private void handleSend(String userId, Map<String, Object> req) {
         String to = req.get("to") == null ? null : String.valueOf(req.get("to"));
         String content = req.get("content") == null ? null : String.valueOf(req.get("content"));
         ChatMessage saved = chatService.send(userId, chatService.displayName(userId), to, content);
         Map<String, Object> payload = toPayload(saved);
         sendTo(userId, payload);   // 发送方回执（确认已落库）
-        sendTo(to, payload);       // 接收方实时投递
+        if (publisher.isRemoteEnabled()) {
+            publisher.publishMessage(writeJson(payload));   // 跨实例：广播，由接收方实例投递
+        } else {
+            sendTo(to, payload);   // 单机：本地直发
+        }
     }
 
     /** 历史：查询后回传（查询即标记对方发来的消息已读） */
@@ -170,16 +187,46 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         Map<String, Object> notify = new LinkedHashMap<>();
         notify.put("type", "cleared");
         notify.put("with", userId);
-        sendTo(with, notify);
+        if (publisher.isRemoteEnabled()) {
+            publisher.publishMessage(writeJson(notify));
+        } else {
+            sendTo(with, notify);
+        }
+    }
+
+    /** 跨实例消息到达：投递给本机接收方（由 ChatEventListener 调用） */
+    public void handleRemoteMessage(String json) {
+        try {
+            Map<String, Object> payload = objectMapper.readValue(json,
+                    new TypeReference<Map<String, Object>>() { });
+            String to = payload.get("to") == null ? null : String.valueOf(payload.get("to"));
+            sendTo(to, payload);
+        } catch (Exception e) {
+            log.debug("跨实例聊天消息解析失败: {}", e.toString());
+        }
+    }
+
+    /** 跨实例在线状态变更：向本机客户端推送最新在线集合（由 ChatEventListener 调用） */
+    public void handleRemotePresence() {
+        pushPresenceLocal();
     }
 
     // ==================== 投递工具 ====================
 
-    /** 广播在线用户列表（供页面展示在线状态） */
-    private void broadcastPresence() {
+    /** 在线状态更新：多实例走 Pub/Sub 广播（各实例收到后推送本地），单机直接推送 */
+    private void presenceUpdate() {
+        if (publisher.isRemoteEnabled()) {
+            publisher.publishPresenceChange();
+        } else {
+            pushPresenceLocal();
+        }
+    }
+
+    /** 向本机客户端广播在线用户集合（来自全局在线集合） */
+    private void pushPresenceLocal() {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("type", "presence");
-        payload.put("users", new ArrayList<>(sessions.keySet()));
+        payload.put("users", new ArrayList<>(publisher.onlineUserIds()));
         for (WebSocketSession session : sessions.values()) {
             if (session.isOpen()) {
                 sendJson(session, payload);
@@ -199,7 +246,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     private void sendJson(WebSocketSession session, Object payload) {
         try {
-            String json = objectMapper.writeValueAsString(payload);
+            String json = writeJson(payload);
             // 同一连接并发写可能触发 TEXT_PARTIAL_WRITING，按会话串行化发送
             synchronized (session) {
                 if (session.isOpen()) {
@@ -208,6 +255,15 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             }
         } catch (Exception e) {
             log.debug("聊天消息投递失败: {}", e.toString());
+        }
+    }
+
+    private String writeJson(Object payload) {
+        try {
+            return objectMapper.writeValueAsString(payload);
+        } catch (Exception e) {
+            log.warn("聊天消息序列化失败: {}", e.toString());
+            return "{}";
         }
     }
 
