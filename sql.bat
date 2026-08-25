@@ -11,12 +11,11 @@ rem DB connection config comes from src/main/resources/db.properties
 rem ============================================================
 cd /d "%~dp0"
 
-if not exist target\cp.txt (
-    call mvn -q dependency:build-classpath -Dmdep.outputFile=target\cp.txt
+rem First run: copy dependency jars into target\lib, then java classpath
+rem uses the dir/* wildcard so we never hit cmd's 8191-char limit.
+if not exist target\lib\mysql*.jar (
+    call mvn -q dependency:copy-dependencies -DoutputDirectory=target\lib
 )
 
-set "CP=target\classes"
-for /f "usebackq delims=" %%i in ("target\cp.txt") do set "CP=%CP%;%%i"
-
 set "JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8"
-java -cp "%CP%" com.ds.db.SqlRunner %*
+java -cp "target/classes;target/lib/*" com.ds.db.SqlRunner %*

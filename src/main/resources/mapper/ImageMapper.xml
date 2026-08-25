@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- namespace 必须与 Java 接口全限定名完全一致，MyBatis 靠它绑定 Mapper -->
+<mapper namespace="cn.exercise.algs4.datastructure.imagedb.ImageMapper">
+
+    <!-- 下划线列名 → 驼峰字段名 的显式映射 -->
+    <resultMap id="imageMap" type="cn.exercise.algs4.datastructure.imagedb.ImageRecord">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="mimeType" column="mime_type"/>
+        <result property="width" column="width"/>
+        <result property="height" column="height"/>
+        <result property="data" column="data"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <!-- useGeneratedKeys 回填自增主键到 img.id -->
+    <insert id="insert" parameterType="cn.exercise.algs4.datastructure.imagedb.ImageRecord"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO images (name, mime_type, width, height, data)
+        VALUES (#{name}, #{mimeType}, #{width}, #{height}, #{data})
+    </insert>
+
+    <select id="selectById" parameterType="int" resultMap="imageMap">
+        SELECT id, name, mime_type, width, height, data, created_at
+        FROM images
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectAll" resultMap="imageMap">
+        SELECT id, name, mime_type, width, height, data, created_at
+        FROM images
+        ORDER BY id
+    </select>
+
+</mapper>
