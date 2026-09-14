@@ -1,0 +1,19 @@
+0 verbose cli D:\nodejs\node.exe D:\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@10.9.4
+2 info using node@v22.22.0
+3 silly config load:file:D:\nvm\v22.22.0\node_modules\npm\npmrc
+4 silly config load:file:D:\downloads\algs4-master\algs4-master\.npmrc
+5 silly config load:file:C:\Users\wf\.npmrc
+6 silly config load:file:D:\nodejs\etc\npmrc
+7 verbose title npm view @linxin666/dsh-web-all version dist-tags
+8 verbose argv "view" "@linxin666/dsh-web-all" "version" "dist-tags" "--cache" "D:\\downloads\\algs4-master\\algs4-master\\.npm-tmp3" "--prefer-online"
+9 verbose logfile logs-max:10 dir:D:\downloads\algs4-master\algs4-master\.npm-tmp3\_logs\2026-09-05T13_05_28_136Z-
+10 verbose logfile D:\downloads\algs4-master\algs4-master\.npm-tmp3\_logs\2026-09-05T13_05_28_136Z-debug-0.log
+11 silly logfile done cleaning log files
+12 http fetch GET 200 https://registry.npmjs.org/@linxin666%2fdsh-web-all 2112ms (cache miss)
+13 verbose cwd D:\downloads\algs4-master\algs4-master
+14 verbose os Windows_NT 10.0.26200
+15 verbose node v22.22.0
+16 verbose npm  v10.9.4
+17 verbose exit 0
+18 info ok
