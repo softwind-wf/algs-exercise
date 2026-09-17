@@ -5,12 +5,12 @@
 -- 数据源: dept_grades(ID, dept_name, GPA)
 -- ============================================================
 
-\set ON_ERROR_STOP on
+-- 注: psql 客户端专用的 ON_ERROR_STOP 设置已移除(psql.bat / sql.bat 走 JDBC, 不识别 psql 元命令)
 
 -- ============================================================
 -- ① 总名次最高的 3 个学生(按 GPA 全局排名, rank<=3)
 -- ============================================================
-\echo '===== ① 全局排名最高的 3 个学生 (overall_rank <= 3) ====='
+SELECT '===== ① 全局排名最高的 3 个学生 (overall_rank <= 3) =====' AS section;
 SELECT ID, dept_name, GPA, overall_rank
 FROM (
     SELECT ID,
@@ -25,7 +25,7 @@ ORDER BY overall_rank, ID;
 -- ============================================================
 -- ② 每个系内排名最高的 2 个学生 (dept_rank <= 2, 按系分区)
 -- ============================================================
-\echo '===== ② 每个系内排名最高的 2 个学生 (dept_rank <= 2) ====='
+SELECT '===== ② 每个系内排名最高的 2 个学生 (dept_rank <= 2) =====' AS section;
 SELECT ID, dept_name, GPA, dept_rank
 FROM (
     SELECT ID,
@@ -42,7 +42,7 @@ ORDER BY dept_name, dept_rank, ID;
 -- ③ 并列说明: RANK 的"前 n 名"可能多于 n 行(因为并列同号, 同分都算前 n)
 --    若要恰好 n 行, 改用 ROW_NUMBER()
 -- ============================================================
-\echo '===== ③ 对照: ROW_NUMBER 的"恰好 3 行" (并列也被强行区分) ====='
+SELECT '===== ③ 对照: ROW_NUMBER 的"恰好 3 行" (并列也被强行区分) =====' AS section;
 SELECT ID, dept_name, GPA, seq
 FROM (
     SELECT ID,
@@ -54,7 +54,7 @@ FROM (
 WHERE seq <= 3
 ORDER BY seq;
 
-\echo '===== ④ 对照: RANK 的"前 3 名"总行数(含并列) ====='
+SELECT '===== ④ 对照: RANK 的"前 3 名"总行数(含并列) =====' AS section;
 SELECT COUNT(*) AS rows_returned
 FROM (
     SELECT ID,

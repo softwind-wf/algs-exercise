@@ -8,8 +8,8 @@
 --   联系集 4 张：section(开课班) / teaches(授课) / takes(选课) / prereq(先修)
 --   扩展 2 张：advisor(指导) / time_slot(时间段)
 --
--- ⚠️ 不含建库语句：请先执行 `CREATE DATABASE university;`
---    然后 `psql -d university -f university_pg.sql`
+-- ⚠️ 不含建库语句：请先手动建库(CREATE DATABASE university)
+--    然后执行 .\psql.bat -f src\main\resources\sql\university_pg.sql
 -- ============================================================
 
 -- ------------------------------------------------------------

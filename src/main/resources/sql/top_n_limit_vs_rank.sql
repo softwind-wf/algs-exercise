@@ -3,21 +3,21 @@
 -- 数据源: dept_grades(ID, dept_name, GPA)
 -- ============================================================
 
-\set ON_ERROR_STOP on
+-- 注: psql 客户端专用的 ON_ERROR_STOP 设置已移除(psql.bat / sql.bat 走 JDBC, 不识别 psql 元命令)
 
 -- ============================================================
 -- ① 全局前 3: LIMIT 最简单, 一行搞定
 -- ============================================================
-\echo '===== ① 全局前3: ORDER BY GPA DESC LIMIT 3 ====='
+SELECT '===== ① 全局前3: ORDER BY GPA DESC LIMIT 3 =====' AS section;
 SELECT ID, dept_name, GPA
 FROM dept_grades
 ORDER BY GPA DESC
 LIMIT 3;
 
 -- ============================================================
--- ② LIMIT 是"恰好 N 行", 不反映并列名次; 加上 RANK 才能看到名次
+-- ② LIMIT 是"恰好 N 行", 不反映并列名次； 加上 RANK 才能看到名次
 -- ============================================================
-\echo '===== ② LIMIT 3 同时显示 RANK 名次(恰好3行) ====='
+SELECT '===== ② LIMIT 3 同时显示 RANK 名次(恰好3行) =====' AS section;
 SELECT ID, dept_name, GPA,
        RANK() OVER (ORDER BY GPA DESC) AS overall_rank
 FROM dept_grades
@@ -28,13 +28,13 @@ LIMIT 3;
 -- ③ 每系前 2: LIMIT 做不到 —— 单条 ORDER BY GPA DESC LIMIT 2 只会取全局前2,
 --    不是"每个系各取前2"
 -- ============================================================
-\echo '===== ③ LIMIT 2 (只会全局前2, 不能按系) ====='
+SELECT '===== ③ LIMIT 2 (只会全局前2, 不能按系) =====' AS section;
 SELECT ID, dept_name, GPA
 FROM dept_grades
 ORDER BY GPA DESC
 LIMIT 2;
 
-\echo '===== ③b 每系前2: 必须 RANK 分区 + 外层过滤 ====='
+SELECT '===== ③b 每系前2: 必须 RANK 分区 + 外层过滤 =====' AS section;
 SELECT ID, dept_name, GPA, dept_rank
 FROM (
     SELECT ID, dept_name, GPA,

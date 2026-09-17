@@ -1,17 +1,17 @@
 -- ============================================================
 -- PERCENT_RANK() 演示
 --   公式: (RANK() - 1) / (分区行数 - 1)   -> 结果在 [0, 1]
---   语义: 该行名次在分区内的"百分位"位置; 第一名=0, 最后一名=1
+--   语义: 该行名次在分区内的"百分位"位置； 第一名=0, 最后一名=1
 --   与 RANK() 同源(名次跳号), 但给的是 0~1 的相对比例而非绝对名次
 -- 数据源: dept_grades(ID, dept_name, GPA)
 -- ============================================================
 
-\set ON_ERROR_STOP on
+-- 注: psql 客户端专用的 ON_ERROR_STOP 设置已移除(psql.bat / sql.bat 走 JDBC, 不识别 psql 元命令)
 
 -- ============================================================
 -- ① 全校(整体) PERCENT_RANK, 按 GPA 降序
 -- ============================================================
-\echo '===== ① 整体 PERCENT_RANK(按GPA降序) ====='
+SELECT '===== ① 整体 PERCENT_RANK(按GPA降序) =====' AS section;
 SELECT ID,
        dept_name,
        GPA                                           AS ranking_basis,
@@ -23,7 +23,7 @@ ORDER BY rank_, ID;
 -- ============================================================
 -- ② 按系分区 PERCENT_RANK(每个系内各自 0~1)
 -- ============================================================
-\echo '===== ② 按系分区 PERCENT_RANK ====='
+SELECT '===== ② 按系分区 PERCENT_RANK =====' AS section;
 SELECT ID,
        dept_name,
        GPA                                           AS ranking_basis,
@@ -38,7 +38,7 @@ ORDER BY dept_name, dept_rank, ID;
 -- ③ 对照区: 单行分区(如 Biology 只有1人)时 PERCENT_RANK 行为
 --    分母=行数-1=0, PostgreSQL 返回 0(避免除零)
 -- ============================================================
-\echo '===== ③ 单生系(Biology/Finance/History/Music) PERCENT_RANK 均为 0 ====='
+SELECT '===== ③ 单生系(Biology/Finance/History/Music) PERCENT_RANK 均为 0 =====' AS section;
 SELECT ID,
        dept_name,
        GPA                                           AS ranking_basis,
@@ -52,7 +52,7 @@ ORDER BY dept_name;
 -- ④ 顺带展示 CUME_DIST(累积分布) 作对比: 该值= "<=当前值的行数/总行数"
 --   与 PERCENT_RANK 不同, CUME_DIST 有并列时同值, 且首名不为 0
 -- ============================================================
-\echo '===== ④ 对照: CUME_DIST vs PERCENT_RANK(整体) ====='
+SELECT '===== ④ 对照: CUME_DIST vs PERCENT_RANK(整体) =====' AS section;
 SELECT ID,
        GPA                                           AS ranking_basis,
        PERCENT_RANK() OVER (ORDER BY GPA DESC)       AS percent_rank,

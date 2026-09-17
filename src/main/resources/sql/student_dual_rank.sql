@@ -9,9 +9,9 @@
 --       所以能在同一行里同时看到两种口径的名次。
 -- ============================================================
 
-\set ON_ERROR_STOP on
+-- 注: psql 客户端专用的 ON_ERROR_STOP 设置已移除(psql.bat / sql.bat 走 JDBC, 不识别 psql 元命令)
 
-\echo '===== 双 RANK: 总名次(overall) 与 系内名次(dept) 同时输出 ====='
+SELECT '===== 双 RANK: 总名次(overall) 与 系内名次(dept) 同时输出 =====' AS section;
 SELECT ID,
        dept_name,
        GPA                                                  AS ranking_basis,
@@ -24,7 +24,7 @@ ORDER BY overall_rank, dept_rank, ID;
 -- ============================================================
 -- 对照: 若想并列也"不跳号"的密集名次, 改用 DENSE_RANK()
 -- ============================================================
-\echo '===== 对照: 两个 DENSE_RANK 表达式(并列不跳号) ====='
+SELECT '===== 对照: 两个 DENSE_RANK 表达式(并列不跳号) =====' AS section;
 SELECT ID,
        dept_name,
        GPA                                                  AS ranking_basis,
@@ -37,7 +37,7 @@ ORDER BY overall_rank, dept_rank, ID;
 -- ============================================================
 -- 加: 关联学生姓名, 便于确认结果
 -- ============================================================
-\echo '===== 直观版: 姓名 + 总名次 + 系内名次 ====='
+SELECT '===== 直观版: 姓名 + 总名次 + 系内名次 =====' AS section;
 SELECT s.name,
        s.ID,
        d.dept_name,

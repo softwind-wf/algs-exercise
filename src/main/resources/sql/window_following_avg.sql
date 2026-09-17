@@ -4,7 +4,7 @@
 --   select year, avg(num_credits)
 --   over (order by year rows between 3 preceding and 2 following)
 --   as avg_total_credits
---   from tot_credits;
+--   from tot_credits；
 --
 -- 数据库: university (PostgreSQL)
 -- 数据源: 视图 tot_credits(year, num_credits)
@@ -19,7 +19,7 @@
 -- ============================================================
 -- ① 忠实还原原文写法(ROWS BETWEEN 3 PRECEDING AND 2 FOLLOWING)
 -- ============================================================
-\echo '===== ① 原文写法: ROWS BETWEEN 3 PRECEDING AND 2 FOLLOWING ====='
+SELECT '===== ① 原文写法: ROWS BETWEEN 3 PRECEDING AND 2 FOLLOWING =====' AS section;
 SELECT year,
        num_credits,
        AVG(num_credits) OVER (
@@ -33,7 +33,7 @@ ORDER BY year;
 -- ② 用 array_agg 展示每行窗口实际包含的值
 --    window = 当前行往前 3 行 到 当前行往后 2 行
 -- ============================================================
-\echo '===== ② 逐行窗口内容核对(array_agg) ====='
+SELECT '===== ② 逐行窗口内容核对(array_agg) =====' AS section;
 SELECT year,
        num_credits,
        ROW_NUMBER() OVER (ORDER BY year) AS row_num,
@@ -51,7 +51,7 @@ ORDER BY year;
 -- ============================================================
 -- ③ 对照: 只往前(上界 CURRENT ROW)与"往后 2 行"的差别
 -- ============================================================
-\echo '===== ③ 对照: 仅 PRECEDING (上界 CURRENT ROW) ====='
+SELECT '===== ③ 对照: 仅 PRECEDING (上界 CURRENT ROW) =====' AS section;
 SELECT year,
        num_credits,
        array_agg(num_credits) OVER (

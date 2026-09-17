@@ -3,7 +3,9 @@
 -- 数据库: university (PostgreSQL)
 --
 -- 说明:
---   * tot_credits 是 GROUP BY 视图, 不可直接 INSERT;
+--   * 前置依赖: 需先执行 tot_credits_view.sql 建好 tot_credits 视图
+--     (否则脚本末尾查询该视图会报 关系 "tot_credits" 不存在)。
+--   * tot_credits 是 GROUP BY 视图, 不可直接 INSERT；
 --     要让它多出年份, 必须往底层 section / takes 插入更多年的记录。
 --   * 新增年份: 2005, 2006, 2007, 2008, 2011, 2012, 2013
 --     (2009=49, 2010=33 为原有数据, 保留)。
@@ -74,7 +76,7 @@ INSERT INTO takes (ID, course_id, sec_id, semester, year, grade) VALUES
 COMMIT;
 
 -- ---------- 3. 查看补充后的 tot_credits ----------
-\echo '===== 补充后 tot_credits ====='
+SELECT '===== 补充后 tot_credits =====' AS section;
 SELECT year, num_credits
 FROM tot_credits
 ORDER BY year;

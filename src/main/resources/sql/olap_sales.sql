@@ -16,7 +16,7 @@
 --   psql.bat -d university -f src\main\resources\sql\olap_sales.sql
 -- ============================================================
 
-\set ON_ERROR_STOP on
+-- 注: psql 客户端专用的 ON_ERROR_STOP 设置已移除(psql.bat / sql.bat 走 JDBC, 不识别 psql 元命令)
 
 -- ============================================================
 -- 1. 建表：维属性 + 度量属性，用 CHECK 约束落实教材给出的取值域
@@ -90,12 +90,12 @@ INSERT INTO sales (item_name, color, clothes_size, quantity) VALUES
 -- ============================================================
 -- 3. 录入校验：行数与合计应分别是 36 和 155
 -- ============================================================
-\echo '===== ① 原表 sales（36 行） ====='
+SELECT '===== ① 原表 sales（36 行） =====' AS section;
 SELECT item_name, color, clothes_size, quantity
 FROM sales
 ORDER BY item_name, color, clothes_size;
 
-\echo '===== ② 录入校验：行数 = 36、总销量 = 155、无重复 (服装,颜色,尺码) ====='
+SELECT '===== ② 录入校验：行数 = 36、总销量 = 155、无重复 (服装,颜色,尺码) =====' AS section;
 SELECT count(*)                        AS rows,
        sum(quantity)                   AS total_quantity,
        count(DISTINCT (item_name, color, clothes_size)) AS distinct_combos
@@ -104,19 +104,19 @@ FROM sales;
 -- ============================================================
 -- 4. 单维汇总：按每个维属性分别汇总（OLAP 的「上卷 roll-up」最简形态）
 -- ============================================================
-\echo '===== ③ 按服装汇总 ====='
+SELECT '===== ③ 按服装汇总 =====' AS section;
 SELECT item_name, sum(quantity) AS quantity
 FROM sales
 GROUP BY item_name
 ORDER BY item_name;
 
-\echo '===== ④ 按颜色汇总 ====='
+SELECT '===== ④ 按颜色汇总 =====' AS section;
 SELECT color, sum(quantity) AS quantity
 FROM sales
 GROUP BY color
 ORDER BY color;
 
-\echo '===== ⑤ 按尺码汇总 ====='
+SELECT '===== ⑤ 按尺码汇总 =====' AS section;
 SELECT clothes_size, sum(quantity) AS quantity
 FROM sales
 GROUP BY clothes_size
@@ -127,7 +127,7 @@ ORDER BY clothes_size;
 --    行列均带 'all' 小计（教材用 UNION 把各层汇总拼起来）
 --    注意：'all' 不属任何维的取值域，因此可安全作为汇总标记
 -- ============================================================
-\echo '===== ⑥ 交叉表（教材图5-17 风格：UNION 拼接 all 小计） ====='
+SELECT '===== ⑥ 交叉表（教材图5-17 风格：UNION 拼接 all 小计） =====' AS section;
 SELECT item_name, clothes_size, sum(quantity) AS quantity FROM sales GROUP BY item_name, clothes_size
 UNION ALL
 SELECT item_name, 'all',        sum(quantity) AS quantity FROM sales GROUP BY item_name
@@ -141,7 +141,7 @@ ORDER BY item_name, clothes_size;
 -- 6. GROUPING SETS：一次扫描算出「指定分组集」的汇总，
 --    'all' 由 COALESCE 生成；等价于上面 UNION ALL 的写法但只扫一遍表
 -- ============================================================
-\echo '===== ⑦ GROUPING SETS：等价交叉表，一次扫描 ====='
+SELECT '===== ⑦ GROUPING SETS：等价交叉表，一次扫描 =====' AS section;
 SELECT coalesce(item_name,    'all') AS item_name,
        coalesce(clothes_size, 'all') AS clothes_size,
        sum(quantity)                 AS quantity
@@ -158,7 +158,7 @@ ORDER BY item_name, clothes_size;
 -- 7. CUBE：对 3 个维属性做全组合汇总（0/1/2/3 维共 2^3 = 8 种分组集）
 --    GROUPING() = 1 表示该列是本次汇总产生的占位 NULL（真 NULL 时为 0）
 -- ============================================================
-\echo '===== ⑧ CUBE：三维全组合数据立方体（8 种分组集） ====='
+SELECT '===== ⑧ CUBE：三维全组合数据立方体（8 种分组集） =====' AS section;
 SELECT CASE WHEN GROUPING(item_name)    = 1 THEN 'all' ELSE item_name    END AS item_name,
        CASE WHEN GROUPING(color)        = 1 THEN 'all' ELSE color        END AS color,
        CASE WHEN GROUPING(clothes_size) = 1 THEN 'all' ELSE clothes_size END AS clothes_size,
@@ -172,7 +172,7 @@ ORDER BY grouping_bits, item_name, color, clothes_size;
 -- 8. ROLLUP：按层次 (item_name → color → clothes_size) 逐级上卷，
 --    共 4 种分组集，适合"服装 → 颜色 → 尺码"的钻取路径
 -- ============================================================
-\echo '===== ⑨ ROLLUP：层次上卷（4 种分组集） ====='
+SELECT '===== ⑨ ROLLUP：层次上卷（4 种分组集） =====' AS section;
 SELECT coalesce(item_name,    'all') AS item_name,
        coalesce(color,        'all') AS color,
        coalesce(clothes_size, 'all') AS clothes_size,
@@ -185,7 +185,7 @@ ORDER BY item_name, color, clothes_size;
 -- 9. 行转列（PIVOT）：把 clothes_size 维度旋转成列，
 --    PostgreSQL 用 sum(...) FILTER (WHERE ...) 实现条件聚集
 -- ============================================================
-\echo '===== ⑩ 行转列：item_name × clothes_size（含行合计） ====='
+SELECT '===== ⑩ 行转列：item_name × clothes_size（含行合计） =====' AS section;
 SELECT item_name,
        sum(quantity) FILTER (WHERE clothes_size = 'small')  AS small,
        sum(quantity) FILTER (WHERE clothes_size = 'medium') AS medium,
@@ -195,7 +195,7 @@ FROM sales
 GROUP BY item_name
 ORDER BY item_name;
 
-\echo '===== ⑪ 行转列：color × clothes_size（含行/列合计） ====='
+SELECT '===== ⑪ 行转列：color × clothes_size（含行/列合计） =====' AS section;
 SELECT coalesce(color, 'all') AS color,
        sum(quantity) FILTER (WHERE clothes_size = 'small')  AS small,
        sum(quantity) FILTER (WHERE clothes_size = 'medium') AS medium,
@@ -209,7 +209,7 @@ ORDER BY color;
 -- 10. 物化视图：把 CUBE 结果固化下来，模拟"预计算的数据立方体"，
 --     OLAP 查询直接读它，避免每次重算
 -- ============================================================
-\echo '===== ⑫ 物化视图 sales_cube（预计算立方体） ====='
+SELECT '===== ⑫ 物化视图 sales_cube（预计算立方体） =====' AS section;
 CREATE MATERIALIZED VIEW sales_cube AS
 SELECT item_name,
        color,
@@ -244,5 +244,5 @@ ROLLBACK;
 -- ============================================================
 -- 清理（演示后可执行；注释掉以免影响后续查询）
 -- ============================================================
--- DROP MATERIALIZED VIEW IF EXISTS sales_cube;
--- DROP TABLE IF EXISTS sales;
+-- DROP MATERIALIZED VIEW IF EXISTS sales_cube；
+-- DROP TABLE IF EXISTS sales；

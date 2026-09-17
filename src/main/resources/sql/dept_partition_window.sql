@@ -18,7 +18,7 @@
 -- ============================================================
 -- ① 按系分区 + 系内滚动均值(当前+前1+后1年)
 -- ============================================================
-\echo '===== ① 按系分区滚动均值: PARTITION BY dept_name ====='
+SELECT '===== ① 按系分区滚动均值: PARTITION BY dept_name =====' AS section;
 SELECT dept_name,
        year,
        num_credits,
@@ -39,7 +39,7 @@ ORDER BY dept_name, year;
 -- ② 对照: 不带 PARTITION(全校一起, 全局窗口)
 --    与①对比, 看清"分区"把每个系隔开了
 -- ============================================================
-\echo '===== ② 对照: 不带 PARTITION(全校全局窗口) ====='
+SELECT '===== ② 对照: 不带 PARTITION(全校全局窗口) =====' AS section;
 SELECT dept_name,
        year,
        num_credits,
@@ -54,7 +54,7 @@ ORDER BY dept_name, year;
 -- ③ 对照: 按系分区的"累计均值"(UNBOUNDED PRECEDING)
 --    每个系从自身第 1 年累积到当前年
 -- ============================================================
-\echo '===== ③ 按系分区累计均值: UNBOUNDED PRECEDING ====='
+SELECT '===== ③ 按系分区累计均值: UNBOUNDED PRECEDING =====' AS section;
 SELECT dept_name,
        year,
        num_credits,

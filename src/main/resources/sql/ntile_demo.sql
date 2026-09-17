@@ -6,12 +6,12 @@
 -- 数据源: dept_grades(ID, dept_name, GPA)
 -- ============================================================
 
-\set ON_ERROR_STOP on
+-- 注: psql 客户端专用的 ON_ERROR_STOP 设置已移除(psql.bat / sql.bat 走 JDBC, 不识别 psql 元命令)
 
 -- ============================================================
 -- ① 整体 NTILE(4): 四分位(每桶3行, 12/4=3 恰好整除)
 -- ============================================================
-\echo '===== ① 整体 NTILE(4): 四分位 ====='
+SELECT '===== ① 整体 NTILE(4): 四分位 =====' AS section;
 SELECT ID,
        dept_name,
        GPA                                           AS ranking_basis,
@@ -22,7 +22,7 @@ ORDER BY quartile, GPA DESC, ID;
 -- ============================================================
 -- ② 整体 NTILE(10): 十分位(12/10 除不尽, 前2桶各2行, 其余各1行)
 -- ============================================================
-\echo '===== ② 整体 NTILE(10): 十分位 ====='
+SELECT '===== ② 整体 NTILE(10): 十分位 =====' AS section;
 SELECT ID,
        dept_name,
        GPA                                           AS ranking_basis,
@@ -34,7 +34,7 @@ ORDER BY decile, GPA DESC, ID;
 -- ③ 按系分区 NTILE(4): 各系内部再分4桶
 --   注意: 某个系行数 < 桶数时(如 Physics 2人/4桶), 后面桶为空
 -- ============================================================
-\echo '===== ③ 按系分区 NTILE(4): 系内四分位 ====='
+SELECT '===== ③ 按系分区 NTILE(4): 系内四分位 =====' AS section;
 SELECT ID,
        dept_name,
        GPA                                           AS ranking_basis,
@@ -46,7 +46,7 @@ ORDER BY dept_name, dept_quartile, GPA DESC, ID;
 -- ============================================================
 -- ④ 统计每个桶的行数, 验证"尽量相等、前面桶多"
 -- ============================================================
-\echo '===== ④ NTILE(4) 每个桶的行数 ====='
+SELECT '===== ④ NTILE(4) 每个桶的行数 =====' AS section;
 SELECT quartile,
        COUNT(*) AS rows_in_bucket
 FROM (

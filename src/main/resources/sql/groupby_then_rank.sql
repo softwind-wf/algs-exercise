@@ -8,13 +8,13 @@
 --       必须引用聚集表达式本身(下面 ①), 或先分组再在外层排名(下面 ②)。
 -- ============================================================
 
-\set ON_ERROR_STOP on
+-- 注: psql 客户端专用的 ON_ERROR_STOP 设置已移除(psql.bat / sql.bat 走 JDBC, 不识别 psql 元命令)
 
 -- ============================================================
 -- ① 单条 SELECT: GROUP BY 先算 GPA(聚集), 再在同一个 OVER 里按 GPA 排名
 --    总名次 + 系内名次, 都引用"分组后算出的 GPA 聚集表达式"
 -- ============================================================
-\echo '===== ① 单条 SELECT: GROUP BY 算聚集, RANK 用该聚集值(总+系内) ====='
+SELECT '===== ① 单条 SELECT: GROUP BY 算聚集, RANK 用该聚集值(总+系内) =====' AS section;
 SELECT t.ID,
        st.dept_name,
        SUM(c.credits * CASE t.grade
@@ -46,9 +46,9 @@ ORDER BY overall_rank, dept_rank, t.ID;
 
 -- ============================================================
 -- ② 用 CTE 先 GROUP BY 算出聚集值, 再在下一层按它排名(更易读, 顺序一致)
---    CTE 中完成 FROM→WHERE→GROUP BY→聚集; 外层在分组结果上做窗口排名
+--    CTE 中完成 FROM→WHERE→GROUP BY→聚集； 外层在分组结果上做窗口排名
 -- ============================================================
-\echo '===== ② CTE: 先 GROUP BY 算 GPA, 再按 GPA 排名(总+系内) ====='
+SELECT '===== ② CTE: 先 GROUP BY 算 GPA, 再按 GPA 排名(总+系内) =====' AS section;
 WITH per_student AS (
     SELECT t.ID,
            st.dept_name,

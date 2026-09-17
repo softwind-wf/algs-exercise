@@ -3,6 +3,11 @@
 -- 数据库: university (MySQL 8.0.44)
 -- 数据源: instructor(ID, name, dept_name, salary, phone_number)
 -- 姊妹脚本: rename_max_salary_mysql.sql(属性名版) / rename_max_salary_positional.sql(PostgreSQL 版)
+-- 教材对照: 《数据库系统概念》(原书第6版·本科教学版, Silberschatz / Korth / Sudarshan,
+--           机械工业出版社) 第6章 形式化关系查询语言 · 6.1 关系代数 —— 更名运算 ρ。
+--           书上 instructor 只有 4 个属性(ID, name, dept_name, salary), 所以书里的位置
+--           标记写法是 σ_$4 < $8(书里投影符号写作 π, 本脚本写作 Π)；本库多一列
+--           phone_number, 下面按 $9 写, 与书上完全对齐的四属性版见“步骤 8”。
 -- ------------------------------------------------------------
 -- 属性名版(上一版)的表达式:
 --   Π_salary(instructor)
@@ -168,6 +173,29 @@ SELECT ID, name, dept_name, salary
 FROM instructor
 ORDER BY 4 DESC, 1
 LIMIT 1;
+
+
+-- ============================================================
+-- 步骤 8：与书上完全对齐的写法 —— 只保留书上的 4 个属性
+--   书中 schema 是 instructor(ID, name, dept_name, salary)，把 phone_number 投影掉之后
+--   位置编号与书上一致，表达式就与书上逐字对应：
+--     Π_$4(instructor4) − Π_$4( σ_$4 < $8 ( instructor4 × instructor4 ) )
+-- ============================================================
+WITH instructor4 (c1, c2, c3, c4) AS (
+    SELECT ID, name, dept_name, salary FROM instructor
+),
+prod4 (c1, c2, c3, c4, c5, c6, c7, c8) AS (
+    SELECT x.c1, x.c2, x.c3, x.c4,
+           y.c1, y.c2, y.c3, y.c4
+    FROM instructor4 AS x, instructor4 AS y
+),
+not_max4 (c4) AS (
+    SELECT DISTINCT c4 FROM prod4 WHERE c4 < c8
+)
+SELECT c4 AS '$4=max_salary'
+FROM instructor4
+EXCEPT
+SELECT c4 FROM not_max4;
 
 
 -- ============================================================

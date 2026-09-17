@@ -2,7 +2,10 @@
 -- PostgreSQL 可调用语句（Callable Statement）演示
 --
 -- 建库:  psql.bat -d postgres "CREATE DATABASE callable_demo"
--- 执行:  psql.bat -d callable_demo -f src\main\resources\sql\callable_demo_pg.sql
+-- 执行:  必须用真实 psql 客户端 —— PgSqlRunner 按半角分号切分语句, 解析不了 $$ 函数体内的
+--        分号, 用 psql.bat 执行时函数定义会报 Unterminated dollar quote:
+--          "C:\Program Files\PostgreSQL\17\bin\psql.exe" -h localhost -U postgres -v ON_ERROR_STOP=1 -d callable_demo -f src\main\resources\sql\callable_demo_pg.sql
+--        实测: 用真实 psql 执行 exit 0 无报错, employee 3 行, it_employees() 正常返回。
 --
 -- 演示对象（供 JDBC CallableStatement 调用）:
 --   1. 标量函数      dept_count(VARCHAR) -> INT     返回单个值
@@ -10,7 +13,7 @@
 --   3. 表返回函数    it_employees() -> TABLE        返回一行或多行结果集
 --   4. 存储过程      apply_raise(...) 带 INOUT      修改数据并把新值回传
 --
--- 对照: 函数能嵌在 SELECT 表达式里; 存储过程只能 CALL。
+-- 对照: 函数能嵌在 SELECT 表达式里； 存储过程只能 CALL。
 -- ============================================================
 
 -- ---------- 演示用表 ----------
@@ -63,7 +66,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ---------- 4. 存储过程：CALL 调用，支持 INOUT ----------
--- (PostgreSQL 11+ 才有 PROCEDURE; 更早只能写"无返回值函数")
+-- (PostgreSQL 11+ 才有 PROCEDURE； 更早只能写"无返回值函数")
 CREATE OR REPLACE PROCEDURE apply_raise(emp_id_in INTEGER,
                                         pct NUMERIC,
                                         INOUT new_salary NUMERIC)

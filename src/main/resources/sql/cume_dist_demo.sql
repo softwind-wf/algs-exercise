@@ -1,7 +1,7 @@
 -- ============================================================
 -- CUME_DIST() 演示 (累积分布, cumulative distribution)
 --   公式: 排序方向下 "<=当前值的行数"  /  分区总行数
---   语义: 该行处于分区内累积比例的位置;  区间 (0,1], 最后一名恒为 1
+--   语义: 该行处于分区内累积比例的位置；  区间 (0,1], 最后一名恒为 1
 --   与 PERCENT_RANK 的区别:
 --       - 首名: PERCENT_RANK=0,  CUME_DIST=(并列条数/总数)>0
 --       - 末名: 两者都=1
@@ -9,12 +9,12 @@
 -- 数据源: dept_grades(ID, dept_name, GPA)
 -- ============================================================
 
-\set ON_ERROR_STOP on
+-- 注: psql 客户端专用的 ON_ERROR_STOP 设置已移除(psql.bat / sql.bat 走 JDBC, 不识别 psql 元命令)
 
 -- ============================================================
 -- ① 全校(整体) CUME_DIST, 按 GPA 降序
 -- ============================================================
-\echo '===== ① 整体 CUME_DIST(按GPA降序) ====='
+SELECT '===== ① 整体 CUME_DIST(按GPA降序) =====' AS section;
 SELECT ID,
        dept_name,
        GPA                                           AS ranking_basis,
@@ -25,7 +25,7 @@ ORDER BY GPA DESC, ID;
 -- ============================================================
 -- ② 按系分区 CUME_DIST(每个系内各自累积)
 -- ============================================================
-\echo '===== ② 按系分区 CUME_DIST ====='
+SELECT '===== ② 按系分区 CUME_DIST =====' AS section;
 SELECT ID,
        dept_name,
        GPA                                           AS ranking_basis,
@@ -37,7 +37,7 @@ ORDER BY dept_name, GPA DESC, ID;
 -- ============================================================
 -- ③ 单行分区: 只有1人的系, CUME_DIST=1/1=1 (对比 PERCENT_RANK=0)
 -- ============================================================
-\echo '===== ③ 单生系(Biology/Finance/History/Music) CUME_DIST 均为 1 ====='
+SELECT '===== ③ 单生系(Biology/Finance/History/Music) CUME_DIST 均为 1 =====' AS section;
 SELECT ID,
        dept_name,
        GPA                                           AS ranking_basis,
@@ -50,7 +50,7 @@ ORDER BY dept_name;
 -- ============================================================
 -- ④ 对照 CUME_DIST vs PERCENT_RANK (整体): 首名差异最直观
 -- ============================================================
-\echo '===== ④ 对照: CUME_DIST vs PERCENT_RANK(整体) ====='
+SELECT '===== ④ 对照: CUME_DIST vs PERCENT_RANK(整体) =====' AS section;
 SELECT ID,
        GPA                                           AS ranking_basis,
        CUME_DIST()   OVER (ORDER BY GPA DESC)        AS cume_dist,

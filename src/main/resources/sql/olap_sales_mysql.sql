@@ -127,4 +127,4 @@ SELECT 'all',     'all',        SUM(quantity)          FROM sales
 ORDER BY item_name, clothes_size;
 
 -- ========== ⑦ 清理（演示后可执行） ==========
--- DROP TABLE IF EXISTS sales;
+-- DROP TABLE IF EXISTS sales；

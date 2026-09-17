@@ -9,13 +9,13 @@
 --       无成绩(成绩全为 NULL)的学生不参与排名。
 -- ============================================================
 
-\set ON_ERROR_STOP on
+-- 注: psql 客户端专用的 ON_ERROR_STOP 设置已移除(psql.bat / sql.bat 走 JDBC, 不识别 psql 元命令)
 
 -- ============================================================
 -- ① RANK() —— 比赛排名(competition ranking, 最常见)
 --    相同 GPA 共享同一名次, 下一同分跳号
 -- ============================================================
-\echo '===== ① RANK(): 并列同号, 跳号 (1,2,2,4,...) ====='
+SELECT '===== ① RANK(): 并列同号, 跳号 (1,2,2,4,...) =====' AS section;
 SELECT ID,
        GPA                                        AS ranking_basis,
        RANK() OVER (ORDER BY GPA DESC)           AS rank
@@ -25,7 +25,7 @@ ORDER BY rank, ID;
 -- ============================================================
 -- ② DENSE_RANK() —— 密集排名, 并列同号但不跳号
 -- ============================================================
-\echo '===== ② DENSE_RANK(): 并列同号, 不跳号 (1,2,2,3,...) ====='
+SELECT '===== ② DENSE_RANK(): 并列同号, 不跳号 (1,2,2,3,...) =====' AS section;
 SELECT ID,
        GPA                                        AS ranking_basis,
        DENSE_RANK() OVER (ORDER BY GPA DESC)     AS rank
@@ -35,7 +35,7 @@ ORDER BY rank, ID;
 -- ============================================================
 -- ③ ROW_NUMBER() —— 连续序号, 并列时按 (GPA, ID) 二次排序区分
 -- ============================================================
-\echo '===== ③ ROW_NUMBER(): 强行区分并列 (1,2,3,4,...) ====='
+SELECT '===== ③ ROW_NUMBER(): 强行区分并列 (1,2,3,4,...) =====' AS section;
 SELECT ID,
        GPA                                        AS ranking_basis,
        ROW_NUMBER() OVER (ORDER BY GPA DESC, ID) AS rank
@@ -45,7 +45,7 @@ ORDER BY rank, ID;
 -- ============================================================
 -- 带学生姓名与并列标记的直观展示 (基于 DENSE_RANK 口径)
 -- ============================================================
-\echo '===== 直观版: ID/姓名/绩点/名次(密集排名) ====='
+SELECT '===== 直观版: ID/姓名/绩点/名次(密集排名) =====' AS section;
 SELECT s.ID,
        s.name,
        sg.GPA                                     AS ranking_basis,
