@@ -25,6 +25,20 @@ jobs:
           --health-timeout=5s
           --health-retries=10
 
+      # 应用默认多实例模式（app.multi-instance.enabled=true，见 application.yml）启动时
+      # 会创建 RedisMessageListenerContainer 并连接 Redis；缺少该服务时 Spring 上下文启动
+      # 即失败（Unable to connect to localhost:6379），6 个 @SpringBootTest 集成测试全部 Error。
+      # 镜像与 docker-compose.yml 保持一致（redis:7-alpine）。
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,6 +56,9 @@ jobs:
           SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/university?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
           DB_USER: root
           DB_PASSWORD: root
+          # Redis 同样映射到宿主机 127.0.0.1，与 application.yml 的 REDIS_HOST/REDIS_PORT 对应
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
         run: mvn -B clean test
 
       # 测试失败时上传报告便于定位
