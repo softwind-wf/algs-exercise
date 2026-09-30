@@ -1,0 +1,215 @@
+<div id="skew-heap-merge">
+  <h3>斜堆合并过程（Skew Heap Merge）</h3>
+  <p class="text-muted" style="margin-top:-6px">示例：merge(堆A 根10, 堆B 根15)，大顶堆语义 —— 橙色为当前焦点，绿色为本次新挂接的子树</p>
+  <p id="sh-desc" aria-live="polite" style="min-height:44px;margin:10px 0 4px"></p>
+  <div id="sh-canvas"></div>
+  <div class="sh-controls">
+    <button id="sh-prev" class="sh-btn" type="button">上一步</button>
+    <button id="sh-next" class="sh-btn sh-primary" type="button">下一步</button>
+    <span id="sh-step" class="text-muted tabular-nums"></span>
+  </div>
+</div>
+<style>
+  #skew-heap-merge svg { display: block; max-width: 100%; height: auto; }
+  #skew-heap-merge .sh-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  #skew-heap-merge .sh-btn { border: 1px solid var(--border); background: var(--card); color: var(--foreground); border-radius: 8px; padding: 6px 14px; cursor: pointer; font-size: 14px; }
+  #skew-heap-merge .sh-btn:disabled { opacity: .45; cursor: default; }
+  #skew-heap-merge .sh-primary { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+</style>
+<script>
+(function () {
+  var root = document.getElementById('skew-heap-merge');
+  var canvas = document.getElementById('sh-canvas');
+  var descEl = document.getElementById('sh-desc');
+  var stepEl = document.getElementById('sh-step');
+  var prevBtn = document.getElementById('sh-prev');
+  var nextBtn = document.getElementById('sh-next');
+
+  var A = function (hl) { return { v: 10, hl: hl, l: { v: 3 }, r: { v: 7 } }; };
+  var B = { v: 15, l: { v: 6, l: { v: 2 } }, r: { v: 11 } };
+  var B11 = { v: 11 };
+
+  var steps = [
+    {
+      desc: '初始状态：堆 A（根 10）和堆 B（根 15）。目标：执行 merge(堆A, 堆B)。',
+      trees: [
+        { label: '堆 A', root: A() },
+        { label: '堆 B', root: B }
+      ]
+    },
+    {
+      desc: '第 1 层递归 merge(堆A, 堆B)：比较根 10 < 15，交换后由 15 当根。接下来把堆B 的右子树 11 与堆A 递归合并（虚线占位）。',
+      trees: [
+        { label: '正在构建', root: { v: 15, hl: 'focus', l: { v: 6, l: { v: 2 } }, r: { pending: 'merge(11, 堆A)' } } },
+        { label: '待合并', root: A('focus') }
+      ]
+    },
+    {
+      desc: '第 2 层递归 merge(11, 堆A)：比较根 11 ≥ 10，11 保持为局部根。继续递归 merge(11 的右子树【空】, 堆A)。',
+      trees: [
+        { label: '正在构建', root: { v: 11, hl: 'focus', r: { pending: 'merge(空, 堆A)' } } },
+        { label: '待合并', root: A('focus') }
+      ]
+    },
+    {
+      desc: '基准情形：merge(空, 堆A) 直接返回堆A 本身，这一层没有任何交换。',
+      trees: [
+        { label: '返回结果', root: A('focus') }
+      ]
+    },
+    {
+      desc: '回溯到第 2 层：把返回的堆A 挂到 11 的右子树，然后【无条件交换】左右子树 → 11（左=堆A，右=空）。',
+      trees: [
+        { label: '本层结果', root: { v: 11, hl: 'focus', l: A('new') } }
+      ]
+    },
+    {
+      desc: '回到第 1 层：把 11 子树挂到 15 的右子树，再次【无条件交换】→ 15（左=11 子树，右=6 子树）。合并完成，层序遍历为 [15, 11, 6, 10, 2, 3, 7]。',
+      trees: [
+        { label: '合并完成', root: { v: 15, hl: 'focus', l: { v: 11, l: { v: 10, hl: 'new', l: { v: 3 }, r: { v: 7 } } }, r: { v: 6, l: { v: 2 } } } }
+      ]
+    }
+  ];
+
+  var current = 0;
+
+  function layout(rootSpec) {
+    var nodes = [];
+    var cursor = 0;
+    var maxDepth = 0;
+    function walk(spec, depth, parent) {
+      if (!spec) return;
+      maxDepth = Math.max(maxDepth, depth);
+      if (spec.l) walk(spec.l, depth + 1, spec);
+      var width = spec.pending ? 132 : 46;
+      nodes.push({ spec: spec, x: cursor + width / 2, y: 32 + depth * 74, width: width, depth: depth, parent: parent });
+      cursor += width + 14;
+      if (spec.r) walk(spec.r, depth + 1, spec);
+    }
+    walk(rootSpec, 0, null);
+    return { nodes: nodes, width: Math.max(cursor - 14, 46), height: 32 + maxDepth * 74 + 34, maxDepth: maxDepth };
+  }
+
+  function render() {
+    var step = steps[current];
+    descEl.textContent = step.desc;
+    stepEl.textContent = '第 ' + (current + 1) + ' / ' + steps.length + ' 步';
+    prevBtn.disabled = current === 0;
+    nextBtn.disabled = current === steps.length - 1;
+
+    canvas.innerHTML = '';
+    var layouts = step.trees.map(function (t) { return layout(t.root); });
+    var treeGap = 56;
+    var labelH = 26;
+    var totalW = 0;
+    layouts.forEach(function (ly) { totalW += ly.width; });
+    totalW += treeGap * (layouts.length - 1);
+    var totalH = Math.max.apply(null, layouts.map(function (ly) { return ly.height; })) + labelH;
+    var svgNS = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + totalW + ' ' + totalH);
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', '斜堆合并第 ' + (current + 1) + ' 步示意图');
+
+    var offsetX = 0;
+    step.trees.forEach(function (t, i) {
+      var ly = layouts[i];
+      var byId = {};
+      ly.nodes.forEach(function (n) { byId[n.spec] = n; });
+
+      ly.nodes.forEach(function (n) {
+        if (!n.parent) return;
+        var p = byId[n.parent];
+        if (!p) return;
+        var line = document.createElementNS(svgNS, 'line');
+        line.setAttribute('x1', offsetX + p.x);
+        line.setAttribute('y1', p.y + 22);
+        line.setAttribute('x2', offsetX + n.x);
+        line.setAttribute('y2', n.y - 22);
+        line.setAttribute('stroke', n.spec.hlEdge ? 'var(--primary)' : 'var(--border)');
+        line.setAttribute('stroke-width', n.spec.hlEdge ? '2.5' : '1.5');
+        svg.appendChild(line);
+      });
+
+      ly.nodes.forEach(function (n) {
+        var spec = n.spec;
+        var cx = offsetX + n.x;
+        var cy = n.y;
+        if (spec.pending) {
+          var rect = document.createElementNS(svgNS, 'rect');
+          rect.setAttribute('x', cx - n.width / 2);
+          rect.setAttribute('y', cy - 17);
+          rect.setAttribute('width', n.width);
+          rect.setAttribute('height', 34);
+          rect.setAttribute('rx', 8);
+          rect.setAttribute('fill', 'none');
+          rect.setAttribute('stroke', 'var(--muted-foreground)');
+          rect.setAttribute('stroke-dasharray', '5 4');
+          svg.appendChild(rect);
+          var pt = document.createElementNS(svgNS, 'text');
+          pt.setAttribute('x', cx);
+          pt.setAttribute('y', cy + 4);
+          pt.setAttribute('text-anchor', 'middle');
+          pt.setAttribute('font-size', '12');
+          pt.setAttribute('fill', 'var(--muted-foreground)');
+          pt.textContent = spec.pending;
+          svg.appendChild(pt);
+          return;
+        }
+        var hl = spec.hl;
+        var circle = document.createElementNS(svgNS, 'circle');
+        circle.setAttribute('cx', cx);
+        circle.setAttribute('cy', cy);
+        circle.setAttribute('r', 22);
+        if (hl === 'focus') {
+          circle.setAttribute('fill', 'var(--primary)');
+          circle.setAttribute('fill-opacity', '0.16');
+          circle.setAttribute('stroke', 'var(--primary)');
+          circle.setAttribute('stroke-width', '3');
+        } else if (hl === 'new') {
+          circle.setAttribute('fill', 'var(--green)');
+          circle.setAttribute('fill-opacity', '0.16');
+          circle.setAttribute('stroke', 'var(--green)');
+          circle.setAttribute('stroke-width', '2.5');
+        } else {
+          circle.setAttribute('fill', 'var(--card)');
+          circle.setAttribute('stroke', 'var(--border)');
+          circle.setAttribute('stroke-width', '1.5');
+        }
+        svg.appendChild(circle);
+        var label = document.createElementNS(svgNS, 'text');
+        label.setAttribute('x', cx);
+        label.setAttribute('y', cy + 5);
+        label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('font-size', '14');
+        label.setAttribute('font-weight', '500');
+        label.setAttribute('fill', 'var(--foreground)');
+        label.textContent = spec.v;
+        svg.appendChild(label);
+      });
+
+      var treeLabel = document.createElementNS(svgNS, 'text');
+      treeLabel.setAttribute('x', offsetX + ly.width / 2);
+      treeLabel.setAttribute('y', totalH - 6);
+      treeLabel.setAttribute('text-anchor', 'middle');
+      treeLabel.setAttribute('font-size', '12');
+      treeLabel.setAttribute('fill', 'var(--muted-foreground)');
+      treeLabel.textContent = t.label;
+      svg.appendChild(treeLabel);
+
+      offsetX += ly.width + treeGap;
+    });
+
+    canvas.appendChild(svg);
+  }
+
+  prevBtn.addEventListener('click', function () {
+    if (current > 0) { current--; render(); }
+  });
+  nextBtn.addEventListener('click', function () {
+    if (current < steps.length - 1) { current++; render(); }
+  });
+
+  render();
+})();
+</script>
