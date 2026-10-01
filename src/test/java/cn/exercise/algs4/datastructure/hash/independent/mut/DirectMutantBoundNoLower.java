@@ -1,4 +1,4 @@
-package cn.exercise.algs4.datastructure.hash;
+package cn.exercise.algs4.datastructure.hash.independent.mut;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +30,7 @@ import java.util.Objects;
  *
  * @param <Value> 关键字关联的值类型
  */
-public class DirectAddressHashST<Value> {
+public class DirectMutantBoundNoLower<Value> {
 
     /**
      * 地址空间上限:2^26 = 67108864 个单元。
@@ -68,7 +68,7 @@ public class DirectAddressHashST<Value> {
      * @param minKey 允许的最小关键字
      * @param maxKey 允许的最大关键字
      */
-    public DirectAddressHashST(int minKey, int maxKey) {
+    public DirectMutantBoundNoLower(int minKey, int maxKey) {
         this(minKey, maxKey, 1L, -(long) minKey);
     }
 
@@ -81,7 +81,7 @@ public class DirectAddressHashST<Value> {
      * @param b      常数项
      * @throws IllegalArgumentException 关键字区间非法、a 为 0 或地址空间超过 int 上限
      */
-    public DirectAddressHashST(int minKey, int maxKey, long a, long b) {
+    public DirectMutantBoundNoLower(int minKey, int maxKey, long a, long b) {
         if (minKey > maxKey) {
             throw new IllegalArgumentException("关键字下界 " + minKey + " 不能大于上界 " + maxKey);
         }
@@ -117,7 +117,7 @@ public class DirectAddressHashST<Value> {
      * @throws IllegalArgumentException 关键字越界
      */
     public int hash(int key) {
-        if (key < minKey || key > maxKey) {
+        if (key > maxKey) {
             throw new IllegalArgumentException(
                     "关键字 " + key + " 越界,允许范围 [" + minKey + ", " + maxKey + "]");
         }
@@ -258,7 +258,7 @@ public class DirectAddressHashST<Value> {
         System.out.println("直接定址法散列函数:H(key) = a * key + b");
         System.out.println();
 
-        DirectAddressHashST<String> byId = new DirectAddressHashST<>(20210101, 20210110);
+        DirectMutantBoundNoLower<String> byId = new DirectMutantBoundNoLower<>(20210101, 20210110);
         int[] ids = {20210101, 20210102, 20210105, 20210110};
         String[] names = {"张三", "李四", "王五", "赵六"};
         for (int i = 0; i < ids.length; i++) {
@@ -266,21 +266,21 @@ public class DirectAddressHashST<Value> {
         }
         report(byId, ids, "用例 1:学号 20210101~20210110,H(key) = key - 20210101");
 
-        DirectAddressHashST<String> byAge = new DirectAddressHashST<>(18, 65);
+        DirectMutantBoundNoLower<String> byAge = new DirectMutantBoundNoLower<>(18, 65);
         int[] ageKeys = {19, 23, 41, 65};
         for (int i = 0; i < ageKeys.length; i++) {
             byAge.put(ageKeys[i], names[i]);
         }
         report(byAge, ageKeys, "用例 2:年龄 18~65,H(key) = key - 18(地址与关键字一一对应)");
 
-        DirectAddressHashST<String> sparse = new DirectAddressHashST<>(1, 10000);
+        DirectMutantBoundNoLower<String> sparse = new DirectMutantBoundNoLower<>(1, 10000);
         int[] sparseKeys = {1, 1000, 10000};
         for (int i = 0; i < sparseKeys.length; i++) {
             sparse.put(sparseKeys[i], names[i]);
         }
         report(sparse, sparseKeys, "用例 3:稀疏关键字 {1, 1000, 10000},H(key) = key(空间浪费极大)");
 
-        DirectAddressHashST<String> scaled = new DirectAddressHashST<>(3, 7, 2L, 1L);
+        DirectMutantBoundNoLower<String> scaled = new DirectMutantBoundNoLower<>(3, 7, 2L, 1L);
         int[] scaledKeys = {3, 4, 5, 6, 7};
         for (int i = 0; i < scaledKeys.length; i++) {
             scaled.put(scaledKeys[i], names[i % names.length]);
@@ -300,7 +300,7 @@ public class DirectAddressHashST<Value> {
      * @param keys  参与统计的关键字
      * @param title 用例标题
      */
-    private static void report(DirectAddressHashST<String> st, int[] keys, String title) {
+    private static void report(DirectMutantBoundNoLower<String> st, int[] keys, String title) {
         System.out.println(title);
         System.out.println("    关键字          地址      值");
         boolean[] used = new boolean[st.capacity()];

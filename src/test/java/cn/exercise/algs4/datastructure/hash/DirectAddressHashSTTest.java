@@ -102,6 +102,13 @@ class DirectAddressHashSTTest {
         }
 
         @Test
+        @DisplayName("地址空间超过实用上限时抛异常(不会尝试分配而 OutOfMemoryError)")
+        void tooLargeAddressSpaceThrows() {
+            assertThrows(IllegalArgumentException.class, () -> new DirectAddressHashST<>(0, 100_000_000));
+            assertThrows(IllegalArgumentException.class, () -> new DirectAddressHashST<>(0, Integer.MAX_VALUE));
+        }
+
+        @Test
         @DisplayName("单个关键字也能构造,容量为 1")
         void singleKey() {
             DirectAddressHashST<String> st = new DirectAddressHashST<>(42, 42);
