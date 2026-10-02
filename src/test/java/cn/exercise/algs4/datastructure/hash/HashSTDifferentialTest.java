@@ -175,6 +175,43 @@ class HashSTDifferentialTest {
     }
 
     @Test
+    @DisplayName("FoldingHashST 与 HashMap 在 2 万次随机操作后完全一致(两种叠加方式各一遍)")
+    void foldingMatchesHashMap() {
+        verifyFolding(FoldingHashST.Mode.SHIFT, SEED + 5);
+        verifyFolding(FoldingHashST.Mode.BOUNDARY, SEED + 6);
+    }
+
+    private void verifyFolding(FoldingHashST.Mode mode, long seed) {
+        FoldingHashST<String> actual = new FoldingHashST<String>(2, 64, mode); // 段长 2,表长 64
+        Map<Long, String> expected = new HashMap<Long, String>();
+        Random random = new Random(seed);
+
+        for (int i = 0; i < OPS; i++) {
+            long key = random.nextInt(100000);
+            int op = random.nextInt(4);
+            if (op < 2) {
+                String value = "v" + i;
+                actual.put(key, value);
+                expected.put(key, value);
+            } else if (op == 2) {
+                assertEquals(expected.get(key), actual.get(key),
+                        mode + " 第 " + i + " 步 get(" + key + ")");
+                assertEquals(expected.containsKey(key), actual.contains(key),
+                        mode + " 第 " + i + " 步 contains(" + key + ")");
+            } else {
+                assertEquals(expected.remove(key), actual.delete(key),
+                        mode + " 第 " + i + " 步 delete(" + key + ")");
+            }
+            assertEquals(expected.size(), actual.size(), mode + " 第 " + i + " 步 size()");
+            assertEquals(expected.isEmpty(), actual.isEmpty(), mode + " 第 " + i + " 步 isEmpty()");
+        }
+
+        TreeSet<Long> actualKeys = new TreeSet<Long>();
+        actual.keys().forEach(actualKeys::add);
+        assertEquals(new TreeSet<Long>(expected.keySet()), actualKeys, mode + " keys() 与 HashMap 键集不一致");
+    }
+
+    @Test
     @DisplayName("随机 10 张散列表的探测次数与独立模拟程序一致")
     void randomTablesMatchIndependentSimulation() {
         Random random = new Random(SEED + 2);

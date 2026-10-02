@@ -13,10 +13,11 @@
 
 ## 2. 变异测试(本目录脚本)
 
-`mutate.ps1` 会把实现**故意改坏**(17 种典型错误,覆盖四类散列表:去掉 `floorMod`、删除不留墓碑、
+`mutate.ps1` 会把实现**故意改坏**(22 种典型错误,覆盖五类散列表:去掉 `floorMod`、删除不留墓碑、
 插入不复用墓碑、ASL 分母取错、模数不做质数筛选、质数判定边界错、探测次数少 1、忘记减去 `minAddr`、
 地址空间少 1、数字分析法拼地址用加代乘、位分布统计记错位、熵计算把空数字算进去、删除不减 size、
-平方取中的中位窗口偏移算错、去掉平方溢出检查、位数用 k 而非平方数位数、删除不留墓碑),
+平方取中的中位窗口偏移算错、去掉平方溢出检查、位数用 k 而非平方数位数、删除不留墓碑、
+折叠法段的提取用除法、分界叠加奇偶段判定反了、忘记对表长取模、put 不识别重复键、反序不补零),
 然后运行测试:
 
 - 测试**变红** → 该变异体"被杀死",说明测试确实能发现这类缺陷;
@@ -67,15 +68,20 @@ pwsh -File scripts\verify-hash\audit-mutants.ps1
 ### 最近一次运行结果(2026-10-02)
 
 ```
-BASELINE(原始实现) exit=0  FOUND=82 STARTED=82 SUCCEEDED=82 FAILED=0
-变异体总数 = 17,被杀死 = 17,存活 = 0,未应用 = 0
+BASELINE(原始实现) exit=0  FOUND=97 STARTED=97 SUCCEEDED=97 FAILED=0
+变异体总数 = 22,被杀死 = 22,存活 = 0,未应用 = 0
 DirectAddressHashST:  与原始一致 = True
 DivisionHashST:       与原始一致 = True
 DigitAnalysisHashST:  与原始一致 = True
 MidSquareHashST:      与原始一致 = True
+FoldingHashST:        与原始一致 = True
 ```
 
-四类散列表合并回归(实现方 82 + 独立测试方 47):`Tests run: 129, Failures: 0, Errors: 0 — BUILD SUCCESS`。
+五类散列表合并回归(实现方 97 + 独立测试方 47):`Tests run: 144, Failures: 0, Errors: 0 — BUILD SUCCESS`。
+
+> **防"静默少跑"**:脚本内置基线用例数下限 `$minBaselineTests`(新增测试时同步上调)。
+> 起因是一次事故:链条式运行中 surefire 有 19 个用例没被选中,而 `-DfailIfNoTests=false`
+> 让它保持沉默、结果依然全绿。现在基线低于下限会直接抛错。
 
 ## 不能证明什么
 

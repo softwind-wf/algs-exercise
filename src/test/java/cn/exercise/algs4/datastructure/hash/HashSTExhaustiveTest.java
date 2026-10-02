@@ -159,6 +159,16 @@ class HashSTExhaustiveTest {
         assertEquals(55986, checked, "枚举节点数与 sum(6^k, k=1..6) 不符,枚举没有跑满");
     }
 
+    @Test
+    @DisplayName("折叠法(段长 1、表长 10、三键同地址):长度 ≤6 的全部 put/delete 序列逐步对照 HashMap")
+    void foldingExhaustive_chain() {
+        checked = 0;
+        long[] keys = {6, 123, 60}; // 段长 1 时各位数字之和都是 6
+        int[] path = new int[6];
+        dfsFolding(keys, path, 0, 6);
+        assertEquals(55986, checked, "枚举节点数与 sum(6^k, k=1..6) 不符,枚举没有跑满");
+    }
+
     // ---------------- 穷举骨架 ----------------
 
     private static void dfsDivision(int[] keys, int tableSize, int[] path, int len, int maxDepth) {
@@ -299,6 +309,46 @@ class HashSTExhaustiveTest {
                 } else {
                     model.put(key, value);
                 }
+            } else {
+                assertEquals(model.remove(key), st.delete(key), "delete(" + key + "):" + describe(path, len));
+            }
+            String ctx = describe(path, len);
+            assertEquals(model.size(), st.size(), ctx + " size");
+            assertEquals(model.isEmpty(), st.isEmpty(), ctx + " isEmpty");
+            for (long k : keys) {
+                assertEquals(model.get(k), st.get(k), ctx + " get(" + k + ")");
+                assertEquals(model.containsKey(k), st.contains(k), ctx + " contains(" + k + ")");
+            }
+            TreeSet<Long> actual = new TreeSet<Long>();
+            st.keys().forEach(actual::add);
+            assertEquals(new TreeSet<Long>(model.keySet()), actual, ctx + " keys()");
+        }
+    }
+
+    private static void dfsFolding(long[] keys, int[] path, int len, int maxDepth) {
+        if (len > 0) {
+            checkFolding(keys, path, len);
+        }
+        if (len == maxDepth) {
+            return;
+        }
+        for (int op = 0; op < 2 * keys.length; op++) {
+            path[len] = op;
+            dfsFolding(keys, path, len + 1, maxDepth);
+        }
+    }
+
+    private static void checkFolding(long[] keys, int[] path, int len) {
+        checked++;
+        FoldingHashST<String> st = new FoldingHashST<String>(1, 10, FoldingHashST.Mode.SHIFT);
+        Map<Long, String> model = new HashMap<Long, String>();
+        for (int i = 0; i < len; i++) {
+            int op = path[i];
+            long key = keys[op % keys.length];
+            if (op < keys.length) {
+                String value = "v" + i;
+                st.put(key, value);
+                model.put(key, value);
             } else {
                 assertEquals(model.remove(key), st.delete(key), "delete(" + key + "):" + describe(path, len));
             }

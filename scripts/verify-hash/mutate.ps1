@@ -37,10 +37,14 @@ foreach ($jar in $junitJars) {
 }
 $junitCp = $junitJars -join ";"
 
-$mainFiles   = @("DirectAddressHashST", "DivisionHashST", "DigitAnalysisHashST", "MidSquareHashST")
+$mainFiles   = @("DirectAddressHashST", "DivisionHashST", "DigitAnalysisHashST", "MidSquareHashST", "FoldingHashST")
 $testFiles   = @("DirectAddressHashSTTest", "DivisionHashSTTest", "HashSTDifferentialTest",
-                 "HashSTExhaustiveTest", "DigitAnalysisHashSTTest", "MidSquareHashSTTest")
+                 "HashSTExhaustiveTest", "DigitAnalysisHashSTTest", "MidSquareHashSTTest",
+                 "FoldingHashSTTest")
 $testClasses = $testFiles | ForEach-Object { "cn.exercise.algs4.datastructure.hash.$_" }
+
+# 基线用例数下限(新增测试类/用例时同步上调):用于挡住"测试类没被编译或没被选中"的静默少跑
+$minBaselineTests = 97
 
 Remove-Item -Recurse -Force $classes, $backup -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $classes, $backup | Out-Null
@@ -66,9 +70,17 @@ function Invoke-Suite {
 
 $base = Invoke-Suite
 "BASELINE(原始实现) exit=$($base.code)  $($base.out)"
+# 防"静默少跑":RunTests 只在"一个测试都没找到"时报错,若某个测试类缺失(例如增量编译后
+# class 未生成),总数会悄悄变小而结果依然全绿。这里用基线用例数下限把它挡住。
+if ($base.out -notmatch 'FOUND=(\d+)') { throw "无法解析基线用例数:$($base.out)" }
+$foundBaseline = [int]$Matches[1]
+if ($foundBaseline -lt $minBaselineTests) {
+    throw "基线只跑到 $foundBaseline 个用例(期望不少于 $minBaselineTests 个),疑似有测试类未被编译/执行,先排查再谈变异测试"
+}
 if ($base.code -ne 0) {
-    Copy-Item (Join-Path $backup "DirectAddressHashST.java") (Join-Path $mainDir "DirectAddressHashST.java") -Force
-    Copy-Item (Join-Path $backup "DivisionHashST.java") (Join-Path $mainDir "DivisionHashST.java") -Force
+    foreach ($f in $mainFiles) {
+        Copy-Item (Join-Path $backup "$f.java") (Join-Path $mainDir "$f.java") -Force
+    }
     throw "基线测试未通过,先修实现/测试再谈变异测试"
 }
 ""
@@ -108,7 +120,17 @@ $mutations = @(
     @{ n = "M16 平方取中:位数直接用 k 而非平方数的位数"; f = "MidSquareHashST";
        find = "        int length = decimalLength(square);"; repl = "        int length = addressDigits;" },
     @{ n = "M17 平方取中:delete 不留墓碑"; f = "MidSquareHashST";
-       find = "        state[i] = TOMBSTONE;"; repl = "        state[i] = EMPTY;" }
+       find = "        state[i] = TOMBSTONE;"; repl = "        state[i] = EMPTY;" },
+    @{ n = "M18 折叠法:段的提取用除法代替取余"; f = "FoldingHashST";
+       find = "            result[i] = (int) (rest % unit);"; repl = "            result[i] = (int) (rest / unit);" },
+    @{ n = "M19 折叠法:分界叠加的奇偶段判定反了"; f = "FoldingHashST";
+       find = "            if (mode == Mode.BOUNDARY && (i + 1) % 2 == 0) {"; repl = "            if (mode == Mode.BOUNDARY && (i + 1) % 2 == 1) {" },
+    @{ n = "M20 折叠法:hash 忘记对表长取模"; f = "FoldingHashST";
+       find = "        return (int) (foldedSum(key) % tableSize);"; repl = "        return (int) foldedSum(key);" },
+    @{ n = "M21 折叠法:put 不再识别重复键"; f = "FoldingHashST";
+       find = "            if (node.key == key) {`n                node.value = value;"; repl = "            if (false) {`n                node.value = value;" },
+    @{ n = "M22 折叠法:反序时不按固定宽度补零"; f = "FoldingHashST";
+       find = "        for (int i = 0; i < width; i++) {"; repl = "        while (rest > 0) {" }
 )
 
 $killed = 0

@@ -137,6 +137,35 @@ radix^选位数 超过 `maxCapacity` 就停止;熵相同时**位号小者优先*
 值为 null 抛 `NullPointerException`;表满(无空槽且无墓碑)时 `put` 抛 `IllegalStateException`。
 冲突策略与 DivisionHashST 相同(线性探测 + 墓碑 + 复用墓碑)。**非线程安全**。
 
+### FoldingHashST&lt;Value&gt;(折叠法)
+
+散列函数:把关键字按段长切成若干段,叠加后取模。
+
+| 成员 | 语义 |
+| --- | --- |
+| `FoldingHashST(int segmentDigits, int tableSize)` | 默认**移位叠加** |
+| `FoldingHashST(int segmentDigits, int tableSize, Mode mode)` | `Mode.SHIFT` 移位叠加 / `Mode.BOUNDARY` 分界叠加 |
+| `int[] segments(long key)` | 各段数值,低位→高位(段号从 1 开始,最高段可短) |
+| `long foldedSum(long key)` | 各段叠加之和(未取模) |
+| `int hash(long key)` | `foldedSum mod tableSize` |
+| `void put/get/delete/contains` | **拉链法**(无表满拒插) |
+| `int size()` / `boolean isEmpty()` / `int segmentDigits()` / `int tableSize()` / `Mode mode()` | |
+| `double loadFactor()` / `int maxChainLength()` | |
+| `Iterable<Long> keys()` / `String toString()` | 按地址升序 |
+
+**分段与叠加约定(判定缺陷时必须遵守)**:
+- 关键字按十进制数字处理,**从低位向高位**每 `segmentDigits` 位切一段,段号从 1 开始,最高段可以不足段长;
+- `SHIFT`:各段全部正序相加;
+- `BOUNDARY`:**奇数段正序、偶数段反序**;反序按**固定宽度**处理(缺位补零),
+  故段 `"001"` 反序为 `"100"`、段 `"040"` 反序仍为 `"040"`;
+- `H(key) = foldedSum mod tableSize`;表长取 10^k 时即"取叠加和的后 k 位、舍去进位"。
+
+示例(段长 3):`123456789` → 各段 789 | 456 | 123 → 移位 1368、分界 1566;表长 1000 时地址 **368** / **566**。
+`87654321` → 321 | 654 | 87 → 移位 1062(→62)、分界 321+456+87 = 864。`1000` → 0 | 1 → 移位 1、分界 100。
+
+**约束**:关键字必须非负;`segmentDigits >= 1`;`tableSize ∈ [1, 2^26]`;`mode` 不能为 null;
+值为 null 抛 `NullPointerException`。**非线程安全**。
+
 ---
 
 ## 2. 规格(教材定义,与实现无关)
@@ -180,6 +209,8 @@ radix^选位数 超过 `maxCapacity` 就停止;熵相同时**位号小者优先*
 11. 平方取中法:取位规则(含平方位数不足 k 位)、平方溢出 long 的边界(3037000499² 可用、
     3037000500² 抛异常)、负数与相反数同址、末两位相同的关键字被分散、
     ASL 统计与独立编写的线性探测模拟一致。
+12. 折叠法:分段(低位起、最高段可短)、移位叠加与分界叠加的差值、**偶数段按固定宽度补零反序**
+    (段 "001"→"100")、`foldedSum mod tableSize` 的地址、末几位相同的关键字被折叠打散。
 
 ---
 
@@ -225,6 +256,7 @@ mvn -o "-Dtest=你的测试类名*" "-DfailIfNoTests=false" "-Dmaven.repo.local=
 | `src/main/java/cn/exercise/algs4/datastructure/hash/DivisionHashST.java` | `D88854591EA465D5` |
 | `src/main/java/cn/exercise/algs4/datastructure/hash/DigitAnalysisHashST.java` | `8FFB4A4853598431` |
 | `src/main/java/cn/exercise/algs4/datastructure/hash/MidSquareHashST.java` | `3178F8030330FE17` |
+| `src/main/java/cn/exercise/algs4/datastructure/hash/FoldingHashST.java` | `490BF5DF85C65A65` |
 
 ---
 
