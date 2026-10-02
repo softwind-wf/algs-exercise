@@ -149,6 +149,16 @@ class HashSTExhaustiveTest {
         assertEquals(55986, checked, "枚举节点数与 sum(6^k, k=1..6) 不符,枚举没有跑满");
     }
 
+    @Test
+    @DisplayName("平方取中法(表长 10、三键同地址):长度 ≤6 的全部 put/delete 序列逐步对照 HashMap")
+    void midSquareExhaustive_probing() {
+        checked = 0;
+        long[] keys = {2, 12, 38}; // 平方取中 k=1 时三者都映射到地址 4
+        int[] path = new int[6];
+        dfsMidSquare(keys, path, 0, 6);
+        assertEquals(55986, checked, "枚举节点数与 sum(6^k, k=1..6) 不符,枚举没有跑满");
+    }
+
     // ---------------- 穷举骨架 ----------------
 
     private static void dfsDivision(int[] keys, int tableSize, int[] path, int len, int maxDepth) {
@@ -239,6 +249,56 @@ class HashSTExhaustiveTest {
                 String value = "v" + i;
                 st.put(key, value);
                 model.put(key, value);
+            } else {
+                assertEquals(model.remove(key), st.delete(key), "delete(" + key + "):" + describe(path, len));
+            }
+            String ctx = describe(path, len);
+            assertEquals(model.size(), st.size(), ctx + " size");
+            assertEquals(model.isEmpty(), st.isEmpty(), ctx + " isEmpty");
+            for (long k : keys) {
+                assertEquals(model.get(k), st.get(k), ctx + " get(" + k + ")");
+                assertEquals(model.containsKey(k), st.contains(k), ctx + " contains(" + k + ")");
+            }
+            TreeSet<Long> actual = new TreeSet<Long>();
+            st.keys().forEach(actual::add);
+            assertEquals(new TreeSet<Long>(model.keySet()), actual, ctx + " keys()");
+        }
+    }
+
+    private static void dfsMidSquare(long[] keys, int[] path, int len, int maxDepth) {
+        if (len > 0) {
+            checkMidSquare(keys, path, len);
+        }
+        if (len == maxDepth) {
+            return;
+        }
+        for (int op = 0; op < 2 * keys.length; op++) {
+            path[len] = op;
+            dfsMidSquare(keys, path, len + 1, maxDepth);
+        }
+    }
+
+    private static void checkMidSquare(long[] keys, int[] path, int len) {
+        checked++;
+        MidSquareHashST<String> st = new MidSquareHashST<String>(1); // 表长 10
+        Map<Long, String> model = new HashMap<Long, String>();
+        for (int i = 0; i < len; i++) {
+            int op = path[i];
+            long key = keys[op % keys.length];
+            if (op < keys.length) {
+                String value = "v" + i;
+                boolean rejected = false;
+                try {
+                    st.put(key, value);
+                } catch (IllegalStateException e) {
+                    rejected = true;
+                }
+                if (rejected) {
+                    assertEquals(10, st.size(), "拒绝插入时表竟然未满:" + describe(path, len));
+                    assertFalse(model.containsKey(key), "被拒绝的键不应已经存在:" + describe(path, len));
+                } else {
+                    model.put(key, value);
+                }
             } else {
                 assertEquals(model.remove(key), st.delete(key), "delete(" + key + "):" + describe(path, len));
             }

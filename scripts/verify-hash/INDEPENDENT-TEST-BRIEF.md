@@ -109,6 +109,34 @@ radix^选位数 超过 `maxCapacity` 就停止;熵相同时**位号小者优先*
 值为 null 抛 `NullPointerException`;地址空间上限 2^26。**非线程安全**。
 与除留余数法的差别:冲突用**拉链法**(无墓碑、无表满拒插)。
 
+### MidSquareHashST&lt;Value&gt;(平方取中法)
+
+散列函数:`H(key) = key² 的中间 k 位十进制数字`。平方让关键字的每一位都影响结果的高低位,
+因此中间几位由关键字所有位共同决定,比"取末位"更均匀。
+
+| 成员 | 语义 |
+| --- | --- |
+| `MidSquareHashST(int addressDigits)` | 地址位数 k ∈ [1, 7];表长 m = 10^k |
+| `long square(long key)` | 返回 key²;溢出 long 抛 IllegalArgumentException |
+| `int hash(long key)` | 取平方数中间 k 位,地址落在 [0, 10^k) |
+| `void put(long, Value)` / `Value get(long)` / `Value delete(long)` / `boolean contains(long)` | 线性探测 + 墓碑 |
+| `int slotOf(long)` / `int tombstones()` / `int lastProbes()` | 探测与墓碑观察 |
+| `int tableSize()` / `int addressDigits()` / `double loadFactor()` | |
+| `long successfulProbeSum()` / `long unsuccessfulProbeSum()` / `double averageSuccessfulProbes()` / `double averageUnsuccessfulProbes()` | ASL 口径与 DivisionHashST 完全一致 |
+| `Iterable<Long> keys()` / `String toString()` | 按数组下标升序 |
+
+**取位约定(判定缺陷时必须遵守)**:设平方数共 L 位十进制数字:
+- 若 `L ≤ k`,不足 k 位,地址 = **平方值本身**(等价于左侧补零);
+- 否则 `offset = (L - k) / 2`(向下取整,窗口略偏右),地址 = `(square / 10^offset) mod 10^k`。
+
+例:k=2 时 1234 → 1234² = 1522756 → offset 2 → 15227 → **27**;5678 → 32239684 → offset 3 → 32239 → **39**;
+99 → 9801 → offset 1 → 980 → **80**;3 → 9(L ≤ k)→ **9**。
+
+**约束**:`k ∈ [1, 7]`;key² 必须在 long 范围内,否则抛 `IllegalArgumentException`;
+**负数与其相反数地址相同**(平方的性质),但作为两个不同的键分别保存(靠线性探测放在不同槽);
+值为 null 抛 `NullPointerException`;表满(无空槽且无墓碑)时 `put` 抛 `IllegalStateException`。
+冲突策略与 DivisionHashST 相同(线性探测 + 墓碑 + 复用墓碑)。**非线程安全**。
+
 ---
 
 ## 2. 规格(教材定义,与实现无关)
@@ -149,6 +177,9 @@ radix^选位数 超过 `maxCapacity` 就停止;熵相同时**位号小者优先*
 9. 边界与压力:极小的表(m = 2)、大量冲突、关键字区间恰好只有一个值。
 10. 数字分析法:位分布统计与归一化熵(恒定/等频/偏斜三种)、选位与 `maxCapacity` 约束、按选位拼地址、
     选位造成的同桶冲突必须由拉链法正确处理(`hash(370) == hash(371)` 但两者都能取回)。
+11. 平方取中法:取位规则(含平方位数不足 k 位)、平方溢出 long 的边界(3037000499² 可用、
+    3037000500² 抛异常)、负数与相反数同址、末两位相同的关键字被分散、
+    ASL 统计与独立编写的线性探测模拟一致。
 
 ---
 
@@ -193,6 +224,7 @@ mvn -o "-Dtest=你的测试类名*" "-DfailIfNoTests=false" "-Dmaven.repo.local=
 | `src/main/java/cn/exercise/algs4/datastructure/hash/DirectAddressHashST.java` | `9DDD74855662BEAD` |
 | `src/main/java/cn/exercise/algs4/datastructure/hash/DivisionHashST.java` | `D88854591EA465D5` |
 | `src/main/java/cn/exercise/algs4/datastructure/hash/DigitAnalysisHashST.java` | `8FFB4A4853598431` |
+| `src/main/java/cn/exercise/algs4/datastructure/hash/MidSquareHashST.java` | `3178F8030330FE17` |
 
 ---
 

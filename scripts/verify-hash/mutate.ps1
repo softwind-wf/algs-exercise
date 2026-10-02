@@ -37,9 +37,9 @@ foreach ($jar in $junitJars) {
 }
 $junitCp = $junitJars -join ";"
 
-$mainFiles   = @("DirectAddressHashST", "DivisionHashST", "DigitAnalysisHashST")
+$mainFiles   = @("DirectAddressHashST", "DivisionHashST", "DigitAnalysisHashST", "MidSquareHashST")
 $testFiles   = @("DirectAddressHashSTTest", "DivisionHashSTTest", "HashSTDifferentialTest",
-                 "HashSTExhaustiveTest", "DigitAnalysisHashSTTest")
+                 "HashSTExhaustiveTest", "DigitAnalysisHashSTTest", "MidSquareHashSTTest")
 $testClasses = $testFiles | ForEach-Object { "cn.exercise.algs4.datastructure.hash.$_" }
 
 Remove-Item -Recurse -Force $classes, $backup -ErrorAction SilentlyContinue
@@ -100,7 +100,15 @@ $mutations = @(
     @{ n = "M12 数字分析法:熵计算把空数字也算进去(log 0)"; f = "DigitAnalysisHashST";
        find = "            if (count > 0) {"; repl = "            if (count >= 0) {" },
     @{ n = "M13 数字分析法:delete 忘记减少 size"; f = "DigitAnalysisHashST";
-       find = "                n--;`n                return node.value;"; repl = "                return node.value;" }
+       find = "                n--;`n                return node.value;"; repl = "                return node.value;" },
+    @{ n = "M14 平方取中:中位窗口偏移算错"; f = "MidSquareHashST";
+       find = "        int offset = (length - addressDigits) / 2;"; repl = "        int offset = (length - addressDigits + 1) / 2;" },
+    @{ n = "M15 平方取中:去掉平方溢出检查"; f = "MidSquareHashST";
+       find = "            return Math.multiplyExact(key, key);"; repl = "            return key * key;" },
+    @{ n = "M16 平方取中:位数直接用 k 而非平方数的位数"; f = "MidSquareHashST";
+       find = "        int length = decimalLength(square);"; repl = "        int length = addressDigits;" },
+    @{ n = "M17 平方取中:delete 不留墓碑"; f = "MidSquareHashST";
+       find = "        state[i] = TOMBSTONE;"; repl = "        state[i] = EMPTY;" }
 )
 
 $killed = 0

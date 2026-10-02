@@ -10,6 +10,8 @@ import java.util.Random;
 import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * 差分测试(differential testing):用与实现无关的参照物交叉验证。
@@ -127,6 +129,49 @@ class HashSTDifferentialTest {
         TreeSet<Long> actualKeys = new TreeSet<Long>();
         actual.keys().forEach(actualKeys::add);
         assertEquals(new TreeSet<Long>(expected.keySet()), actualKeys, "keys() 与 HashMap 键集不一致");
+    }
+
+    @Test
+    @DisplayName("MidSquareHashST 与 HashMap 在 2 万次随机操作后完全一致(含满表拒插)")
+    void midSquareMatchesHashMap() {
+        MidSquareHashST<String> actual = new MidSquareHashST<String>(1); // 表长 10,快速进入满表区
+        Map<Long, String> expected = new HashMap<Long, String>();
+        Random random = new Random(SEED + 4);
+        int refused = 0;
+
+        for (int i = 0; i < OPS; i++) {
+            long key = random.nextInt(2000);
+            int op = random.nextInt(4);
+            if (op < 2) {
+                String value = "v" + i;
+                boolean rejected = false;
+                try {
+                    actual.put(key, value);
+                } catch (IllegalStateException e) {
+                    rejected = true;
+                }
+                if (rejected) {
+                    refused++;
+                    assertEquals(10, actual.size(), "拒绝插入时表必须已满(无空槽且无墓碑)");
+                    assertFalse(expected.containsKey(key), "被拒绝的键不应已经存在");
+                } else {
+                    expected.put(key, value);
+                }
+            } else if (op == 2) {
+                assertEquals(expected.get(key), actual.get(key), "第 " + i + " 步 get(" + key + ")");
+                assertEquals(expected.containsKey(key), actual.contains(key),
+                        "第 " + i + " 步 contains(" + key + ")");
+            } else {
+                assertEquals(expected.remove(key), actual.delete(key), "第 " + i + " 步 delete(" + key + ")");
+            }
+            assertEquals(expected.size(), actual.size(), "第 " + i + " 步 size()");
+            if (i % 97 == 0) {
+                TreeSet<Long> actualKeys = new TreeSet<Long>();
+                actual.keys().forEach(actualKeys::add);
+                assertEquals(new TreeSet<Long>(expected.keySet()), actualKeys, "第 " + i + " 步 keys()");
+            }
+        }
+        assertTrue(refused > 0, "该场景从未触发满表拒插,边界路径实际未被覆盖");
     }
 
     @Test

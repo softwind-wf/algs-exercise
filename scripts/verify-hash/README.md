@@ -13,9 +13,10 @@
 
 ## 2. 变异测试(本目录脚本)
 
-`mutate.ps1` 会把实现**故意改坏**(13 种典型错误,覆盖三类散列表:去掉 `floorMod`、删除不留墓碑、
+`mutate.ps1` 会把实现**故意改坏**(17 种典型错误,覆盖四类散列表:去掉 `floorMod`、删除不留墓碑、
 插入不复用墓碑、ASL 分母取错、模数不做质数筛选、质数判定边界错、探测次数少 1、忘记减去 `minAddr`、
-地址空间少 1、数字分析法拼地址用加代乘、位分布统计记错位、熵计算把空数字算进去、删除不减 size),
+地址空间少 1、数字分析法拼地址用加代乘、位分布统计记错位、熵计算把空数字算进去、删除不减 size、
+平方取中的中位窗口偏移算错、去掉平方溢出检查、位数用 k 而非平方数位数、删除不留墓碑),
 然后运行测试:
 
 - 测试**变红** → 该变异体"被杀死",说明测试确实能发现这类缺陷;
@@ -66,14 +67,15 @@ pwsh -File scripts\verify-hash\audit-mutants.ps1
 ### 最近一次运行结果(2026-10-02)
 
 ```
-BASELINE(原始实现) exit=0  FOUND=63 STARTED=63 SUCCEEDED=63 FAILED=0
-变异体总数 = 13,被杀死 = 13,存活 = 0,未应用 = 0
+BASELINE(原始实现) exit=0  FOUND=82 STARTED=82 SUCCEEDED=82 FAILED=0
+变异体总数 = 17,被杀死 = 17,存活 = 0,未应用 = 0
 DirectAddressHashST:  与原始一致 = True
 DivisionHashST:       与原始一致 = True
 DigitAnalysisHashST:  与原始一致 = True
+MidSquareHashST:      与原始一致 = True
 ```
 
-三类散列表合并回归(实现方 63 + 独立测试方 47):`Tests run: 110, Failures: 0, Errors: 0 — BUILD SUCCESS`。
+四类散列表合并回归(实现方 82 + 独立测试方 47):`Tests run: 129, Failures: 0, Errors: 0 — BUILD SUCCESS`。
 
 ## 不能证明什么
 
