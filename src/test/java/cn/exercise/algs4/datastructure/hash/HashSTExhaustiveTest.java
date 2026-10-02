@@ -169,6 +169,26 @@ class HashSTExhaustiveTest {
         assertEquals(55986, checked, "枚举节点数与 sum(6^k, k=1..6) 不符,枚举没有跑满");
     }
 
+    @Test
+    @DisplayName("随机数法(表长 4、两键同地址):长度 ≤6 的全部 put/delete 序列逐步对照 HashMap")
+    void randomExhaustive_probing() {
+        checked = 0;
+        long[] keys = {1, -1, 2}; // 默认种子下 hash(1) = hash(-1) = 0
+        int[] path = new int[6];
+        dfsRandom(keys, path, 0, 6);
+        assertEquals(55986, checked, "枚举节点数与 sum(6^k, k=1..6) 不符,枚举没有跑满");
+    }
+
+    @Test
+    @DisplayName("全域散列(显式选定 a=1,b=0、三键同地址):长度 ≤6 的全部 put/delete 序列逐步对照 HashMap")
+    void universalExhaustive_chain() {
+        checked = 0;
+        long[] keys = {1, 5, 9}; // h(key) = key mod 4,三者地址都是 1
+        int[] path = new int[6];
+        dfsUniversal(keys, path, 0, 6);
+        assertEquals(55986, checked, "枚举节点数与 sum(6^k, k=1..6) 不符,枚举没有跑满");
+    }
+
     // ---------------- 穷举骨架 ----------------
 
     private static void dfsDivision(int[] keys, int tableSize, int[] path, int len, int maxDepth) {
@@ -341,6 +361,97 @@ class HashSTExhaustiveTest {
     private static void checkFolding(long[] keys, int[] path, int len) {
         checked++;
         FoldingHashST<String> st = new FoldingHashST<String>(1, 10, FoldingHashST.Mode.SHIFT);
+        Map<Long, String> model = new HashMap<Long, String>();
+        for (int i = 0; i < len; i++) {
+            int op = path[i];
+            long key = keys[op % keys.length];
+            if (op < keys.length) {
+                String value = "v" + i;
+                st.put(key, value);
+                model.put(key, value);
+            } else {
+                assertEquals(model.remove(key), st.delete(key), "delete(" + key + "):" + describe(path, len));
+            }
+            String ctx = describe(path, len);
+            assertEquals(model.size(), st.size(), ctx + " size");
+            assertEquals(model.isEmpty(), st.isEmpty(), ctx + " isEmpty");
+            for (long k : keys) {
+                assertEquals(model.get(k), st.get(k), ctx + " get(" + k + ")");
+                assertEquals(model.containsKey(k), st.contains(k), ctx + " contains(" + k + ")");
+            }
+            TreeSet<Long> actual = new TreeSet<Long>();
+            st.keys().forEach(actual::add);
+            assertEquals(new TreeSet<Long>(model.keySet()), actual, ctx + " keys()");
+        }
+    }
+
+    private static void dfsRandom(long[] keys, int[] path, int len, int maxDepth) {
+        if (len > 0) {
+            checkRandom(keys, path, len);
+        }
+        if (len == maxDepth) {
+            return;
+        }
+        for (int op = 0; op < 2 * keys.length; op++) {
+            path[len] = op;
+            dfsRandom(keys, path, len + 1, maxDepth);
+        }
+    }
+
+    private static void checkRandom(long[] keys, int[] path, int len) {
+        checked++;
+        RandomHashST<String> st = new RandomHashST<String>(4); // 表长 4
+        Map<Long, String> model = new HashMap<Long, String>();
+        for (int i = 0; i < len; i++) {
+            int op = path[i];
+            long key = keys[op % keys.length];
+            if (op < keys.length) {
+                String value = "v" + i;
+                boolean rejected = false;
+                try {
+                    st.put(key, value);
+                } catch (IllegalStateException e) {
+                    rejected = true;
+                }
+                if (rejected) {
+                    assertEquals(4, st.size(), "拒绝插入时表竟然未满:" + describe(path, len));
+                    assertFalse(model.containsKey(key), "被拒绝的键不应已经存在:" + describe(path, len));
+                } else {
+                    model.put(key, value);
+                }
+            } else {
+                assertEquals(model.remove(key), st.delete(key), "delete(" + key + "):" + describe(path, len));
+            }
+            String ctx = describe(path, len);
+            assertEquals(model.size(), st.size(), ctx + " size");
+            assertEquals(model.isEmpty(), st.isEmpty(), ctx + " isEmpty");
+            for (long k : keys) {
+                assertEquals(model.get(k), st.get(k), ctx + " get(" + k + ")");
+                assertEquals(model.containsKey(k), st.contains(k), ctx + " contains(" + k + ")");
+            }
+            TreeSet<Long> actual = new TreeSet<Long>();
+            st.keys().forEach(actual::add);
+            assertEquals(new TreeSet<Long>(model.keySet()), actual, ctx + " keys()");
+        }
+    }
+
+    private static void dfsUniversal(long[] keys, int[] path, int len, int maxDepth) {
+        if (len > 0) {
+            checkUniversal(keys, path, len);
+        }
+        if (len == maxDepth) {
+            return;
+        }
+        for (int op = 0; op < 2 * keys.length; op++) {
+            path[len] = op;
+            dfsUniversal(keys, path, len + 1, maxDepth);
+        }
+    }
+
+    private static void checkUniversal(long[] keys, int[] path, int len) {
+        checked++;
+        // 显式选定族成员 h(key) = (key mod 13) mod 4,表长 4,三键都落在地址 1
+        UniversalHashST<String> st = new UniversalHashST<String>(4, 13, 1L, 0L);
         Map<Long, String> model = new HashMap<Long, String>();
         for (int i = 0; i < len; i++) {
             int op = path[i];

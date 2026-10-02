@@ -212,6 +212,79 @@ class HashSTDifferentialTest {
     }
 
     @Test
+    @DisplayName("RandomHashST 与 HashMap 在 2 万次随机操作后完全一致(含满表拒插)")
+    void randomMatchesHashMap() {
+        RandomHashST<String> actual = new RandomHashST<String>(16);
+        Map<Long, String> expected = new HashMap<Long, String>();
+        Random random = new Random(SEED + 7);
+        int refused = 0;
+
+        for (int i = 0; i < OPS; i++) {
+            long key = random.nextInt(200) - 100; // 含负数:随机数法不要求非负
+            int op = random.nextInt(4);
+            if (op < 2) {
+                String value = "v" + i;
+                boolean rejected = false;
+                try {
+                    actual.put(key, value);
+                } catch (IllegalStateException e) {
+                    rejected = true;
+                }
+                if (rejected) {
+                    refused++;
+                    assertEquals(16, actual.size(), "拒绝插入时表必须已满(无空槽且无墓碑)");
+                    assertFalse(expected.containsKey(key), "被拒绝的键不应已经存在");
+                } else {
+                    expected.put(key, value);
+                }
+            } else if (op == 2) {
+                assertEquals(expected.get(key), actual.get(key), "第 " + i + " 步 get(" + key + ")");
+                assertEquals(expected.containsKey(key), actual.contains(key),
+                        "第 " + i + " 步 contains(" + key + ")");
+            } else {
+                assertEquals(expected.remove(key), actual.delete(key), "第 " + i + " 步 delete(" + key + ")");
+            }
+            assertEquals(expected.size(), actual.size(), "第 " + i + " 步 size()");
+            if (i % 97 == 0) {
+                TreeSet<Long> actualKeys = new TreeSet<Long>();
+                actual.keys().forEach(actualKeys::add);
+                assertEquals(new TreeSet<Long>(expected.keySet()), actualKeys, "第 " + i + " 步 keys()");
+            }
+        }
+        assertTrue(refused > 0, "该场景从未触发满表拒插,边界路径实际未被覆盖");
+    }
+
+    @Test
+    @DisplayName("UniversalHashST 与 HashMap 在 2 万次随机操作后完全一致(固定种子的全域族成员)")
+    void universalMatchesHashMap() {
+        UniversalHashST<String> actual = new UniversalHashST<String>(64, 1009, SEED + 8);
+        Map<Long, String> expected = new HashMap<Long, String>();
+        Random random = new Random(SEED + 9);
+
+        for (int i = 0; i < OPS; i++) {
+            long key = random.nextInt(1009); // 必须在 [0, p-1]
+            int op = random.nextInt(4);
+            if (op < 2) {
+                String value = "v" + i;
+                actual.put(key, value);
+                expected.put(key, value);
+            } else if (op == 2) {
+                assertEquals(expected.get(key), actual.get(key), "第 " + i + " 步 get(" + key + ")");
+                assertEquals(expected.containsKey(key), actual.contains(key),
+                        "第 " + i + " 步 contains(" + key + ")");
+            } else {
+                assertEquals(expected.remove(key), actual.delete(key), "第 " + i + " 步 delete(" + key + ")");
+            }
+            assertEquals(expected.size(), actual.size(), "第 " + i + " 步 size()");
+            assertEquals(expected.isEmpty(), actual.isEmpty(), "第 " + i + " 步 isEmpty()");
+        }
+
+        TreeSet<Long> actualKeys = new TreeSet<Long>();
+        actual.keys().forEach(actualKeys::add);
+        assertEquals(new TreeSet<Long>(expected.keySet()), actualKeys, "keys() 与 HashMap 键集不一致");
+    }
+
+    @Test
     @DisplayName("随机 10 张散列表的探测次数与独立模拟程序一致")
     void randomTablesMatchIndependentSimulation() {
         Random random = new Random(SEED + 2);

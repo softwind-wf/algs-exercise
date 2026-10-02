@@ -13,11 +13,14 @@
 
 ## 2. 变异测试(本目录脚本)
 
-`mutate.ps1` 会把实现**故意改坏**(22 种典型错误,覆盖五类散列表:去掉 `floorMod`、删除不留墓碑、
+`mutate.ps1` 会把实现**故意改坏**(33 种典型错误,覆盖七类散列表:去掉 `floorMod`、删除不留墓碑、
 插入不复用墓碑、ASL 分母取错、模数不做质数筛选、质数判定边界错、探测次数少 1、忘记减去 `minAddr`、
 地址空间少 1、数字分析法拼地址用加代乘、位分布统计记错位、熵计算把空数字算进去、删除不减 size、
 平方取中的中位窗口偏移算错、去掉平方溢出检查、位数用 k 而非平方数位数、删除不留墓碑、
-折叠法段的提取用除法、分界叠加奇偶段判定反了、忘记对表长取模、put 不识别重复键、反序不补零),
+折叠法段的提取用除法、分界叠加奇偶段判定反了、忘记对表长取模、put 不识别重复键、反序不补零、
+随机数法不屏蔽成 31 位非负、种子不参与混合、hash 忘记取模、探测步长改成 2、delete 不留墓碑、
+全域散列公式漏掉 +b、a 可能取到 0、不校验 p 是否素数、hash 去掉上界检查、碰撞统计不校验 k1==k2、
+闭合公式条件写错),
 然后运行测试:
 
 - 测试**变红** → 该变异体"被杀死",说明测试确实能发现这类缺陷;
@@ -65,23 +68,35 @@ pwsh -File scripts\verify-hash\audit-mutants.ps1
 **1 处真缺陷落在实现方文档**(任务书对 `hash()` 基准的表述歧义,已在第 3 节任务书中修正),
 **0 处实现缺陷**;2 处口径分歧(表满异常类型、满表 ASL 兜底)判为合理并写入契约。
 
+**跑全量回归时务必关闭 Maven 增量编译,并且先用 `clean` 重建**:
+
+```powershell
+mvn -o clean -Dmaven.compiler.useIncrementalCompilation=false "-Dtest=...*" -DfailIfNoTests=false test
+```
+
+两次实测事故:
+1. `mutate.ps1` 会临时改写全部实现源码并恢复,maven-compiler-plugin 的增量判断在之后可能误报
+   `Nothing to compile - all classes are up to date`,结果是**新类的 class 文件根本没生成**,
+   测试报 `ClassNotFoundException` 甚至**静默少跑一批用例而整体仍然 BUILD SUCCESS**
+   (上一轮"少了 19 个用例"和"少了 6 个用例 + 1 个 ERROR"都是这个机制)。
+2. **更危险的一次**:`Copy-Item` 恢复源码时会保留备份文件的旧 mtime,于是"源码比 class 旧",
+   增量构建永远跳过重编译;若变异窗口内有任何构建把变异 class 写进了 `target\classes`
+   (实测发生过,失败签名正好是变异体 M9"地址空间少 1"),后续测试就**跑在变异体上**。
+   加固:①恢复源码后刷新其 mtime;②harness 结束时清掉 `target\classes` 中本模块的散列 class;
+   ③权威回归一律 `mvn clean test`。
+
 ### 最近一次运行结果(2026-10-02)
 
 ```
-BASELINE(原始实现) exit=0  FOUND=97 STARTED=97 SUCCEEDED=97 FAILED=0
-变异体总数 = 22,被杀死 = 22,存活 = 0,未应用 = 0
-DirectAddressHashST:  与原始一致 = True
-DivisionHashST:       与原始一致 = True
-DigitAnalysisHashST:  与原始一致 = True
-MidSquareHashST:      与原始一致 = True
-FoldingHashST:        与原始一致 = True
+BASELINE(原始实现) exit=0  FOUND=132 STARTED=132 SUCCEEDED=132 FAILED=0
+变异体总数 = 33,被杀死 = 33,存活 = 0,未应用 = 0
+七个实现逐个校验 SHA256:与原始一致 = True
+已清理 maven 输出目录中的散列 class
 ```
 
-五类散列表合并回归(实现方 97 + 独立测试方 47):`Tests run: 144, Failures: 0, Errors: 0 — BUILD SUCCESS`。
+七类散列表合并回归(实现方 132 + 独立测试方 47):`Tests run: 179, Failures: 0, Errors: 0 — BUILD SUCCESS`(mvn clean + 关闭增量编译)。
 
-> **防"静默少跑"**:脚本内置基线用例数下限 `$minBaselineTests`(新增测试时同步上调)。
-> 起因是一次事故:链条式运行中 surefire 有 19 个用例没被选中,而 `-DfailIfNoTests=false`
-> 让它保持沉默、结果依然全绿。现在基线低于下限会直接抛错。
+> **防"静默少跑/跑错实现"**:脚本内置基线用例数下限 `$minBaselineTests`(新增测试时同步上调,现值 132)。
 
 ## 不能证明什么
 

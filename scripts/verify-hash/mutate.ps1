@@ -37,14 +37,14 @@ foreach ($jar in $junitJars) {
 }
 $junitCp = $junitJars -join ";"
 
-$mainFiles   = @("DirectAddressHashST", "DivisionHashST", "DigitAnalysisHashST", "MidSquareHashST", "FoldingHashST")
+$mainFiles   = @("DirectAddressHashST", "DivisionHashST", "DigitAnalysisHashST", "MidSquareHashST", "FoldingHashST", "RandomHashST", "UniversalHashST")
 $testFiles   = @("DirectAddressHashSTTest", "DivisionHashSTTest", "HashSTDifferentialTest",
                  "HashSTExhaustiveTest", "DigitAnalysisHashSTTest", "MidSquareHashSTTest",
-                 "FoldingHashSTTest")
+                 "FoldingHashSTTest", "RandomHashSTTest", "UniversalHashSTTest")
 $testClasses = $testFiles | ForEach-Object { "cn.exercise.algs4.datastructure.hash.$_" }
 
 # 基线用例数下限(新增测试类/用例时同步上调):用于挡住"测试类没被编译或没被选中"的静默少跑
-$minBaselineTests = 97
+$minBaselineTests = 132
 
 Remove-Item -Recurse -Force $classes, $backup -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $classes, $backup | Out-Null
@@ -130,7 +130,30 @@ $mutations = @(
     @{ n = "M21 折叠法:put 不再识别重复键"; f = "FoldingHashST";
        find = "            if (node.key == key) {`n                node.value = value;"; repl = "            if (false) {`n                node.value = value;" },
     @{ n = "M22 折叠法:反序时不按固定宽度补零"; f = "FoldingHashST";
-       find = "        for (int i = 0; i < width; i++) {"; repl = "        while (rest > 0) {" }
+       find = "        for (int i = 0; i < width; i++) {"; repl = "        while (rest > 0) {" },
+    @{ n = "M23 随机数法:返回值不再屏蔽成 31 位非负"; f = "RandomHashST";
+       find = "        return (int) (x & 0x7fffffffL);"; repl = "        return (int) x;" },
+    @{ n = "M24 随机数法:种子不参与混合"; f = "RandomHashST";
+       find = "        long x = key ^ seed;"; repl = "        long x = key;" },
+    @{ n = "M25 随机数法:hash 忘记对表长取模"; f = "RandomHashST";
+       find = "        return randomBits(key) % tableSize;"; repl = "        return randomBits(key);" },
+    @{ n = "M26 随机数法:find 的线性探测步长改成 2"; f = "RandomHashST";
+       find = "            if (state[i] == OCCUPIED && slotKeys[i] == key) {`n                lastProbes = probes;`n                return i;`n            }`n            i = (i + 1) % tableSize;";
+       repl = "            if (state[i] == OCCUPIED && slotKeys[i] == key) {`n                lastProbes = probes;`n                return i;`n            }`n            i = (i + 2) % tableSize;" },
+    @{ n = "M27 随机数法:delete 不留墓碑"; f = "RandomHashST";
+       find = "        state[i] = TOMBSTONE;"; repl = "        state[i] = EMPTY;" },
+    @{ n = "M28 全域散列:h 公式漏掉 +b"; f = "UniversalHashST";
+       find = "        return (int) (((a * key + b) % primeP) % tableSize);"; repl = "        return (int) (((a * key) % primeP) % tableSize);" },
+    @{ n = "M29 全域散列:a 可能取到 0(函数不在族内)"; f = "UniversalHashST";
+       find = "        return 1 + Math.floorMod(random.nextLong(), primeP - 1);"; repl = "        return Math.floorMod(random.nextLong(), primeP - 1);" },
+    @{ n = "M30 全域散列:不再校验 p 是否素数"; f = "UniversalHashST";
+       find = "        if (!isPrime(primeP)) {"; repl = "        if (false) {" },
+    @{ n = "M31 全域散列:hash 去掉上界检查"; f = "UniversalHashST";
+       find = "        if (key < 0 || key >= primeP) {"; repl = "        if (key < 0) {" },
+    @{ n = "M32 全域散列:碰撞统计不校验 k1==k2"; f = "UniversalHashST";
+       find = "        if (k1 == k2) {"; repl = "        if (false) {" },
+    @{ n = "M33 全域散列:闭合公式条件写错"; f = "UniversalHashST";
+       find = "            if (d % tableSize == 0) {"; repl = "            if (d % tableSize == 1) {" }
 )
 
 $killed = 0
@@ -143,6 +166,10 @@ foreach ($m in $mutations) {
     # 否则上一个变异体编译出的 class 会残留在 $classes 里,污染本轮失败归因。
     foreach ($f in $mainFiles) {
         Copy-Item (Join-Path $backup "$f.java") (Join-Path $mainDir "$f.java") -Force
+        # 关键:刷新 mtime。Copy-Item 会保留备份文件的旧时间戳,若源码时间戳比 class 还旧,
+        # 任何增量构建(IDE/maven)都会认为"已是最新"而跳过重编译,变异 class 就会永久留在
+        # 构建输出目录里 —— 之后跑测试等于在测变异体,这是最危险的假信号。
+        (Get-Item (Join-Path $mainDir "$f.java")).LastWriteTime = Get-Date
     }
     $text = (Get-Content -Raw -Encoding UTF8 $src) -replace "`r`n", "`n"
     if (-not $text.Contains($m.find)) { $notApplied += $m.n; "NOT APPLIED(源码已变动,请更新脚本): $($m.n)"; continue }
@@ -165,6 +192,7 @@ foreach ($m in $mutations) {
     "{0,-42} {1,-9} {2}" -f $m.n, $verdict, $r.out
     foreach ($f in $mainFiles) {
         Copy-Item (Join-Path $backup "$f.java") (Join-Path $mainDir "$f.java") -Force
+        (Get-Item (Join-Path $mainDir "$f.java")).LastWriteTime = Get-Date
     }
 }
 
@@ -176,6 +204,14 @@ foreach ($f in $mainFiles) {
     $same = ($now -eq $origHash[$f])
     if (-not $same) { $restoreOk = $false }
     "{0}: 与原始一致 = {1}" -f $f, $same
+}
+
+# 清掉 maven 构建输出目录里本模块的散列 class:万一某个增量构建在变异窗口内把它们写进了
+# target\classes(实测发生过),这里一次清干净,避免后续测试跑在变异 class 上。
+$mavenHashDir = Join-Path $root "target\classes\cn\exercise\algs4\datastructure\hash"
+if (Test-Path $mavenHashDir) {
+    Remove-Item -Force (Join-Path $mavenHashDir "*.class") -ErrorAction SilentlyContinue
+    "已清理 maven 输出目录中的散列 class:$mavenHashDir(请用 mvn clean test 做权威回归)"
 }
 ""
 "变异体总数 = $($mutations.Count),被杀死 = $killed,存活 = $($survived.Count),未应用 = $($notApplied.Count)"

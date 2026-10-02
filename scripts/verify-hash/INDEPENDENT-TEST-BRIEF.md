@@ -166,6 +166,67 @@ radix^选位数 超过 `maxCapacity` 就停止;熵相同时**位号小者优先*
 **约束**:关键字必须非负;`segmentDigits >= 1`;`tableSize ∈ [1, 2^26]`;`mode` 不能为 null;
 值为 null 抛 `NullPointerException`。**非线程安全**。
 
+### RandomHashST&lt;Value&gt;(随机数法)
+
+散列函数:`H(key) = random(key) mod m`,其中 `random` 是**确定性**伪随机函数
+(64 位 xor-shift-multiply 三轮混合,seed 混入关键字,取 31 位非负值)。
+
+| 成员 | 语义 |
+| --- | --- |
+| `RandomHashST(int tableSize)` | 默认固定种子 |
+| `RandomHashST(int tableSize, long seed)` | 指定种子 |
+| `int randomBits(long key)` | 伪随机值,[0, 2^31-1] |
+| `int hash(long key)` | `randomBits % tableSize`,落在 [0, tableSize) |
+| `void put/get/delete/contains` | 线性探测 + 墓碑 |
+| `int slotOf(long)` / `int tombstones()` / `int lastProbes()` | 探测与墓碑观察 |
+| `int tableSize()` / `long seed()` / `double loadFactor()` | |
+| `long successfulProbeSum()` / `long unsuccessfulProbeSum()` / `double averageSuccessfulProbes()` / `double averageUnsuccessfulProbes()` | ASL 口径与 DivisionHashST 一致 |
+| `Iterable<Long> keys()` / `String toString()` | 按数组下标升序 |
+
+**必须遵守的性质**:同一关键字 + 同一种子必须得到同一地址(**确定性**);`randomBits` 恒非负、地址恒在
+[0, tableSize);换种子后地址一般不同。关键字可以是**任意 long(含负数与 Long.MIN_VALUE)**,
+不要求十进制编码 —— 这正是随机数法相对数字分析法/平方取中法/折叠法的优势场景。
+
+**重点反例(测试必须覆盖)**:若用 `Math.random()` 或未固定种子的 `new Random()` 当 random,
+同一关键字两次地址不同,散列表立刻失效 —— 这是随机数法最典型的错误实现。
+
+**约束**:`tableSize ∈ [1, 2^26]`;值为 null 抛 `NullPointerException`;表满(无空槽且无墓碑)时
+`put` 抛 `IllegalStateException`。**非线程安全**。
+
+### UniversalHashST&lt;Value&gt;(全域散列法)
+
+不是固定一个函数,而是**建表时从一族函数里随机选一个**:
+`H = { h(a,b) | h(a,b)(key) = ((a*key + b) mod p) mod m },a ∈ [1,p-1],b ∈ [0,p-1],p 为素数`。
+
+| 成员 | 语义 |
+| --- | --- |
+| `UniversalHashST(int m, long p)` | 默认固定种子选 (a,b);结果可复现 |
+| `UniversalHashST(int m, long p, long seed)` | 由 seed 决定 (a,b),同 seed 必得同一函数 |
+| `UniversalHashST(int m, long p, long a, long b)` | 直接指定函数(验证/复现用) |
+| `int hash(long key)` | `((a*key+b) mod p) mod m`,key 必须 ∈ [0, p-1] |
+| `long primeP()` / `int tableSize()` / `long a()` / `long b()` / `long seed()` | |
+| `void put/get/delete/contains` | **拉链法** |
+| `int size()` / `boolean isEmpty()` / `double loadFactor()` / `int maxChainLength()` | |
+| `Iterable<Long> keys()` / `String toString()` | 按地址升序 |
+| `static long familySize(long p)` | 族大小 (p−1)·p |
+| `static long collisionCountInFamily(long k1, long k2, int m, long p)` | **遍历全族**统计碰撞函数个数 |
+| `static double collisionProbabilityInFamily(...)` | 碰撞概率 |
+| `static long predictedCollisionCount(int m, long p)` | 用**闭合公式**独立计算同一计数 |
+
+**必须遵守的性质**:
+- **全域性**:`Pr[h(k1) = h(k2)] ≤ 1/m`(k1 ≠ k2,a、b 均匀随机)。可用两条独立路径互相印证:
+  遍历全族 `collisionCountInFamily` 与闭合公式 `predictedCollisionCount`
+  `= Σ_{d=1}^{p-1} [ (p-d)·[m|d] + d·[m|(d-p)] ]`。该计数**与 k1、k2 的具体取值无关**,只要求两者不同。
+  例:p=97、m=16 时两者都等于 **492**(概率 0.052835 ≤ 1/16);p=17、m=4 时等于 **56**
+  (概率 = (p+1-m)/(p·m) = 0.2059 < 1/4,**仅 m=1 时取等**)。
+- 随机性只在**建表时用一次**:函数选定后必须保持固定,否则查不回来。
+- **全域性只保证概率**:某个随机选中的函数仍可能把对手的集合全部聚到一起
+  (例:p=1009、m=64,a=1、b=47 时,集合 {64,128,…,960} 全部落进桶 47,最长链 15)。
+
+**约束**:p 必须是素数且 2 ≤ p ≤ 2^31-1(否则抛 `IllegalArgumentException`);
+关键字必须满足 0 ≤ key ≤ p-1;a ∈ [1,p-1]、b ∈ [0,p-1];值为 null 抛 `NullPointerException`。
+默认固定种子**不提供真实对手防护**,工程上应传入不可预测的种子。**非线程安全**。
+
 ---
 
 ## 2. 规格(教材定义,与实现无关)
@@ -211,6 +272,12 @@ radix^选位数 超过 `maxCapacity` 就停止;熵相同时**位号小者优先*
     ASL 统计与独立编写的线性探测模拟一致。
 12. 折叠法:分段(低位起、最高段可短)、移位叠加与分界叠加的差值、**偶数段按固定宽度补零反序**
     (段 "001"→"100")、`foldedSum mod tableSize` 的地址、末几位相同的关键字被折叠打散。
+13. 随机数法:**确定性**(同 key 同 seed 恒同址,不同实例也一致)、31 位非负与地址范围、
+    雪崩效应(相邻关键字平均约 16/32 位不同)、分布均匀性、种子参与、负数与 `Long.MIN_VALUE` 可用、
+    `Math.random()` 式实现的反例说明。
+14. 全域散列法:族成员公式、同 seed 的确定性选取(a ∈ [1,p-1]、b ∈ [0,p-1])、
+    **全域性 Pr ≤ 1/m 的穷举验证**(并与闭合公式互相印证)、计数与关键字取值无关、
+    m=1 时全碰撞、"全域性只保证概率"的反例、p 非素数与关键字越界的异常类型。
 
 ---
 
@@ -257,6 +324,8 @@ mvn -o "-Dtest=你的测试类名*" "-DfailIfNoTests=false" "-Dmaven.repo.local=
 | `src/main/java/cn/exercise/algs4/datastructure/hash/DigitAnalysisHashST.java` | `8FFB4A4853598431` |
 | `src/main/java/cn/exercise/algs4/datastructure/hash/MidSquareHashST.java` | `3178F8030330FE17` |
 | `src/main/java/cn/exercise/algs4/datastructure/hash/FoldingHashST.java` | `490BF5DF85C65A65` |
+| `src/main/java/cn/exercise/algs4/datastructure/hash/RandomHashST.java` | `53EF8B4719783256` |
+| `src/main/java/cn/exercise/algs4/datastructure/hash/UniversalHashST.java` | `6B00DC32E38C5AF5` |
 
 ---
 
