@@ -77,6 +77,38 @@
 - 表长上限 2^26(67108864),超过抛 `IllegalArgumentException`(避免分配超大数组导致 OOM)。
 - **两个类都不是线程安全的**:没有同步、没有 volatile;并发读写需调用方自行加锁。
 
+### DigitAnalysisHashST&lt;Value&gt;(数字分析法)
+
+适用前提:关键字集合**已知且静态**,关键字是同基数的多位数字编码(学号、工号、电话等)。
+散列函数不是公式,而是**从样本中挑位**:统计每一位上各数字的出现次数 → 用归一化熵给每位打分 →
+选出最均匀的若干位、按原有位序拼成地址。
+
+| 成员 | 语义 |
+| --- | --- |
+| `DigitAnalysisHashST(long[] sample, int digitCount, int maxCapacity)` | 十进制基数 |
+| `DigitAnalysisHashST(long[] sample, int radix, int digitCount, int maxCapacity)` | 自定义基数 |
+| `int hash(long key)` | 按选中位从高位到低位拼地址,落在 [0, addressSpace) |
+| `void put(long, Value)` / `Value get(long)` / `Value delete(long)` / `boolean contains(long)` | **拉链法**;不存在返回 null |
+| `int size()` / `boolean isEmpty()` | |
+| `int radix()` / `int digitCount()` | 基数与参与分析的位数 |
+| `int[] chosenPositions()` | 选中的位号(升序,0 = 个位) |
+| `int addressSpace()` | = radix^选位数 |
+| `int[] distribution(int position)` | 该位上各数字出现次数(长度 = radix) |
+| `double uniformity(int position)` | 归一化熵,恒定位 = 0、等频 = 1 |
+| `int sampleSize()` / `int sampleCollisionCount()` / `int distinctAddressCount()` | 样本统计 |
+| `double loadFactor()` | = size / addressSpace |
+| `int maxChainLength()` | 最长链长度(最坏查找长度) |
+| `Iterable<Long> keys()` / `String toString()` | 按地址升序 |
+
+**选位规则(判定缺陷时必须遵守)**:按归一化熵降序贪心,至少选 1 位;若再选一位会使
+radix^选位数 超过 `maxCapacity` 就停止;熵相同时**位号小者优先**(结果可复现)。
+位序约定:第 0 位是最低位(个位),位号越大越靠左。
+
+**约束**:`sample` 不能为 null/空;`radix ≥ 2`;`digitCount ≥ 1`;`maxCapacity ≥ radix`;
+关键字必须满足 `0 ≤ key < radix^digitCount`,否则抛 `IllegalArgumentException`;
+值为 null 抛 `NullPointerException`;地址空间上限 2^26。**非线程安全**。
+与除留余数法的差别:冲突用**拉链法**(无墓碑、无表满拒插)。
+
 ---
 
 ## 2. 规格(教材定义,与实现无关)
@@ -115,6 +147,8 @@
 8. **变异测试**:自造 ≥ 5 个变异体(**你自己设计**,不要参考实现方的脚本),
    逐个改坏实现,验证你的测试能把它变红;记录每个变异体是被哪个测试杀死的。
 9. 边界与压力:极小的表(m = 2)、大量冲突、关键字区间恰好只有一个值。
+10. 数字分析法:位分布统计与归一化熵(恒定/等频/偏斜三种)、选位与 `maxCapacity` 约束、按选位拼地址、
+    选位造成的同桶冲突必须由拉链法正确处理(`hash(370) == hash(371)` 但两者都能取回)。
 
 ---
 
@@ -158,6 +192,7 @@ mvn -o "-Dtest=你的测试类名*" "-DfailIfNoTests=false" "-Dmaven.repo.local=
 | --- | --- |
 | `src/main/java/cn/exercise/algs4/datastructure/hash/DirectAddressHashST.java` | `9DDD74855662BEAD` |
 | `src/main/java/cn/exercise/algs4/datastructure/hash/DivisionHashST.java` | `D88854591EA465D5` |
+| `src/main/java/cn/exercise/algs4/datastructure/hash/DigitAnalysisHashST.java` | `8FFB4A4853598431` |
 
 ---
 

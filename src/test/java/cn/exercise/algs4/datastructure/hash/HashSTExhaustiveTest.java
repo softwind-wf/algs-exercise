@@ -139,6 +139,16 @@ class HashSTExhaustiveTest {
         assertEquals(4, div.size());
     }
 
+    @Test
+    @DisplayName("数字分析法(地址空间压到 10、三键同桶):长度 ≤6 的全部 put/delete 序列逐步对照 HashMap")
+    void digitAnalysisExhaustive_chain() {
+        checked = 0;
+        long[] keys = {5, 15, 25}; // 取第 0 位作地址 → 三者恒在同一桶
+        int[] path = new int[6];
+        dfsDigit(keys, path, 0, 6);
+        assertEquals(55986, checked, "枚举节点数与 sum(6^k, k=1..6) 不符,枚举没有跑满");
+    }
+
     // ---------------- 穷举骨架 ----------------
 
     private static void dfsDivision(int[] keys, int tableSize, int[] path, int len, int maxDepth) {
@@ -196,8 +206,56 @@ class HashSTExhaustiveTest {
         assertEquals(new TreeSet<Integer>(model.keySet()), actual, ctx + " keys()");
     }
 
-    private static void dfsDirect(int[] keys, int[] path, int len, int maxDepth) {
+    /** 0~99 样本:两位都均匀;配 maxCapacity=10 时只选第 0 位,地址 = key mod 10 */
+    private static long[] digitSample() {
+        long[] sample = new long[100];
+        for (int i = 0; i < sample.length; i++) {
+            sample[i] = i;
+        }
+        return sample;
+    }
+
+    private static void dfsDigit(long[] keys, int[] path, int len, int maxDepth) {
         if (len > 0) {
+            checkDigit(keys, path, len);
+        }
+        if (len == maxDepth) {
+            return;
+        }
+        for (int op = 0; op < 2 * keys.length; op++) {
+            path[len] = op;
+            dfsDigit(keys, path, len + 1, maxDepth);
+        }
+    }
+
+    private static void checkDigit(long[] keys, int[] path, int len) {
+        checked++;
+        DigitAnalysisHashST<String> st = new DigitAnalysisHashST<String>(digitSample(), 2, 10);
+        Map<Long, String> model = new HashMap<Long, String>();
+        for (int i = 0; i < len; i++) {
+            int op = path[i];
+            long key = keys[op % keys.length];
+            if (op < keys.length) {
+                String value = "v" + i;
+                st.put(key, value);
+                model.put(key, value);
+            } else {
+                assertEquals(model.remove(key), st.delete(key), "delete(" + key + "):" + describe(path, len));
+            }
+            String ctx = describe(path, len);
+            assertEquals(model.size(), st.size(), ctx + " size");
+            assertEquals(model.isEmpty(), st.isEmpty(), ctx + " isEmpty");
+            for (long k : keys) {
+                assertEquals(model.get(k), st.get(k), ctx + " get(" + k + ")");
+                assertEquals(model.containsKey(k), st.contains(k), ctx + " contains(" + k + ")");
+            }
+            TreeSet<Long> actual = new TreeSet<Long>();
+            st.keys().forEach(actual::add);
+            assertEquals(new TreeSet<Long>(model.keySet()), actual, ctx + " keys()");
+        }
+    }
+
+    private static void dfsDirect(int[] keys, int[] path, int len, int maxDepth) {        if (len > 0) {
             checkDirect(keys, path, len);
         }
         if (len == maxDepth) {

@@ -37,8 +37,9 @@ foreach ($jar in $junitJars) {
 }
 $junitCp = $junitJars -join ";"
 
-$mainFiles   = @("DirectAddressHashST", "DivisionHashST")
-$testFiles   = @("DirectAddressHashSTTest", "DivisionHashSTTest", "HashSTDifferentialTest")
+$mainFiles   = @("DirectAddressHashST", "DivisionHashST", "DigitAnalysisHashST")
+$testFiles   = @("DirectAddressHashSTTest", "DivisionHashSTTest", "HashSTDifferentialTest",
+                 "HashSTExhaustiveTest", "DigitAnalysisHashSTTest")
 $testClasses = $testFiles | ForEach-Object { "cn.exercise.algs4.datastructure.hash.$_" }
 
 Remove-Item -Recurse -Force $classes, $backup -ErrorAction SilentlyContinue
@@ -49,11 +50,13 @@ $origHash = @{}
 foreach ($f in $mainFiles) { $origHash[$f] = (Get-FileHash (Join-Path $mainDir "$f.java") -Algorithm SHA256).Hash }
 
 $cp = "$classes;$junitCp"
+$mainSources = $mainFiles | ForEach-Object { Join-Path $mainDir "$_.java" }
+$testSources = $testFiles | ForEach-Object { Join-Path $testDir "$_.java" }
 $null = & (Join-Path $jdk8 "javac.exe") -encoding UTF-8 -cp $junitCp -d $classes (Join-Path $PSScriptRoot "RunTests.java")
 if ($LASTEXITCODE -ne 0) { throw "运行器编译失败" }
-$null = & (Join-Path $jdk8 "javac.exe") -encoding UTF-8 -Xlint:none -cp $cp -d $classes (Join-Path $mainDir "DirectAddressHashST.java") (Join-Path $mainDir "DivisionHashST.java")
+$null = & (Join-Path $jdk8 "javac.exe") -encoding UTF-8 -Xlint:none -cp $cp -d $classes @mainSources
 if ($LASTEXITCODE -ne 0) { throw "主类编译失败" }
-$null = & (Join-Path $jdk8 "javac.exe") -encoding UTF-8 -Xlint:none -cp $cp -d $classes (Join-Path $testDir "DirectAddressHashSTTest.java") (Join-Path $testDir "DivisionHashSTTest.java") (Join-Path $testDir "HashSTDifferentialTest.java")
+$null = & (Join-Path $jdk8 "javac.exe") -encoding UTF-8 -Xlint:none -cp $cp -d $classes @testSources
 if ($LASTEXITCODE -ne 0) { throw "测试类编译失败" }
 
 function Invoke-Suite {
@@ -88,7 +91,16 @@ $mutations = @(
     @{ n = "M8 直接定址忘记减去 minAddr"; f = "DirectAddressHashST";
        find = "return (int) (a * key + b - minAddr);"; repl = "return (int) (a * key + b);" },
     @{ n = "M9 地址空间少 1(hi-lo+1 -> hi-lo)"; f = "DirectAddressHashST";
-       find = "long size = hi - lo + 1;"; repl = "long size = hi - lo;" }
+       find = "long size = hi - lo + 1;"; repl = "long size = hi - lo;" },
+    @{ n = "M10 数字分析法:拼地址用加代替乘 radix"; f = "DigitAnalysisHashST";
+       find = "        checkKey(key);`n        int address = 0;`n        for (int i = positions.length - 1; i >= 0; i--) {`n            address = address * radix + digitOf(key, positions[i]);";
+       repl = "        checkKey(key);`n        int address = 0;`n        for (int i = positions.length - 1; i >= 0; i--) {`n            address = address + digitOf(key, positions[i]);" },
+    @{ n = "M11 数字分析法:位分布统计恒记到数字 0"; f = "DigitAnalysisHashST";
+       find = "                counts[pos][digitOf(key, pos)]++;"; repl = "                counts[pos][0]++;" },
+    @{ n = "M12 数字分析法:熵计算把空数字也算进去(log 0)"; f = "DigitAnalysisHashST";
+       find = "            if (count > 0) {"; repl = "            if (count >= 0) {" },
+    @{ n = "M13 数字分析法:delete 忘记减少 size"; f = "DigitAnalysisHashST";
+       find = "                n--;`n                return node.value;"; repl = "                return node.value;" }
 )
 
 $killed = 0
@@ -97,16 +109,23 @@ $notApplied = @()
 
 foreach ($m in $mutations) {
     $src = Join-Path $mainDir "$($m.f).java"
-    Copy-Item (Join-Path $backup "$($m.f).java") $src -Force
+    # 先把所有实现恢复成原始版本,再注入当前变异:
+    # 否则上一个变异体编译出的 class 会残留在 $classes 里,污染本轮失败归因。
+    foreach ($f in $mainFiles) {
+        Copy-Item (Join-Path $backup "$f.java") (Join-Path $mainDir "$f.java") -Force
+    }
     $text = (Get-Content -Raw -Encoding UTF8 $src) -replace "`r`n", "`n"
     if (-not $text.Contains($m.find)) { $notApplied += $m.n; "NOT APPLIED(源码已变动,请更新脚本): $($m.n)"; continue }
     $mutated = $text.Replace($m.find, $m.repl)
     [System.IO.File]::WriteAllText($src, $mutated, (New-Object System.Text.UTF8Encoding($false)))
 
-    $null = & (Join-Path $jdk8 "javac.exe") -encoding UTF-8 -Xlint:none -cp $cp -d $classes $src 2>&1
+    # 编译全部实现(不只当前文件),确保 $classes 中只有当前这一个变异
+    $null = & (Join-Path $jdk8 "javac.exe") -encoding UTF-8 -Xlint:none -cp $cp -d $classes @mainSources 2>&1
     if ($LASTEXITCODE -ne 0) {
         "MUTANT COMPILE FAILED: $($m.n)"
-        Copy-Item (Join-Path $backup "$($m.f).java") $src -Force
+        foreach ($f in $mainFiles) {
+            Copy-Item (Join-Path $backup "$f.java") (Join-Path $mainDir "$f.java") -Force
+        }
         continue
     }
 
@@ -114,7 +133,9 @@ foreach ($m in $mutations) {
     $verdict = if ($r.code -ne 0) { "KILLED" } else { "SURVIVED" }
     if ($r.code -ne 0) { $killed++ } else { $survived += $m.n }
     "{0,-42} {1,-9} {2}" -f $m.n, $verdict, $r.out
-    Copy-Item (Join-Path $backup "$($m.f).java") $src -Force
+    foreach ($f in $mainFiles) {
+        Copy-Item (Join-Path $backup "$f.java") (Join-Path $mainDir "$f.java") -Force
+    }
 }
 
 ""
@@ -135,5 +156,5 @@ if (-not $restoreOk) { throw "源码恢复校验失败!请用 git diff 检查" }
 if ($survived.Count -gt 0 -or $notApplied.Count -gt 0 -or $killed -ne $mutations.Count) {
     exit 1
 }
-"全部变异体被杀死,测试对上述 9 类缺陷是有效的。"
+"全部变异体被杀死,测试对上述全部变异体都是有效的。"
 exit 0

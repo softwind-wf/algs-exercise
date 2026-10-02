@@ -13,8 +13,9 @@
 
 ## 2. 变异测试(本目录脚本)
 
-`mutate.ps1` 会把实现**故意改坏**(9 种典型错误:去掉 `floorMod`、删除不留墓碑、插入不复用墓碑、
-ASL 分母取错、模数不做质数筛选、质数判定边界错、探测次数少 1、忘记减去 `minAddr`、地址空间少 1),
+`mutate.ps1` 会把实现**故意改坏**(13 种典型错误,覆盖三类散列表:去掉 `floorMod`、删除不留墓碑、
+插入不复用墓碑、ASL 分母取错、模数不做质数筛选、质数判定边界错、探测次数少 1、忘记减去 `minAddr`、
+地址空间少 1、数字分析法拼地址用加代乘、位分布统计记错位、熵计算把空数字算进去、删除不减 size),
 然后运行测试:
 
 - 测试**变红** → 该变异体"被杀死",说明测试确实能发现这类缺陷;
@@ -62,14 +63,17 @@ pwsh -File scripts\verify-hash\audit-mutants.ps1
 **1 处真缺陷落在实现方文档**(任务书对 `hash()` 基准的表述歧义,已在第 3 节任务书中修正),
 **0 处实现缺陷**;2 处口径分歧(表满异常类型、满表 ASL 兜底)判为合理并写入契约。
 
-### 最近一次运行结果(2026-10-01)
+### 最近一次运行结果(2026-10-02)
 
 ```
-BASELINE(原始实现) exit=0  FOUND=39 STARTED=39 SUCCEEDED=39 FAILED=0
-变异体总数 = 9,被杀死 = 9,存活 = 0,未应用 = 0
-DirectAddressHashST: 与原始一致 = True
-DivisionHashST:      与原始一致 = True
+BASELINE(原始实现) exit=0  FOUND=63 STARTED=63 SUCCEEDED=63 FAILED=0
+变异体总数 = 13,被杀死 = 13,存活 = 0,未应用 = 0
+DirectAddressHashST:  与原始一致 = True
+DivisionHashST:       与原始一致 = True
+DigitAnalysisHashST:  与原始一致 = True
 ```
+
+三类散列表合并回归(实现方 63 + 独立测试方 47):`Tests run: 110, Failures: 0, Errors: 0 — BUILD SUCCESS`。
 
 ## 不能证明什么
 

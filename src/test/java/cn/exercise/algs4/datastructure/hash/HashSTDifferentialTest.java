@@ -96,6 +96,40 @@ class HashSTDifferentialTest {
     }
 
     @Test
+    @DisplayName("DigitAnalysisHashST 与 HashMap 在 2 万次随机操作后完全一致")
+    void digitAnalysisMatchesHashMap() {
+        long[] sample = new long[500];
+        for (int i = 0; i < sample.length; i++) {
+            sample[i] = 20210000L + (i * 37L) % 10000; // 8 位学号样本
+        }
+        DigitAnalysisHashST<String> actual = new DigitAnalysisHashST<String>(sample, 8, 1000);
+        Map<Long, String> expected = new HashMap<Long, String>();
+        Random random = new Random(SEED + 3);
+
+        for (int i = 0; i < OPS; i++) {
+            long key = 20210000L + random.nextInt(10000);
+            int op = random.nextInt(4);
+            if (op < 2) {
+                String value = "v" + i;
+                actual.put(key, value);
+                expected.put(key, value);
+            } else if (op == 2) {
+                assertEquals(expected.get(key), actual.get(key), "第 " + i + " 步 get(" + key + ")");
+                assertEquals(expected.containsKey(key), actual.contains(key),
+                        "第 " + i + " 步 contains(" + key + ")");
+            } else {
+                assertEquals(expected.remove(key), actual.delete(key), "第 " + i + " 步 delete(" + key + ")");
+            }
+            assertEquals(expected.size(), actual.size(), "第 " + i + " 步 size()");
+            assertEquals(expected.isEmpty(), actual.isEmpty(), "第 " + i + " 步 isEmpty()");
+        }
+
+        TreeSet<Long> actualKeys = new TreeSet<Long>();
+        actual.keys().forEach(actualKeys::add);
+        assertEquals(new TreeSet<Long>(expected.keySet()), actualKeys, "keys() 与 HashMap 键集不一致");
+    }
+
+    @Test
     @DisplayName("随机 10 张散列表的探测次数与独立模拟程序一致")
     void randomTablesMatchIndependentSimulation() {
         Random random = new Random(SEED + 2);
