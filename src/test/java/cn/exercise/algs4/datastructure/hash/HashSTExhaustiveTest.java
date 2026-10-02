@@ -10,6 +10,7 @@ import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -187,6 +188,125 @@ class HashSTExhaustiveTest {
         int[] path = new int[6];
         dfsUniversal(keys, path, 0, 6);
         assertEquals(55986, checked, "枚举节点数与 sum(6^k, k=1..6) 不符,枚举没有跑满");
+    }
+
+    @Test
+    @DisplayName("开放地址法(表长 5、不扩容、三键同地址):长度 ≤6 的全部 put/delete 序列逐步对照 HashMap")
+    void openAddressExhaustive_probing() {
+        checked = 0;
+        long[] keys = {0, 5, 10}; // 默认散列 key mod 5 → 都是地址 0
+        int[] path = new int[6];
+        dfsOpenAddress(keys, path, 0, 6);
+        assertEquals(55986, checked, "枚举节点数与 sum(6^k, k=1..6) 不符,枚举没有跑满");
+    }
+
+    @Test
+    @DisplayName("二次探测(表长 5、PLUS、不扩容、三键同起点):长度 ≤6 的全部 put/delete 序列逐步对照 HashMap")
+    void quadraticExhaustive_orbitLimited() {
+        checked = 0;
+        long[] keys = {0, 5, 10}; // 默认散列 key mod 5 → 起点都是 0;起点 0 的轨道只有 {0,1,4}
+        int[] path = new int[6];
+        dfsQuadratic(keys, path, 0, 6);
+        assertEquals(55986, checked, "枚举节点数与 sum(6^k, k=1..6) 不符,枚举没有跑满");
+    }
+
+    @Test
+    @DisplayName("双重散列(表长 5、不扩容、三键同 H1):长度 ≤6 的全部 put/delete 序列逐步对照 HashMap")
+    void doubleHashingExhaustive_probing() {
+        checked = 0;
+        long[] keys = {0, 5, 10}; // H1 都是 0,但 H2 = 1 + key mod 4 各不相同
+        int[] path = new int[6];
+        dfsDoubleHashing(keys, path, 0, 6);
+        assertEquals(55986, checked, "枚举节点数与 sum(6^k, k=1..6) 不符,枚举没有跑满");
+    }
+
+    @Test
+    @DisplayName("链地址法(桶数 3、三键同桶):长度 ≤6 的全部 put/delete 序列逐步对照 HashMap")
+    void chainingExhaustive_chain() {
+        checked = 0;
+        long[] keys = {0, 3, 6}; // 默认散列 key mod 3 → 同一个桶
+        int[] path = new int[6];
+        dfsChaining(keys, path, 0, 6);
+        assertEquals(55986, checked, "枚举节点数与 sum(6^k, k=1..6) 不符,枚举没有跑满");
+    }
+
+    @Test
+    @DisplayName("完全散列(6 个关键字的全部 2^6 个子集 × 3 个种子):命中、缺席与结构不变量都成立")
+    void perfectHashingExhaustive_subsets() {
+        checked = 0;
+        long[] universe = {0, 1, 5, 77, 1234, 99991};
+        long[] seeds = {0L, 1L, 20261003L};
+        for (long seed : seeds) {
+            for (int mask = 0; mask < (1 << universe.length); mask++) {
+                checkPerfectSubset(universe, mask, seed);
+            }
+        }
+        assertEquals(64 * 3, checked, "应构建 64 个子集 × 3 个种子 = 192 张表");
+    }
+
+    private static void checkPerfectSubset(long[] universe, int mask, long seed) {
+        checked++;
+        int size = Integer.bitCount(mask);
+        long[] keys = new long[size];
+        Long[] values = new Long[size];
+        int index = 0;
+        for (int i = 0; i < universe.length; i++) {
+            if ((mask & (1 << i)) != 0) {
+                keys[index] = universe[i];
+                values[index] = universe[i] * 10;
+                index++;
+            }
+        }
+        String ctx = "mask=" + mask + ", seed=" + seed;
+        PerfectHashingST<Long> st = PerfectHashingST.build(keys, values, seed);
+
+        assertEquals(size, st.size(), ctx + " size");
+        assertEquals(size == 0, st.isEmpty(), ctx + " isEmpty");
+        // 命中的关键字必须查到对应的值,且比较次数 ≤ 2
+        for (int i = 0; i < size; i++) {
+            assertEquals(values[i], st.get(keys[i]), ctx + " get(" + keys[i] + ")");
+            assertTrue(st.lastProbes() <= 2, ctx + " 比较次数 " + st.lastProbes());
+        }
+        // 不在子集中的关键字必须返回 null
+        for (long key : universe) {
+            boolean present = false;
+            for (int i = 0; i < size; i++) {
+                if (keys[i] == key) {
+                    present = true;
+                }
+            }
+            if (!present) {
+                assertNull(st.get(key), ctx + " 不该命中 " + key);
+            }
+        }
+        // 结构不变量:Σ n_i = n、Σ m_i ≤ 4n、n_i ≥ 2 的桶取 n_i² 槽、最坏比较 ≤ 2
+        int[] sizes = st.bucketSizes();
+        int sum = 0;
+        long subSlots = 0;
+        for (int i = 0; i < sizes.length; i++) {
+            sum += sizes[i];
+            if (sizes[i] == 0) {
+                assertEquals(0, st.subTableSize(i), ctx + " 空桶槽位");
+            } else if (sizes[i] == 1) {
+                assertEquals(1, st.subTableSize(i), ctx + " 单关键字桶槽位");
+                subSlots += 1;
+            } else {
+                assertEquals(sizes[i] * sizes[i], st.subTableSize(i), ctx + " n_i² 槽位");
+                subSlots += (long) sizes[i] * sizes[i];
+                // 桶内第二级无碰撞
+                TreeSet<Integer> slots = new TreeSet<Integer>();
+                for (int i2 = 0; i2 < size; i2++) {
+                    if (st.firstLevelAddress(keys[i2]) == i) {
+                        assertTrue(slots.add(st.secondLevelAddress(i, keys[i2])), ctx + " 第二级碰撞");
+                    }
+                }
+                assertEquals(sizes[i], slots.size(), ctx + " 桶内槽位互异");
+            }
+        }
+        assertEquals(size, sum, ctx + " Σ n_i");
+        assertEquals(subSlots, st.totalSubTableSlots(), ctx + " Σ m_i");
+        assertTrue(subSlots <= (long) 4 * size, ctx + " 空间界");
+        assertTrue(st.worstCaseProbes() <= 2, ctx + " 最坏比较");
     }
 
     // ---------------- 穷举骨架 ----------------
@@ -452,6 +572,196 @@ class HashSTExhaustiveTest {
         checked++;
         // 显式选定族成员 h(key) = (key mod 13) mod 4,表长 4,三键都落在地址 1
         UniversalHashST<String> st = new UniversalHashST<String>(4, 13, 1L, 0L);
+        Map<Long, String> model = new HashMap<Long, String>();
+        for (int i = 0; i < len; i++) {
+            int op = path[i];
+            long key = keys[op % keys.length];
+            if (op < keys.length) {
+                String value = "v" + i;
+                st.put(key, value);
+                model.put(key, value);
+            } else {
+                assertEquals(model.remove(key), st.delete(key), "delete(" + key + "):" + describe(path, len));
+            }
+            String ctx = describe(path, len);
+            assertEquals(model.size(), st.size(), ctx + " size");
+            assertEquals(model.isEmpty(), st.isEmpty(), ctx + " isEmpty");
+            for (long k : keys) {
+                assertEquals(model.get(k), st.get(k), ctx + " get(" + k + ")");
+                assertEquals(model.containsKey(k), st.contains(k), ctx + " contains(" + k + ")");
+            }
+            TreeSet<Long> actual = new TreeSet<Long>();
+            st.keys().forEach(actual::add);
+            assertEquals(new TreeSet<Long>(model.keySet()), actual, ctx + " keys()");
+        }
+    }
+
+    private static void dfsOpenAddress(long[] keys, int[] path, int len, int maxDepth) {
+        if (len > 0) {
+            checkOpenAddress(keys, path, len);
+        }
+        if (len == maxDepth) {
+            return;
+        }
+        for (int op = 0; op < 2 * keys.length; op++) {
+            path[len] = op;
+            dfsOpenAddress(keys, path, len + 1, maxDepth);
+        }
+    }
+
+    private static void checkOpenAddress(long[] keys, int[] path, int len) {
+        checked++;
+        OpenAddressHashST<String> st = new OpenAddressHashST<String>(5, 1.0); // 不扩容,便于覆盖满表
+        Map<Long, String> model = new HashMap<Long, String>();
+        for (int i = 0; i < len; i++) {
+            int op = path[i];
+            long key = keys[op % keys.length];
+            if (op < keys.length) {
+                String value = "v" + i;
+                boolean rejected = false;
+                try {
+                    st.put(key, value);
+                } catch (IllegalStateException e) {
+                    rejected = true;
+                }
+                if (rejected) {
+                    assertEquals(5, st.size(), "拒绝插入时表竟然未满:" + describe(path, len));
+                    assertFalse(model.containsKey(key), "被拒绝的键不应已经存在:" + describe(path, len));
+                } else {
+                    model.put(key, value);
+                }
+            } else {
+                assertEquals(model.remove(key), st.delete(key), "delete(" + key + "):" + describe(path, len));
+            }
+            String ctx = describe(path, len);
+            assertEquals(model.size(), st.size(), ctx + " size");
+            assertEquals(model.isEmpty(), st.isEmpty(), ctx + " isEmpty");
+            for (long k : keys) {
+                assertEquals(model.get(k), st.get(k), ctx + " get(" + k + ")");
+                assertEquals(model.containsKey(k), st.contains(k), ctx + " contains(" + k + ")");
+            }
+            TreeSet<Long> actual = new TreeSet<Long>();
+            st.keys().forEach(actual::add);
+            assertEquals(new TreeSet<Long>(model.keySet()), actual, ctx + " keys()");
+        }
+    }
+
+    private static void dfsQuadratic(long[] keys, int[] path, int len, int maxDepth) {
+        if (len > 0) {
+            checkQuadratic(keys, path, len);
+        }
+        if (len == maxDepth) {
+            return;
+        }
+        for (int op = 0; op < 2 * keys.length; op++) {
+            path[len] = op;
+            dfsQuadratic(keys, path, len + 1, maxDepth);
+        }
+    }
+
+    private static void checkQuadratic(long[] keys, int[] path, int len) {
+        checked++;
+        QuadraticProbeHashST<String> st = new QuadraticProbeHashST<String>(5, 1.0,
+                QuadraticProbeHashST.Mode.PLUS_I_SQUARE); // 不扩容,便于覆盖"轨道走完"的失败
+        Map<Long, String> model = new HashMap<Long, String>();
+        for (int i = 0; i < len; i++) {
+            int op = path[i];
+            long key = keys[op % keys.length];
+            if (op < keys.length) {
+                String value = "v" + i;
+                boolean rejected = false;
+                try {
+                    st.put(key, value);
+                } catch (IllegalStateException e) {
+                    rejected = true;
+                }
+                if (rejected) {
+                    assertFalse(model.containsKey(key), "被拒绝的键不应已经存在:" + describe(path, len));
+                } else {
+                    model.put(key, value);
+                }
+            } else {
+                assertEquals(model.remove(key), st.delete(key), "delete(" + key + "):" + describe(path, len));
+            }
+            String ctx = describe(path, len);
+            assertEquals(model.size(), st.size(), ctx + " size");
+            assertEquals(model.isEmpty(), st.isEmpty(), ctx + " isEmpty");
+            for (long k : keys) {
+                assertEquals(model.get(k), st.get(k), ctx + " get(" + k + ")");
+                assertEquals(model.containsKey(k), st.contains(k), ctx + " contains(" + k + ")");
+            }
+            TreeSet<Long> actual = new TreeSet<Long>();
+            st.keys().forEach(actual::add);
+            assertEquals(new TreeSet<Long>(model.keySet()), actual, ctx + " keys()");
+        }
+    }
+
+    private static void dfsDoubleHashing(long[] keys, int[] path, int len, int maxDepth) {
+        if (len > 0) {
+            checkDoubleHashing(keys, path, len);
+        }
+        if (len == maxDepth) {
+            return;
+        }
+        for (int op = 0; op < 2 * keys.length; op++) {
+            path[len] = op;
+            dfsDoubleHashing(keys, path, len + 1, maxDepth);
+        }
+    }
+
+    private static void checkDoubleHashing(long[] keys, int[] path, int len) {
+        checked++;
+        DoubleHashingHashST<String> st = new DoubleHashingHashST<String>(5, 1.0); // 不扩容,覆盖表满拒插
+        Map<Long, String> model = new HashMap<Long, String>();
+        for (int i = 0; i < len; i++) {
+            int op = path[i];
+            long key = keys[op % keys.length];
+            if (op < keys.length) {
+                String value = "v" + i;
+                boolean rejected = false;
+                try {
+                    st.put(key, value);
+                } catch (IllegalStateException e) {
+                    rejected = true;
+                }
+                if (rejected) {
+                    assertFalse(model.containsKey(key), "被拒绝的键不应已经存在:" + describe(path, len));
+                } else {
+                    model.put(key, value);
+                }
+            } else {
+                assertEquals(model.remove(key), st.delete(key), "delete(" + key + "):" + describe(path, len));
+            }
+            String ctx = describe(path, len);
+            assertEquals(model.size(), st.size(), ctx + " size");
+            assertEquals(model.isEmpty(), st.isEmpty(), ctx + " isEmpty");
+            for (long k : keys) {
+                assertEquals(model.get(k), st.get(k), ctx + " get(" + k + ")");
+                assertEquals(model.containsKey(k), st.contains(k), ctx + " contains(" + k + ")");
+            }
+            TreeSet<Long> actual = new TreeSet<Long>();
+            st.keys().forEach(actual::add);
+            assertEquals(new TreeSet<Long>(model.keySet()), actual, ctx + " keys()");
+        }
+    }
+
+    private static void dfsChaining(long[] keys, int[] path, int len, int maxDepth) {
+        if (len > 0) {
+            checkChaining(keys, path, len);
+        }
+        if (len == maxDepth) {
+            return;
+        }
+        for (int op = 0; op < 2 * keys.length; op++) {
+            path[len] = op;
+            dfsChaining(keys, path, len + 1, maxDepth);
+        }
+    }
+
+    private static void checkChaining(long[] keys, int[] path, int len) {
+        checked++;
+        // α 上限设大一些,避免扩容干扰;链地址法不会拒插
+        SeparateChainingHashST<String> st = new SeparateChainingHashST<String>(3, 16.0);
         Map<Long, String> model = new HashMap<Long, String>();
         for (int i = 0; i < len; i++) {
             int op = path[i];

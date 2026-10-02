@@ -227,6 +227,169 @@ radix^选位数 超过 `maxCapacity` 就停止;熵相同时**位号小者优先*
 关键字必须满足 0 ≤ key ≤ p-1;a ∈ [1,p-1]、b ∈ [0,p-1];值为 null 抛 `NullPointerException`。
 默认固定种子**不提供真实对手防护**,工程上应传入不可预测的种子。**非线程安全**。
 
+### OpenAddressHashST&lt;Value&gt;(开放地址法 + 线性探测)
+
+所有元素都存在表内,冲突时按线性探测序列另找空位:`H_i = (H(key) + i) mod m`。
+
+| 成员 | 语义 |
+| --- | --- |
+| `interface HashFunction { int hash(long key, int capacity); }` | **可插拔**散列函数,必须返回 [0, capacity) |
+| `OpenAddressHashST()` | 容量 17、默认散列 `key mod capacity`、α 上限 0.75 |
+| `OpenAddressHashST(int initialCapacity)` | 同上,容量自定 |
+| `OpenAddressHashST(int initialCapacity, double maxLoadFactor)` | α 上限 ∈ (0,1];取 1 表示不自动扩容 |
+| `OpenAddressHashST(int, double, HashFunction)` | 完整构造 |
+| `void put(long, Value)` / `Value get(long)` / `Value delete(long)` / `boolean contains(long)` | 线性探测 + 墓碑 |
+| `int hashAddress(long)` | 探测起点 H(key);散列函数返回越界值时抛 `IllegalStateException` |
+| `int slotOf(long)` / `int lastProbes()` / `int tombstones()` / `int resizeCount()` | |
+| `int capacity()` / `int size()` / `boolean isEmpty()` / `double loadFactor()` / `double maxLoadFactor()` | |
+| `int maxClusterLength()` / `int clusterCount()` | 初级聚集度量(墓碑也算占用) |
+| `long successfulProbeSum()` / `long unsuccessfulProbeSum()` / `double averageSuccessfulProbes()` / `double averageUnsuccessfulProbes()` | ASL 口径与其它线性探测实现一致 |
+| `double theoreticalSuccessfulProbes()` / `double theoreticalUnsuccessfulProbes()` | 教材近似式 ½(1+1/(1-α)) 与 ½(1+1/(1-α)²) |
+| `Iterable<Long> keys()` / `String toString()` | 按数组下标升序 |
+| `static int nextPrime(int n)` | 不小于 n 的最小素数;n < 2 抛 IllegalArgumentException |
+
+**必须遵守的约定**:
+- 删除**必须留墓碑**(直接置空会截断探测链);插入时优先复用探测路径上**第一个墓碑**;
+- 当 `α = n/m > maxLoadFactor` 时先**扩容**到"不小于 2 倍旧容量的素数"并重建:**只搬活元素,墓碑清零**;
+- `maxLoadFactor = 1` 表示不扩容,此时表满(无空位且无墓碑可复用)时 `put` 抛 `IllegalStateException`;
+- `insert` 内部失败(无空位)时也会先尝试扩容再重试;
+- 关键字可为任意 long;值为 null 抛 `NullPointerException`;`initialCapacity ≥ 2`。**非线程安全**。
+
+**经典例题交叉验证**(与本包 `DivisionHashST` 结果必须一致):容量 16、`H(key) = key mod 13`
+(用可插拔函数实现,忽略 capacity)、关键字 {19,14,23,1,68,20,84,27,55,11,10,79} →
+落位 6,1,10,2,3,7,8,4,5,11,12,9;插入探测次数 1,1,1,2,1,1,3,4,3,1,3,9;
+ASL成功 = 30/12 = 2.5,ASL失败 = 94/16 = 5.875。
+
+### QuadraticProbeHashST&lt;Value&gt;(开放地址法 + 二次探测)
+
+| 成员 | 语义 |
+| --- | --- |
+| `enum Mode { PLUS_I_SQUARE, ALTERNATING }` | `(H + i²) mod m` / `(H + 0, +1², −1², +2², −2², …) mod m` |
+| `interface HashFunction { int hash(long key, int capacity); }` | 可插拔,必须返回 [0, capacity) |
+| `QuadraticProbeHashST()` | 容量 17、PLUS、α 上限 **0.5** |
+| `QuadraticProbeHashST(int m)` / `(int, double)` / `(int, double, Mode)` / `(int, double, HashFunction, Mode)` | 其余构造 |
+| `void put/get/delete/contains` / `int slotOf(long)` / `int hashAddress(long)` | 二次探测 + 墓碑 |
+| `int[] probeSequence(int home)` | 从起点出发的**去重**探测序列(直到轨道闭合) |
+| `boolean fullCoverageGuaranteed()` | 仅当 `ALTERNATING && m 为素数 && m ≡ 3 (mod 4)` 为 true |
+| `int capacity/size/tombstones/resizeCount/lastProbes` / `double loadFactor/maxLoadFactor` | |
+| `int maxClusterLength()` / `int clusterCount()` | 聚集度量 |
+| `long successfulProbeSum/unsuccessfulProbeSum` / `double averageSuccessfulProbes/averageUnsuccessfulProbes` | ASL 口径与其它开放地址实现一致 |
+| `double randomProbingSuccessfulProbes/randomProbingUnsuccessfulProbes` | 随机探测参考值 ln(1/(1−α))/α 与 1/(1−α) |
+| `static int nextPrime(int)` / `static int nextPrime3Mod4(int)` | 素数工具 |
+
+**必须遵守的性质**(这是二次探测专有的坑):
+- **探测序列可能覆盖不全**:PLUS 在素数表长下最多覆盖 **⌈m/2⌉** 个槽位(本包实测 m=7→4、11→6、13→7、17→9),
+  因此会出现"**表里还有空位,但该关键字怎么也探测不到**"而插入失败的情形 —— 由 `put` 抛
+  `IllegalStateException`(允许扩容时会先扩容重试)。**测试必须覆盖这一路径。**
+- **ALTERNATING 仅当 m 为素数且 m ≡ 3 (mod 4) 时才覆盖全表**(实测 m=7、11 全表;m=13 只覆盖 7 个、m=17 只覆盖 9 个)。
+- 该模式下扩容必须挑"≥ 2 倍旧容量的最小 3 mod 4 素数",否则前提被破坏。
+- 删除留墓碑;插入优先复用轨道上第一个墓碑;**失败探测的计数按轨道提前闭合**(轨道回到起点即停,
+  不是绕满整张表)—— 这一点在复合表长(如 m=8,轨道 {0,1,4})下可观测。
+- 相同起点的关键字走同一条轨道(**次级聚集**);`probeSequence` 可用于观察。
+
+**交叉验证数据**(与线性探测对照,容量 101、同一批固定种子关键字):α≈0.69 时二次探测 ASL失败
+≈3.25、最长连续块 9,而线性探测 ≈4.07、最长连续块 16 —— 二次探测把"初级聚集"压下来了。
+
+### DoubleHashingHashST&lt;Value&gt;(开放地址法 + 双重散列)
+
+`H_i = (H1(key) + i * H2(key)) mod m`。步长随关键字变化,因此**同起点的关键字也走不同序列**,
+次级聚集被消除;它最接近随机探测模型,ASL 可用 `ln(1/(1-α))/α` 与 `1/(1-α)` 估计。
+
+| 成员 | 语义 |
+| --- | --- |
+| `interface HashFunction { int hash(long key, int capacity); }` | H1、H2 均为可插拔 |
+| `DoubleHashingHashST()` | 容量 17、H1 = key mod m、H2 = 1 + key mod (m-1)、α 上限 0.75 |
+| `DoubleHashingHashST(int m)` / `(int, double)` / `(int, double, HashFunction)` / `(int, double, HashFunction, HashFunction)` | |
+| `int hashAddress(long key)` | H1,越界抛 IllegalStateException |
+| `int stepOf(long key)` | H2,**必须落在 [1, m-1]**,否则抛 IllegalStateException |
+| `int[] probeSequence(long key)` | 该关键字自己的序列(去重,直到回到起点) |
+| `boolean fullCoverageGuaranteed()` | 表长为素数时为 true(此时任意 H2 ∈ [1,m-1] 都与 m 互素) |
+| `void put/get/delete/contains` / `int slotOf` / `int capacity/size/tombstones/resizeCount/lastProbes` | 墓碑 + 扩容 |
+| `long successfulProbeSum()` / `double averageSuccessfulProbes()` | 成功 ASL**
+| `long structuralFailureProbeSum()` / `double averageStructuralFailureProbes()` | **连续占用块口径**,与线性/二次探测同口径,可跨实现对比,**不是**双重散列的真实失败代价 |
+| `double averageUnsuccessfulProbes(long[] absentKeys)` | **经验实测**失败 ASL:对给定缺席关键字按各自 (H1,H2) 序列测到第一个空单元 |
+| `double randomProbingUnsuccessfulProbes()` / `randomProbingSuccessfulProbes()` | 理论 1/(1-α) 与 ln(1/(1-α))/α |
+| `int maxClusterLength()` / `int clusterCount()` / `Iterable<Long> keys()` / `String toString()` | |
+
+**必须遵守的性质**:
+- **覆盖性判据**:序列遍历全表 ⟺ `gcd(H2(key), m) = 1`。默认 H2 配合**素数 m** 时必然成立;
+  m 为合数且 H2 与其不互素时会出现"表里还有空位却插不进"(例如 m = 9、H2 = 3 只覆盖 {1,4,7})。
+- 扩容必须保持素容量(复用 `OpenAddressHashST.nextPrime`),否则前提被破坏。
+- 删除留墓碑,插入复用序列上第一个墓碑;满表且无墓碑时才拒插。
+- **失败 ASL 有三套口径,判缺陷时必须先对齐**:结构度量(连续占用块)、经验实测(给定缺席关键字集合)、
+  理论值 1/(1-α)。本包实测:p=101、α≈0.5 时经验 1.994 / 理论 1.980;α≈0.69 时经验 3.205 / 理论 3.258。
+- 交叉验证:α≈0.69 时双重散列结构度量 3.158 < 二次 3.248 < 线性 4.069;且 H1 相同的关键字在双重散列下序列互不相同。
+
+### SeparateChainingHashST&lt;Value&gt;(链地址法 / 拉链法)
+
+桶数组 + 链:**删除不需要墓碑**,**装填因子 α 可以大于 1**(链变长而已,表不会"满")。
+
+| 成员 | 语义 |
+| --- | --- |
+| `interface HashFunction { int hash(long key, int capacity); }` | 可插拔,必须返回 [0, capacity) |
+| `SeparateChainingHashST()` | 桶数 17、`key mod capacity`、α 上限 1.0 |
+| `SeparateChainingHashST(int m)` / `(int, double)` / `(int, double, HashFunction)` | α 上限取值 (0, 16] |
+| `void put/get/delete/contains` | **链内头插**(最近插入在链头) |
+| `int hashAddress(long)` / `int positionOf(long)` | 地址 / 关键字在链上的位置(1 = 链头,不存在 -1) |
+| `int capacity/size/resizeCount` / `double loadFactor/maxLoadFactor` | |
+| `int[] chainLengths()` / `int maxChainLength()` / `int emptyBucketCount()` / `double averageChainLength()` | 链长统计 |
+| `long successfulProbeSum()` / `long failureComparisonSum()` | Σ l(l+1)/2 与 Σ l |
+| `double averageSuccessfulProbes()` | = Σ l(l+1)/2 / n,**与链内顺序无关** |
+| `double averageUnsuccessfulProbes()` | = Σ l / m = **α**(教材常用口径:不计最后判空) |
+| `double averageUnsuccessfulProbesWithEmptyCheck()` | = **α + 1**(把"发现链尾为空"也算一次比较) |
+| `double theoreticalSuccessfulProbes()` / `theoreticalUnsuccessfulProbes()` | 教材近似 1 + α/2 与 α |
+| `Iterable<Long> keys()` / `String toString()` | 按桶号升序,桶内链头→链尾 |
+
+**必须遵守的性质**:
+- **删除直接摘链,不留墓碑**;不存在"截断探测链"的问题(与开放地址法的根本差别)。
+- α **可以大于 1**:测试必须覆盖 α &gt; 3 仍能全部查回。
+- **失败 ASL 有两套口径**,判缺陷前必须对齐:不计判空 = α(默认 `averageUnsuccessfulProbes`),
+  计判空 = α + 1。**不变式:`averageUnsuccessfulProbes()` 恒等于 `loadFactor()`。**
+- 扩容到不小于 2 倍旧桶数的素数并重新散列;α 上限 ∈ (0, 16]。
+- 重复插入只覆盖值、不新增结点(链长不变)。
+
+**经典例题交叉验证**(教材答案):桶数 11、`H(key) = key mod 11`、
+关键字 {19,14,23,1,68,20,84,27,55,11,10,79} → 链长 [2,2,2,1,0,1,0,1,1,1,1];
+**ASL成功 = 15/12 = 1.25**,ASL失败 = 12/11 ≈ 1.0909(计判空 23/11 ≈ 2.0909)。
+
+**与开放地址法对比**(同一批关键字、`H = key mod 13`、容量 16):链地址法 ASL成功 **1.75**、
+ASL失败 0.75、最长链 4;线性探测 ASL成功 2.5、ASL失败 5.875。
+
+### PerfectHashingST&lt;Value&gt;(完全散列,两级 FKS,CLRS 11.5)
+
+**静态**结构:关键字集合必须事先已知且互不相同;构建后只读,不支持 put/delete。
+目标是**最坏情况 O(1)**:任何关键字的查找都是常数次比较。
+
+```
+第一级:m = n,反复随机 (a1,b1) 直到 Σ n_i² ≤ 4n
+第二级:对 n_i ≥ 2 的桶,用 n_i² 个槽位,反复随机 (a_i,b_i) 直到桶内无碰撞(单次成功概率 > 1/2)
+```
+
+| 成员 | 语义 |
+| --- | --- |
+| `static build(long[] keys)` | 值取关键字本身,默认种子 |
+| `static <V> build(long[] keys, V[] values)` / `build(long[], V[], long seed)` | 指定值 / 种子(同种子 ⇒ 结构可复现) |
+| `Value get(long)` / `boolean contains(long)` | 命中比较次数 ≤ 2;不在集合或越界返回 null |
+| `int size/isEmpty/bucketCount` / `long prime` | |
+| `int[] bucketSizes()` / `int subTableSize(int)` | 桶大小 n_i 与第二级槽位数 m_i |
+| `int totalSubTableSlots()` / `totalSlots()` / `double spaceFactor()` / `spaceUsageRatio()` | 空间:Σ m_i、总槽位、Σ m_i/n |
+| `int level1Attempts()` / `level2Attempts()` / `maxLevel2Attempts()` | 重新随机化次数(期望 ≤ 2) |
+| `int lastProbes()` / `worstCaseProbes()` | 最近一次比较次数 / 构建时最坏比较次数(≤ 2) |
+| `int firstLevelAddress(long)` / `secondLevelAddress(int bucket, long key)` | h1(k) / h_i(k),可用于验证逐桶无碰撞 |
+| `Iterable<Long> keys()` / `String toString()` | |
+
+**必须遵守的性质(这是"完全"二字的全部含义)**:
+- **第二级逐桶无碰撞**:对每个 n_i ≥ 2 的桶,桶内所有关键字的 `secondLevelAddress` 两两不同。
+- **最坏比较次数 ≤ 2,且与 n 无关**(n=10 与 n=10000 都是 2)。
+- **空间界 Σ m_i ≤ 4n**(第一级接收条件);n_i ≥ 2 的桶 m_i 必须恰好 = n_i²,单关键字桶为 1,空桶为 0。
+- **理论对照**:E[Σ n_i²] < 2n(CLRS 引理 11.4)。本包实测 200 组 n=100 的构建,平均空间因子 **1.980**。
+- **同种子可复现**;不同种子结构可不同,但性质恒成立。
+- 非法输入必须拒绝:**重复关键字**、负关键字、> `MAX_KEY`(2×10⁹)、keys/values 长度不一致、
+  values 含 null;空集合与单元素集合是合法输入。
+
+**与其它实现的取舍**:完全散列用更多空间(实测 n=1000 时约 3.0 倍槽位)换最坏 2 次比较;
+链地址法只用 2.0 倍左右,但最坏要沿链走(实测最长链 6)。
+
 ---
 
 ## 2. 规格(教材定义,与实现无关)
@@ -278,6 +441,24 @@ radix^选位数 超过 `maxCapacity` 就停止;熵相同时**位号小者优先*
 14. 全域散列法:族成员公式、同 seed 的确定性选取(a ∈ [1,p-1]、b ∈ [0,p-1])、
     **全域性 Pr ≤ 1/m 的穷举验证**(并与闭合公式互相印证)、计数与关键字取值无关、
     m=1 时全碰撞、"全域性只保证概率"的反例、p 非素数与关键字越界的异常类型。
+15. 开放地址法(线性探测):探测落位顺序与教材经典例题(ASL成功 2.5、ASL失败 5.875)、
+    **墓碑删除后探测链不断**、墓碑复用、表满拒插、**扩容阈值与再散列**(元素全保留、墓碑清零、
+    新容量为素数且 ≥ 2 倍)、可插拔散列函数(含越界返回值的报错)、聚集度量、
+    教材近似式与实测 ASL 的相对关系。
+16. 二次探测:两种模式的**探测序列内容与覆盖范围**(PLUS 素数表长为 (m+1)/2;ALTERNATING 仅 m ≡ 3 (mod 4) 全表)、
+    **"有空位却插不进"** 的失败路径、ALTERNATING 扩容保持 m ≡ 3 (mod 4)、墓碑删除与复用、
+    失败探测按轨道闭合计数(用复合表长 m=8 可观测)、与线性探测的聚集/ASL 对比。
+17. 双重散列:H1 相同但 H2 不同的关键字**序列互不相同**(次级聚集消除)、
+    `stepOf` 落在 [1,m-1] 与越界报错、素数表长全表覆盖、合数表长 + 不互素步长的失败路径、
+    墓碑删除与复用、扩容保持素数、**经验失败 ASL 与理论 1/(1-α) 的吻合度**、
+    结构度量(连续占用块)与线性/二次探测的同口径对比。
+18. 链地址法:教材经典例题的链长与 ASL(15/12 与 12/11)、**ASL 与链内顺序无关**、
+    头插顺序、**删除不需要墓碑**(删头/中/尾后同桶其它键仍可查)、**α &gt; 1 仍可用**、
+    扩容重新散列、链长统计自洽(Σl = n、空桶+非空桶 = m、Σ l(l+1)/2 = successfulProbeSum)、
+    两套失败 ASL 口径与"ASL失败 = α"不变式、与线性探测的 ASL 对比。
+19. 完全散列:**第二级逐桶无碰撞**、最坏比较次数 ≤ 2 且与 n 无关、Σ m_i ≤ 4n 与 m_i = n_i²、
+    期望空间因子 < 2 的统计对照、同种子可复现、缺席关键字不出现假命中、
+    重复/负/越界关键字与长度不一致必须拒绝、空集合与单元素集合、与链地址法的空间—最坏代价对比。
 
 ---
 
@@ -326,6 +507,11 @@ mvn -o "-Dtest=你的测试类名*" "-DfailIfNoTests=false" "-Dmaven.repo.local=
 | `src/main/java/cn/exercise/algs4/datastructure/hash/FoldingHashST.java` | `490BF5DF85C65A65` |
 | `src/main/java/cn/exercise/algs4/datastructure/hash/RandomHashST.java` | `53EF8B4719783256` |
 | `src/main/java/cn/exercise/algs4/datastructure/hash/UniversalHashST.java` | `6B00DC32E38C5AF5` |
+| `src/main/java/cn/exercise/algs4/datastructure/hash/OpenAddressHashST.java` | `7F5C02B92CCE6607` |
+| `src/main/java/cn/exercise/algs4/datastructure/hash/QuadraticProbeHashST.java` | `66E2AAC4688D3DA9` |
+| `src/main/java/cn/exercise/algs4/datastructure/hash/DoubleHashingHashST.java` | `EB748734AABF5581` |
+| `src/main/java/cn/exercise/algs4/datastructure/hash/SeparateChainingHashST.java` | `F0AA0522B03B08A1` |
+| `src/main/java/cn/exercise/algs4/datastructure/hash/PerfectHashingST.java` | `3BA1A69C785262A7` |
 
 ---
 

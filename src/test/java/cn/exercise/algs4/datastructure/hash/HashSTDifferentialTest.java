@@ -11,6 +11,7 @@ import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -282,6 +283,180 @@ class HashSTDifferentialTest {
         TreeSet<Long> actualKeys = new TreeSet<Long>();
         actual.keys().forEach(actualKeys::add);
         assertEquals(new TreeSet<Long>(expected.keySet()), actualKeys, "keys() 与 HashMap 键集不一致");
+    }
+
+    @Test
+    @DisplayName("OpenAddressHashST(线性探测)与 HashMap 在 2 万次随机操作后完全一致")
+    void openAddressMatchesHashMap() {
+        OpenAddressHashST<String> actual = new OpenAddressHashST<String>(8, 0.5); // 小容量 + 低上限 → 频繁扩容
+        Map<Long, String> expected = new HashMap<Long, String>();
+        Random random = new Random(SEED + 10);
+
+        for (int i = 0; i < OPS; i++) {
+            long key = random.nextInt(5000);
+            int op = random.nextInt(4);
+            if (op < 2) {
+                String value = "v" + i;
+                actual.put(key, value);
+                expected.put(key, value);
+            } else if (op == 2) {
+                assertEquals(expected.get(key), actual.get(key), "第 " + i + " 步 get(" + key + ")");
+                assertEquals(expected.containsKey(key), actual.contains(key),
+                        "第 " + i + " 步 contains(" + key + ")");
+            } else {
+                assertEquals(expected.remove(key), actual.delete(key), "第 " + i + " 步 delete(" + key + ")");
+            }
+            assertEquals(expected.size(), actual.size(), "第 " + i + " 步 size()");
+            if (i % 97 == 0) {
+                assertTrue(actual.loadFactor() <= actual.maxLoadFactor(), "第 " + i + " 步 α 超过上限");
+                TreeSet<Long> actualKeys = new TreeSet<Long>();
+                actual.keys().forEach(actualKeys::add);
+                assertEquals(new TreeSet<Long>(expected.keySet()), actualKeys, "第 " + i + " 步 keys()");
+            }
+        }
+        assertTrue(actual.resizeCount() > 0, "该场景应触发过扩容");
+    }
+
+    @Test
+    @DisplayName("QuadraticProbeHashST(二次探测)与 HashMap 在 2 万次随机操作后完全一致")
+    void quadraticMatchesHashMap() {
+        // ALTERNATING + m ≡ 3 (mod 4) → 全表覆盖,扩容后仍保持,因此不会出现"轨道走完"的失败
+        QuadraticProbeHashST<String> actual = new QuadraticProbeHashST<String>(7, 0.5,
+                QuadraticProbeHashST.Mode.ALTERNATING);
+        Map<Long, String> expected = new HashMap<Long, String>();
+        Random random = new Random(SEED + 11);
+
+        for (int i = 0; i < OPS; i++) {
+            long key = random.nextInt(5000);
+            int op = random.nextInt(4);
+            if (op < 2) {
+                String value = "v" + i;
+                actual.put(key, value);
+                expected.put(key, value);
+            } else if (op == 2) {
+                assertEquals(expected.get(key), actual.get(key), "第 " + i + " 步 get(" + key + ")");
+                assertEquals(expected.containsKey(key), actual.contains(key),
+                        "第 " + i + " 步 contains(" + key + ")");
+            } else {
+                assertEquals(expected.remove(key), actual.delete(key), "第 " + i + " 步 delete(" + key + ")");
+            }
+            assertEquals(expected.size(), actual.size(), "第 " + i + " 步 size()");
+            if (i % 97 == 0) {
+                assertTrue(actual.loadFactor() <= actual.maxLoadFactor(), "第 " + i + " 步 α 超过上限");
+                assertTrue(actual.fullCoverageGuaranteed() || actual.mode() != QuadraticProbeHashST.Mode.ALTERNATING,
+                        "ALTERNATING 模式应始终保持 m ≡ 3 (mod 4)");
+                TreeSet<Long> actualKeys = new TreeSet<Long>();
+                actual.keys().forEach(actualKeys::add);
+                assertEquals(new TreeSet<Long>(expected.keySet()), actualKeys, "第 " + i + " 步 keys()");
+            }
+        }
+        assertTrue(actual.resizeCount() > 0, "该场景应触发过扩容");
+    }
+
+    @Test
+    @DisplayName("DoubleHashingHashST(双重散列)与 HashMap 在 2 万次随机操作后完全一致")
+    void doubleHashingMatchesHashMap() {
+        DoubleHashingHashST<String> actual = new DoubleHashingHashST<String>(7, 0.5); // 容量保持素数 → 全表覆盖
+        Map<Long, String> expected = new HashMap<Long, String>();
+        Random random = new Random(SEED + 12);
+
+        for (int i = 0; i < OPS; i++) {
+            long key = random.nextInt(5000);
+            int op = random.nextInt(4);
+            if (op < 2) {
+                String value = "v" + i;
+                actual.put(key, value);
+                expected.put(key, value);
+            } else if (op == 2) {
+                assertEquals(expected.get(key), actual.get(key), "第 " + i + " 步 get(" + key + ")");
+                assertEquals(expected.containsKey(key), actual.contains(key),
+                        "第 " + i + " 步 contains(" + key + ")");
+            } else {
+                assertEquals(expected.remove(key), actual.delete(key), "第 " + i + " 步 delete(" + key + ")");
+            }
+            assertEquals(expected.size(), actual.size(), "第 " + i + " 步 size()");
+            if (i % 97 == 0) {
+                assertTrue(actual.loadFactor() <= actual.maxLoadFactor(), "第 " + i + " 步 α 超过上限");
+                assertTrue(actual.fullCoverageGuaranteed(), "容量应始终保持素数 → 全表覆盖");
+                TreeSet<Long> actualKeys = new TreeSet<Long>();
+                actual.keys().forEach(actualKeys::add);
+                assertEquals(new TreeSet<Long>(expected.keySet()), actualKeys, "第 " + i + " 步 keys()");
+            }
+        }
+        assertTrue(actual.resizeCount() > 0, "该场景应触发过扩容");
+    }
+
+    @Test
+    @DisplayName("SeparateChainingHashST(链地址法)与 HashMap 在 2 万次随机操作后完全一致")
+    void chainingMatchesHashMap() {
+        SeparateChainingHashST<String> actual = new SeparateChainingHashST<String>(7, 0.75); // 会多次扩容
+        Map<Long, String> expected = new HashMap<Long, String>();
+        Random random = new Random(SEED + 13);
+
+        for (int i = 0; i < OPS; i++) {
+            long key = random.nextInt(5000);
+            int op = random.nextInt(4);
+            if (op < 2) {
+                String value = "v" + i;
+                actual.put(key, value); // 链地址法不会拒插
+                expected.put(key, value);
+            } else if (op == 2) {
+                assertEquals(expected.get(key), actual.get(key), "第 " + i + " 步 get(" + key + ")");
+                assertEquals(expected.containsKey(key), actual.contains(key),
+                        "第 " + i + " 步 contains(" + key + ")");
+            } else {
+                assertEquals(expected.remove(key), actual.delete(key), "第 " + i + " 步 delete(" + key + ")");
+            }
+            assertEquals(expected.size(), actual.size(), "第 " + i + " 步 size()");
+            if (i % 97 == 0) {
+                assertTrue(actual.loadFactor() <= actual.maxLoadFactor(), "第 " + i + " 步 α 超过上限");
+                TreeSet<Long> actualKeys = new TreeSet<Long>();
+                actual.keys().forEach(actualKeys::add);
+                assertEquals(new TreeSet<Long>(expected.keySet()), actualKeys, "第 " + i + " 步 keys()");
+            }
+        }
+        assertTrue(actual.resizeCount() > 0, "该场景应触发过扩容");
+    }
+
+    @Test
+    @DisplayName("PerfectHashingST(完全散列)构建后与 HashMap 的查找结果完全一致")
+    void perfectHashingMatchesHashMap() {
+        Random random = new Random(SEED + 14);
+        TreeSet<Long> keySet = new TreeSet<Long>();
+        while (keySet.size() < 2000) {
+            keySet.add((long) random.nextInt((int) PerfectHashingST.MAX_KEY + 1));
+        }
+        long[] keys = new long[keySet.size()];
+        int index = 0;
+        for (long key : keySet) {
+            keys[index++] = key;
+        }
+        String[] values = new String[keys.length];
+        Map<Long, String> expected = new HashMap<Long, String>();
+        for (int i = 0; i < keys.length; i++) {
+            values[i] = "v" + i;
+            expected.put(keys[i], values[i]);
+        }
+        PerfectHashingST<String> actual = PerfectHashingST.build(keys, values, SEED);
+
+        assertEquals(expected.size(), actual.size());
+        for (Long key : expected.keySet()) {
+            assertEquals(expected.get(key), actual.get(key), "命中 " + key);
+            assertTrue(actual.contains(key));
+        }
+        int misses = 0;
+        for (int i = 0; i < 2000; i++) {
+            long candidate = (long) random.nextInt((int) PerfectHashingST.MAX_KEY + 1);
+            if (expected.containsKey(candidate)) {
+                continue;
+            }
+            assertNull(actual.get(candidate), "不该命中 " + candidate);
+            assertFalse(actual.contains(candidate));
+            misses++;
+        }
+        assertTrue(misses > 1900, "缺席关键字样本太少:" + misses);
+        assertTrue(actual.worstCaseProbes() <= 2);
+        assertTrue(actual.totalSubTableSlots() <= 4 * actual.size());
     }
 
     @Test

@@ -37,14 +37,15 @@ foreach ($jar in $junitJars) {
 }
 $junitCp = $junitJars -join ";"
 
-$mainFiles   = @("DirectAddressHashST", "DivisionHashST", "DigitAnalysisHashST", "MidSquareHashST", "FoldingHashST", "RandomHashST", "UniversalHashST")
+$mainFiles   = @("DirectAddressHashST", "DivisionHashST", "DigitAnalysisHashST", "MidSquareHashST", "FoldingHashST", "RandomHashST", "UniversalHashST", "OpenAddressHashST", "QuadraticProbeHashST", "DoubleHashingHashST", "SeparateChainingHashST", "PerfectHashingST")
 $testFiles   = @("DirectAddressHashSTTest", "DivisionHashSTTest", "HashSTDifferentialTest",
                  "HashSTExhaustiveTest", "DigitAnalysisHashSTTest", "MidSquareHashSTTest",
-                 "FoldingHashSTTest", "RandomHashSTTest", "UniversalHashSTTest")
+                 "FoldingHashSTTest", "RandomHashSTTest", "UniversalHashSTTest", "OpenAddressHashSTTest",
+                 "QuadraticProbeHashSTTest", "DoubleHashingHashSTTest", "SeparateChainingHashSTTest", "PerfectHashingSTTest")
 $testClasses = $testFiles | ForEach-Object { "cn.exercise.algs4.datastructure.hash.$_" }
 
 # 基线用例数下限(新增测试类/用例时同步上调):用于挡住"测试类没被编译或没被选中"的静默少跑
-$minBaselineTests = 132
+$minBaselineTests = 231
 
 Remove-Item -Recurse -Force $classes, $backup -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $classes, $backup | Out-Null
@@ -153,7 +154,65 @@ $mutations = @(
     @{ n = "M32 全域散列:碰撞统计不校验 k1==k2"; f = "UniversalHashST";
        find = "        if (k1 == k2) {"; repl = "        if (false) {" },
     @{ n = "M33 全域散列:闭合公式条件写错"; f = "UniversalHashST";
-       find = "            if (d % tableSize == 0) {"; repl = "            if (d % tableSize == 1) {" }
+       find = "            if (d % tableSize == 0) {"; repl = "            if (d % tableSize == 1) {" },
+    @{ n = "M34 开放地址:探测步长改成 2"; f = "OpenAddressHashST";
+       find = "            i = (i + 1) % capacity;`n        }`n        if (firstTombstone >= 0) {"; repl = "            i = (i + 2) % capacity;`n        }`n        if (firstTombstone >= 0) {" },
+    @{ n = "M35 开放地址:扩容阈值放宽一倍"; f = "OpenAddressHashST";
+       find = "        if (maxLoadFactor < 1.0 && (double) (n + 1) / capacity > maxLoadFactor) {"; repl = "        if (maxLoadFactor < 1.0 && (double) (n + 1) / capacity > maxLoadFactor * 2) {" },
+    @{ n = "M36 开放地址:扩容后忘记清零墓碑"; f = "OpenAddressHashST";
+       find = "        n = 0;`n        tombstones = 0;"; repl = "        n = 0;" },
+    @{ n = "M37 开放地址:delete 不留墓碑"; f = "OpenAddressHashST";
+       find = "        state[i] = TOMBSTONE;"; repl = "        state[i] = EMPTY;" },
+    @{ n = "M38 开放地址:插入不复用墓碑"; f = "OpenAddressHashST";
+       find = "                int target = firstTombstone >= 0 ? firstTombstone : i;"; repl = "                int target = i;" },
+    @{ n = "M39 开放地址:不校验散列函数返回值"; f = "OpenAddressHashST";
+       find = "        if (address < 0 || address >= capacity) {"; repl = "        if (false) {" },
+    @{ n = "M40 二次探测:PLUS 的步长退化成 i(线性)"; f = "QuadraticProbeHashST";
+       find = "            step = (long) i * i;"; repl = "            step = i;" },
+    @{ n = "M41 二次探测:ALTERNATING 的正负号反了"; f = "QuadraticProbeHashST";
+       find = "            if (i % 2 == 0) {`n                step = -step;`n            }"; repl = "            if (i % 2 == 1) {`n                step = -step;`n            }" },
+    @{ n = "M42 二次探测:ALTERNATING 的序号取错(k=i 而非 (i+1)/2)"; f = "QuadraticProbeHashST";
+       find = "            long k = (i + 1) / 2;"; repl = "            long k = i;" },
+    @{ n = "M43 二次探测:扩容不保持 m ≡ 3 (mod 4)"; f = "QuadraticProbeHashST";
+       find = "                ? nextPrime3Mod4((int) target)"; repl = "                ? nextPrime((int) target)" },
+    @{ n = "M44 二次探测:delete 不留墓碑"; f = "QuadraticProbeHashST";
+       find = "        state[i] = TOMBSTONE;"; repl = "        state[i] = EMPTY;" },
+    @{ n = "M45 二次探测:失败探测不按轨道提前闭合"; f = "QuadraticProbeHashST";
+       find = "                int address = probe(start, i);`n                if (i > 0 && address == start) {`n                    break;"; repl = "                int address = probe(start, i);`n                if (false) {`n                    break;" },
+    @{ n = "M46 双重散列:步长退化成 1(线性化)"; f = "DoubleHashingHashST";
+       find = "        int home = hashAddress(key);`n        int step = stepOf(key);`n        int firstTombstone = -1;"; repl = "        int home = hashAddress(key);`n        int step = 1;`n        int firstTombstone = -1;" },
+    @{ n = "M47 双重散列:探测忘记乘步长"; f = "DoubleHashingHashST";
+       find = "        return (int) Math.floorMod((long) home + (long) i * step, (long) capacity);"; repl = "        return (int) Math.floorMod((long) home + (long) step, (long) capacity);" },
+    @{ n = "M48 双重散列:不校验 H2 取值范围"; f = "DoubleHashingHashST";
+       find = "        if (step <= 0 || step >= capacity) {"; repl = "        if (false) {" },
+    @{ n = "M49 双重散列:delete 不留墓碑"; f = "DoubleHashingHashST";
+       find = "        state[i] = TOMBSTONE;"; repl = "        state[i] = EMPTY;" },
+    @{ n = "M50 双重散列:扩容不取素数(破坏互素前提)"; f = "DoubleHashingHashST";
+       find = "        int newCapacity = OpenAddressHashST.nextPrime((int) target);"; repl = "        int newCapacity = (int) target;" },
+    @{ n = "M51 双重散列:默认 H2 可能取到 0"; f = "DoubleHashingHashST";
+       find = "                return 1 + (int) Math.floorMod(key, (long) (capacity - 1));"; repl = "                return (int) Math.floorMod(key, (long) (capacity - 1));" },
+    @{ n = "M52 链地址法:put 不再识别重复键"; f = "SeparateChainingHashST";
+       find = "            if (node.key == key) {`n                node.value = value; // 已存在则覆盖,不新增结点`n                return;`n            }"; repl = "            if (false) {`n                node.value = value; // 已存在则覆盖,不新增结点`n                return;`n            }" },
+    @{ n = "M53 链地址法:删除头结点时写回自身"; f = "SeparateChainingHashST";
+       find = "                    buckets[address] = node.next;"; repl = "                    buckets[address] = node;" },
+    @{ n = "M54 链地址法:扩容阈值放宽一倍"; f = "SeparateChainingHashST";
+       find = "        if ((double) (n + 1) / capacity > maxLoadFactor) {"; repl = "        if ((double) (n + 1) / capacity > maxLoadFactor * 2) {" },
+    @{ n = "M55 链地址法:ASL成功用 l² 代替 l(l+1)/2"; f = "SeparateChainingHashST";
+       find = "            total += (long) len * (len + 1) / 2;"; repl = "            total += (long) len * len;" },
+    @{ n = "M56 链地址法:失败比较次数多算一次判空"; f = "SeparateChainingHashST";
+       find = "            total += len;"; repl = "            total += len + 1;" },
+    @{ n = "M57 链地址法:ASL失败分母用元素个数"; f = "SeparateChainingHashST";
+       find = "        return (double) failureComparisonSum() / capacity;"; repl = "        return (double) failureComparisonSum() / n;" },
+    @{ n = "M58 完全散列:第二级槽位数用 n_i 而非 n_i²"; f = "PerfectHashingST";
+       find = "            long m2 = (long) size * size;"; repl = "            long m2 = size;" },
+    @{ n = "M59 完全散列:第二级不做碰撞检测"; f = "PerfectHashingST";
+       find = "                    if (used[slot]) {`n                        collisionFree = false;`n                        break;`n                    }"; repl = "                    if (false) {`n                        collisionFree = false;`n                        break;`n                    }" },
+    @{ n = "M60 完全散列:第二级地址对第一级槽位数取模"; f = "PerfectHashingST";
+       find = "        return (int) ((subA[bucket] * key + subB[bucket]) % prime % subSize[bucket]);"; repl = "        return (int) ((subA[bucket] * key + subB[bucket]) % prime % m);" },
+    @{ n = "M61 完全散列:get 不校验关键字直接返回槽位值"; f = "PerfectHashingST";
+       find = "        return subKeys[bucket][slot] == key ? (Value) subValues[bucket][slot] : null;"; repl = "        return (Value) subValues[bucket][slot];" },
+    @{ n = "M62 完全散列:空间统计把 m_i 记成 n_i"; f = "PerfectHashingST";
+       find = "            totalSubSlots += slots;"; repl = "            totalSubSlots += size;" }
 )
 
 $killed = 0
