@@ -51,7 +51,7 @@ import java.util.PriorityQueue;
  * 本类可以看作 BFS 在带权图上的推广。</p>
  *
  * <pre>
- * EdgeWeightedDigraph g = GraphIO.readDigraphFile("tinyEWD.txt");
+ * EdgeWeightedDigraph g = GraphIO.readWeightedDigraphFile("tinyEWD.txt");
  * DijkstraSP sp = new DijkstraSP(g, 0);
  * sp.distTo(6);        // 1.51
  * sp.pathTo(6);        // 0-&gt;2 0.26, 2-&gt;7 0.34, 7-&gt;3 0.39, 3-&gt;6 0.52
@@ -386,7 +386,7 @@ public final class DijkstraSP {
      * @param args 可选:algs4 有向加权图数据文件路径
      */
     public static void main(String[] args) {
-        EdgeWeightedDigraph graph = args.length > 0 ? GraphIO.readDigraphFile(args[0]) : sampleGraph();
+        EdgeWeightedDigraph graph = args.length > 0 ? GraphIO.readWeightedDigraphFile(args[0]) : sampleGraph();
         System.out.println("V = " + graph.V() + ", E = " + graph.E());
 
         DijkstraSP sp = new DijkstraSP(graph, 0);

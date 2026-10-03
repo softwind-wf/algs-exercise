@@ -312,6 +312,25 @@ public final class EdgeWeightedDigraph {
     }
 
     // ------------------------------------------------------------------
+    // 与其它结构的转换
+    // ------------------------------------------------------------------
+
+    /**
+     * 取出"只保留拓扑结构"的无权有向图(权值丢弃,平行边按重数保留)。
+     * 需要拓扑排序、环检测、强连通分量这类只看结构、不看权值的算法时,
+     * 把它交给 {@link TopologicalSort}、{@link DirectedCycle}、{@link StronglyConnectedComponents}。
+     *
+     * @return 与当前顶点数、边数一致的无权有向图
+     */
+    public Digraph toDigraph() {
+        Digraph digraph = new Digraph(V);
+        for (DirectedEdge edge : edges()) {
+            digraph.addEdge(edge.from(), edge.to());
+        }
+        return digraph;
+    }
+
+    // ------------------------------------------------------------------
     // 校验与显示
     // ------------------------------------------------------------------
 
@@ -347,7 +366,7 @@ public final class EdgeWeightedDigraph {
      */
     public static void main(String[] args) {
         EdgeWeightedDigraph graph = args.length > 0
-                ? GraphIO.readDigraphFile(args[0])
+                ? GraphIO.readWeightedDigraphFile(args[0])
                 : new EdgeWeightedDigraph(3);
         if (args.length == 0) {
             graph.addEdge(0, 1, 0.5);

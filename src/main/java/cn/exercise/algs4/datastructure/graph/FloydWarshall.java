@@ -45,7 +45,7 @@ import java.util.List;
  * 这张矩阵多花 Θ(V²) 空间,但省去了对每个点对重跑路径搜索。</p>
  *
  * <pre>
- * EdgeWeightedDigraph g = GraphIO.readDigraphFile("tinyEWD.txt");
+ * EdgeWeightedDigraph g = GraphIO.readWeightedDigraphFile("tinyEWD.txt");
  * FloydWarshall fw = new FloydWarshall(g);
  * fw.dist(0, 6);        // 1.51
  * fw.path(0, 6);        // [0, 2, 7, 3, 6]
@@ -455,7 +455,7 @@ public final class FloydWarshall {
      * @param args 可选:algs4 有向加权图数据文件路径
      */
     public static void main(String[] args) {
-        EdgeWeightedDigraph graph = args.length > 0 ? GraphIO.readDigraphFile(args[0]) : sampleGraph();
+        EdgeWeightedDigraph graph = args.length > 0 ? GraphIO.readWeightedDigraphFile(args[0]) : sampleGraph();
         System.out.println("V = " + graph.V() + ", E = " + graph.E());
 
         for (Mode mode : Mode.values()) {

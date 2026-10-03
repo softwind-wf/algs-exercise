@@ -42,7 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class FloydWarshallTest {
 
     private static EdgeWeightedDigraph tinyEWD() {
-        return GraphIO.readDigraphFile("tinyEWD.txt");
+        return GraphIO.readWeightedDigraphFile("tinyEWD.txt");
     }
 
     /** 把 Floyd–Warshall 的距离矩阵取出来 */

@@ -1,12 +1,9 @@
 package cn.exercise.algs4.datastructure.graph;
 
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
-import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Queue;
 
@@ -37,8 +34,9 @@ import java.util.Queue;
  *
  * <p><b>回路检测</b>:Kahn 法里,若最后输出的顶点数少于 V,说明剩下的顶点入度都大于 0
  * —— 它们互相等待,必然处在某个回路里(或由回路可达);DFS 法里,若遇到指向"正在栈上"的顶点
- * 的边(回边),就是回路。两种判据都会给出 {@link #hasCycle()},
- * 并用一趟带颜色的 DFS 把<b>具体的回路</b>取出来给 {@link #cycle()}。</p>
+ * 的边(回边),就是回路。两种判据都会给出 {@link #hasCycle()};
+ * 至于<b>具体的回路</b>,由 {@link DirectedCycle} 单独求一遍(DirectedCycle 里有实现说明),
+ * 本类在发现回路时直接委托给它,避免两处维护同一段求环代码。</p>
  *
  * <p><b>三种模式的关系</b>:DAG 上它们都给出合法拓扑序,但具体顺序可能不同
  * (合法顺序本来就不唯一);只有 {@link Mode#KAHN_LEX} 保证是字典序最小那一个。
@@ -133,7 +131,7 @@ public final class TopologicalSort {
                 position[order[index]] = index;
             }
         }
-        this.cycle = dag ? null : findCycle();
+        this.cycle = dag ? null : new DirectedCycle(graph).cycle();
     }
 
     // ------------------------------------------------------------------
@@ -241,70 +239,6 @@ public final class TopologicalSort {
             this.vertex = vertex;
             this.neighbors = neighbors;
         }
-    }
-
-    // ------------------------------------------------------------------
-    // 回路提取
-    // ------------------------------------------------------------------
-
-    /**
-     * 找出一条具体回路:带颜色的迭代 DFS(0 未访问 / 1 在栈上 / 2 已完成),
-     * 遇到指向"在栈上"顶点的回边时,沿父指针链把回路取出来。
-     *
-     * @return 回路顶点序列(首尾相接,如 {@code [1, 2, 3]} 表示 1→2→3→1);无回路返回 null
-     */
-    private int[] findCycle() {
-        int V = graph.V();
-        int[] state = new int[V];
-        int[] parent = new int[V];
-        Arrays.fill(parent, -1);
-
-        for (int start = 0; start < V; start++) {
-            if (state[start] != 0) {
-                continue;
-            }
-            Deque<Frame> stack = new ArrayDeque<Frame>();
-            state[start] = 1;
-            stack.push(new Frame(start, graph.adj(start).iterator()));
-
-            while (!stack.isEmpty()) {
-                Frame top = stack.peek();
-                if (top.neighbors.hasNext()) {
-                    int w = top.neighbors.next();
-                    if (state[w] == 0) {
-                        parent[w] = top.vertex;
-                        state[w] = 1;
-                        stack.push(new Frame(w, graph.adj(w).iterator()));
-                    }
-                    else if (state[w] == 1) {
-                        return buildCycle(parent, w, top.vertex);
-                    }
-                }
-                else {
-                    state[top.vertex] = 2;
-                    stack.pop();
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
-     * 由父指针链构造回路:从 {@code from} 沿父指针回溯到 {@code to},
-     * 加上回边 {@code from -> to} 构成一个环。
-     */
-    private static int[] buildCycle(int[] parent, int to, int from) {
-        List<Integer> chain = new ArrayList<Integer>();
-        for (int x = from; x != -1 && x != to; x = parent[x]) {
-            chain.add(x);
-        }
-        chain.add(to);
-        Collections.reverse(chain);         // [to, ..., from]
-        int[] cycle = new int[chain.size()];
-        for (int i = 0; i < cycle.length; i++) {
-            cycle[i] = chain.get(i);
-        }
-        return cycle;
     }
 
     // ------------------------------------------------------------------

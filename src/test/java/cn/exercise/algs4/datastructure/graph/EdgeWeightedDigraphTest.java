@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class EdgeWeightedDigraphTest {
 
     private static EdgeWeightedDigraph tinyEWD() {
-        return GraphIO.readDigraphFile("tinyEWD.txt");
+        return GraphIO.readWeightedDigraphFile("tinyEWD.txt");
     }
 
     private static List<DirectedEdge> edgesOf(EdgeWeightedDigraph g) {
@@ -241,6 +241,48 @@ class EdgeWeightedDigraphTest {
                 sum += g.inDegree(v);
             }
             return sum;
+        }
+    }
+
+    @Nested
+    @DisplayName("与无权有向图互转")
+    class ToDigraphTest {
+
+        @Test
+        @DisplayName("toDigraph:顶点数、边数、拓扑结构一致(权值丢弃,平行边保留)")
+        void toDigraph() {
+            EdgeWeightedDigraph weighted = tinyEWD();
+            Digraph plain = weighted.toDigraph();
+            assertEquals(weighted.V(), plain.V());
+            assertEquals(weighted.E(), plain.E());
+            for (int v = 0; v < weighted.V(); v++) {
+                assertEquals(weighted.outDegree(v), plain.outDegree(v), v + " 的出度");
+                assertEquals(weighted.inDegree(v), plain.inDegree(v), v + " 的入度");
+                for (int w = 0; w < weighted.V(); w++) {
+                    assertEquals(countInWeighted(weighted, v, w), plain.countEdges(v, w),
+                            "从 " + v + " 到 " + w + " 的边数(平行边按重数)");
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("有环的加权图转过去后,TopologicalSort 与 DirectedCycle 都能认出环")
+        void cyclesAreVisible() {
+            EdgeWeightedDigraph weighted = GraphIO.parseWeightedDigraph("3\n3\n0 1 1\n1 2 1\n2 0 1\n");
+            assertTrue(new TopologicalSort(weighted.toDigraph()).hasCycle());
+            assertTrue(new DirectedCycle(weighted.toDigraph()).hasCycle());
+            assertTrue(new TopologicalSort(tinyEWD().toDigraph()).hasCycle(),
+                    "tinyEWD 里有 4->5 与 5->4,拓扑结构本身就有环");
+        }
+
+        private int countInWeighted(EdgeWeightedDigraph graph, int from, int to) {
+            int count = 0;
+            for (DirectedEdge edge : graph.adj(from)) {
+                if (edge.to() == to) {
+                    count++;
+                }
+            }
+            return count;
         }
     }
 

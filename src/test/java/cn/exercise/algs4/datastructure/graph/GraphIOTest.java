@@ -507,16 +507,16 @@ class GraphIOTest {
 
     @Nested
     @DisplayName("有向加权图读写")
-    class DigraphIoTest {
+    class WeightedDigraphIoTest {
 
         private static final String TINY_EWD_PATH = "tinyEWD.txt";
 
         @Test
-        @DisplayName("readDigraphFile(tinyEWD.txt):V=8、E=15,出度/入度与样例一致")
+        @DisplayName("readWeightedDigraphFile(tinyEWD.txt):V=8、E=15,出度/入度与样例一致")
         void readTinyEWDFile() {
             File file = new File(TINY_EWD_PATH);
             assertTrue(file.isFile(), "需要工作区根目录下存在 " + TINY_EWD_PATH);
-            EdgeWeightedDigraph g = GraphIO.readDigraphFile(TINY_EWD_PATH);
+            EdgeWeightedDigraph g = GraphIO.readWeightedDigraphFile(TINY_EWD_PATH);
             assertEquals(8, g.V());
             assertEquals(15, g.E());
             assertEquals(2, g.outDegree(0));
@@ -532,9 +532,9 @@ class GraphIOTest {
         @DisplayName("三种入口一致(文本 / 字符流 / 字节流)")
         void threeEntryPointsAgree() {
             String text = "3\n3\n0 1 0.5\n1 2 1.5\n2 0 2.5\n";
-            EdgeWeightedDigraph a = GraphIO.parseDigraph(text);
-            EdgeWeightedDigraph b = GraphIO.readDigraph(new StringReader(text));
-            EdgeWeightedDigraph c = GraphIO.readDigraph(new ByteArrayInputStream(text.getBytes(Charset.forName("UTF-8"))));
+            EdgeWeightedDigraph a = GraphIO.parseWeightedDigraph(text);
+            EdgeWeightedDigraph b = GraphIO.readWeightedDigraph(new StringReader(text));
+            EdgeWeightedDigraph c = GraphIO.readWeightedDigraph(new ByteArrayInputStream(text.getBytes(Charset.forName("UTF-8"))));
             assertSameDirectedStructure(a, b);
             assertSameDirectedStructure(a, c);
             assertEquals(a.toString(), c.toString(), "同一份输入,邻接表顺序也应一致");
@@ -544,7 +544,7 @@ class GraphIOTest {
         @DisplayName("格式与无向加权图相同:同一个文本,解析成有向图与无向图的边数一致、解释不同")
         void sameTextFormatAsUndirected() {
             String text = "3\n2\n0 1 0.5\n1 2 1.5\n";
-            EdgeWeightedDigraph digraph = GraphIO.parseDigraph(text);
+            EdgeWeightedDigraph digraph = GraphIO.parseWeightedDigraph(text);
             EdgeWeightedGraph undirected = GraphIO.parseWeighted(text);
             assertEquals(undirected.V(), digraph.V());
             assertEquals(undirected.E(), digraph.E());
@@ -554,7 +554,7 @@ class GraphIOTest {
         }
 
         @Test
-        @DisplayName("往返:parseDigraph(format(g)) 的 V/E/边三元组一致(含自环与平行边)")
+        @DisplayName("往返:parseWeightedDigraph(format(g)) 的 V/E/边三元组一致(含自环与平行边)")
         void roundTrip() {
             EdgeWeightedDigraph g = new EdgeWeightedDigraph(5);
             g.addEdge(0, 1, 0.35);
@@ -563,23 +563,23 @@ class GraphIOTest {
             g.addEdge(4, 0, 12.25);
             g.addEdge(1, 0, 0.0);       // 反向 + 零权
 
-            EdgeWeightedDigraph copy = GraphIO.parseDigraph(GraphIO.format(g));
+            EdgeWeightedDigraph copy = GraphIO.parseWeightedDigraph(GraphIO.format(g));
             assertSameDirectedStructure(g, copy);
             assertEquals(g.E(), copy.E());
             assertEquals(1, copy.selfLoopCount());
         }
 
         @Test
-        @DisplayName("write 到文件再 readDigraphFile 回来,结构一致")
+        @DisplayName("write 到文件再 readWeightedDigraphFile 回来,结构一致")
         void writeAndReadFile() {
-            EdgeWeightedDigraph g = GraphIO.parseDigraph("4\n3\n0 1 0.25\n1 2 0.5\n3 0 0.75\n");
+            EdgeWeightedDigraph g = GraphIO.parseWeightedDigraph("4\n3\n0 1 0.25\n1 2 0.5\n3 0 0.75\n");
             File dir = new File("target/graph-io-test");
             assertTrue(dir.isDirectory() || dir.mkdirs(), "无法创建测试目录:" + dir.getAbsolutePath());
             File file = new File(dir, "digraph-round-trip-" + System.nanoTime() + ".txt");
             try {
                 GraphIO.write(g, file.getPath());
                 assertTrue(file.isFile());
-                EdgeWeightedDigraph back = GraphIO.readDigraphFile(file.getPath());
+                EdgeWeightedDigraph back = GraphIO.readWeightedDigraphFile(file.getPath());
                 assertSameDirectedStructure(g, back);
                 assertEquals(0.25, back.weightOf(0, 1), 1e-12);
             }
@@ -603,17 +603,17 @@ class GraphIOTest {
         @Test
         @DisplayName("格式错误与 null 参数:与无向加权图同一套校验")
         void errors() {
-            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseDigraph(""));
-            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseDigraph("5"));
-            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseDigraph("5 1 0 1 0.5 2 3"), "三元组多于声明");
-            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseDigraph("5 1 0 1 abc"), "权值非实数");
-            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseDigraph("5 1 0 1 NaN"), "NaN 权值");
-            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseDigraph("5 1 0 5 0.5"), "端点越界");
-            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseDigraph(null));
-            assertThrows(IllegalArgumentException.class, () -> GraphIO.readDigraphFile(null));
-            assertThrows(IllegalArgumentException.class, () -> GraphIO.readDigraphFile("no-such-digraph.txt"));
-            assertThrows(IllegalArgumentException.class, () -> GraphIO.readDigraph((Reader) null));
-            assertThrows(IllegalArgumentException.class, () -> GraphIO.readDigraph((InputStream) null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseWeightedDigraph(""));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseWeightedDigraph("5"));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseWeightedDigraph("5 1 0 1 0.5 2 3"), "三元组多于声明");
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseWeightedDigraph("5 1 0 1 abc"), "权值非实数");
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseWeightedDigraph("5 1 0 1 NaN"), "NaN 权值");
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseWeightedDigraph("5 1 0 5 0.5"), "端点越界");
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseWeightedDigraph(null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readWeightedDigraphFile(null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readWeightedDigraphFile("no-such-digraph.txt"));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readWeightedDigraph((Reader) null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readWeightedDigraph((InputStream) null));
             assertThrows(IllegalArgumentException.class, () -> GraphIO.format((EdgeWeightedDigraph) null));
             assertThrows(IllegalArgumentException.class, () -> GraphIO.toDot((EdgeWeightedDigraph) null));
             assertThrows(IllegalArgumentException.class, () -> GraphIO.write((EdgeWeightedDigraph) null, "target/x.txt"));
@@ -962,6 +962,205 @@ class GraphIOTest {
             TrackingReader reader = new TrackingReader("E0 E1\nA0 E0 E1 1\n");
             AOENetwork net = GraphIO.readAoe(reader);
             assertEquals(2, net.eventCount());
+            assertFalse(reader.closed, "GraphIO 不应关闭调用方传入的 Reader");
+            reader.close();
+        }
+    }
+
+    @Nested
+    @DisplayName("有向图(无权)读写")
+    class DigraphIoTest {
+
+        @Test
+        @DisplayName("parseDigraph:V、E 与方向都对")
+        void parse() {
+            Digraph graph = GraphIO.parseDigraph("4\n3\n0 1\n1 2\n3 0\n");
+            assertEquals(4, graph.V());
+            assertEquals(3, graph.E());
+            assertTrue(graph.hasEdge(0, 1));
+            assertFalse(graph.hasEdge(1, 0), "有向边的反方向不应存在");
+            assertEquals(1, graph.outDegree(0));
+            assertEquals(1, graph.inDegree(0), "3->0 汇入 0");
+            assertEquals(0, graph.inDegree(3));
+            assertEquals(1, graph.inDegree(2));
+        }
+
+        @Test
+        @DisplayName("三种入口一致(文本 / 字符流 / 字节流)")
+        void threeEntryPointsAgree() {
+            String text = "4\n3\n0 1\n1 2\n3 0\n";
+            Digraph a = GraphIO.parseDigraph(text);
+            Digraph b = GraphIO.readDigraph(new StringReader(text));
+            Digraph c = GraphIO.readDigraph(new ByteArrayInputStream(text.getBytes(Charset.forName("UTF-8"))));
+            assertEquals(a.toString(), b.toString());
+            assertEquals(a.toString(), c.toString());
+        }
+
+        @Test
+        @DisplayName("format 形态与往返一致")
+        void formatAndRoundTrip() {
+            Digraph graph = GraphIO.parseDigraph("4\n3\n0 1\n1 2\n3 0\n");
+            String[] lines = GraphIO.format(graph).split("\\r?\\n");
+            assertEquals("4", lines[0]);
+            assertEquals("3", lines[1]);
+            assertEquals("0 1", lines[2]);
+
+            Digraph copy = GraphIO.parseDigraph(GraphIO.format(graph));
+            assertEquals(graph.V(), copy.V());
+            assertEquals(graph.E(), copy.E());
+            assertEquals(edgeStrings(graph), edgeStrings(copy));
+        }
+
+        @Test
+        @DisplayName("端点数目与声明的边数不符时直接报错")
+        void countMismatch() {
+            IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                    () -> GraphIO.parseDigraph("13\n22\n4 2\n2 3\n3 2\n"));
+            assertTrue(e.getMessage().contains("端点"), e.getMessage());
+        }
+
+        @Test
+        @DisplayName("格式错误与 null 参数")
+        void errors() {
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseDigraph(""));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseDigraph("5"));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseDigraph("5 1 0 5"), "端点越界");
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseDigraph("5 -1"));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseDigraph(null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readDigraph((Reader) null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readDigraph((InputStream) null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readDigraphFile(null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readDigraphFile("no-such-digraph.txt"));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.format((Digraph) null));
+            assertThrows(IllegalArgumentException.class,
+                    () -> GraphIO.write((Digraph) null, "target/x.txt"));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.write(new Digraph(1), (String) null));
+        }
+
+        @Test
+        @DisplayName("toDot 用 -> 连接有向边")
+        void toDot() {
+            String dot = GraphIO.toDot(GraphIO.parseDigraph("3\n2\n0 1\n1 2\n"));
+            assertTrue(dot.startsWith("digraph {"), dot);
+            assertTrue(dot.contains("0 -> 1"), dot);
+            assertFalse(dot.contains("0 -- 1"), "有向图不该用无向符号");
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.toDot((Digraph) null));
+        }
+
+        private List<String> edgeStrings(Digraph graph) {
+            List<String> list = new ArrayList<String>();
+            for (int[] edge : graph.edges()) {
+                list.add(edge[0] + "->" + edge[1]);
+            }
+            java.util.Collections.sort(list);
+            return list;
+        }
+    }
+
+    @Nested
+    @DisplayName("符号图读写")
+    class SymbolGraphIoTest {
+
+        @Test
+        @DisplayName("parseSymbolGraph:顶点名按首次出现顺序编号")
+        void parse() {
+            SymbolGraph sg = GraphIO.parseSymbolGraph("甲 乙\n乙 丙\n");
+            assertEquals(3, sg.V());
+            assertEquals(2, sg.E());
+            assertEquals(Arrays.asList("甲", "乙", "丙"), sg.vertices());
+            assertEquals(Arrays.asList("乙"), sg.adjacent("甲"));
+            assertEquals(1, sg.degree("丙"));
+        }
+
+        @Test
+        @DisplayName("空行、行内注释与多余空白都忽略")
+        void commentsAndWhitespace() {
+            SymbolGraph sg = GraphIO.parseSymbolGraph("# 航线\n\n  JFK   ORD \nORD DEN   # 干线\n");
+            assertEquals(3, sg.V());
+            assertEquals(2, sg.E());
+            assertTrue(sg.hasEdge("JFK", "ORD"));
+            assertTrue(sg.hasEdge("ORD", "DEN"));
+            assertEquals("JFK", sg.nameOf(0));
+            assertEquals("DEN", sg.nameOf(2));
+        }
+
+        @Test
+        @DisplayName("三种入口一致(文本 / 字符流 / 字节流)")
+        void threeEntryPointsAgree() {
+            String text = "甲 乙\n乙 丙\n";
+            SymbolGraph a = GraphIO.parseSymbolGraph(text);
+            SymbolGraph b = GraphIO.readSymbolGraph(new StringReader(text));
+            SymbolGraph c = GraphIO.readSymbolGraph(
+                    new ByteArrayInputStream(text.getBytes(Charset.forName("UTF-8"))));
+            assertEquals(a.toString(), b.toString());
+            assertEquals(a.toString(), c.toString());
+        }
+
+        @Test
+        @DisplayName("format 往返:顶点、边数与平行边重数都保持")
+        void roundTrip() {
+            SymbolGraph sg = GraphIO.parseSymbolGraph("甲 乙\n甲 乙\n乙 丙\n");
+            String text = GraphIO.format(sg);
+            assertEquals(3, text.split("\\r?\\n").length, "三条边各一行");
+            SymbolGraph copy = GraphIO.parseSymbolGraph(text);
+            assertEquals(sg.V(), copy.V());
+            assertEquals(sg.E(), copy.E());
+            assertEquals(2, copy.countEdges("甲", "乙"));
+            assertEquals(Arrays.asList("甲", "乙", "丙"), copy.vertices());
+        }
+
+        @Test
+        @DisplayName("routes.txt:11 个机场、14 条航线")
+        void routesFile() {
+            File file = new File("routes.txt");
+            assertTrue(file.isFile(), "需要工作区根目录下存在 routes.txt");
+            SymbolGraph sg = GraphIO.readSymbolGraphFile("routes.txt");
+            assertEquals(11, sg.V());
+            assertEquals(14, sg.E());
+            assertEquals("JFK", sg.nameOf(0));
+            assertEquals("MEX", sg.nameOf(10));
+        }
+
+        @Test
+        @DisplayName("写完再读回来一致")
+        void writeAndReadFile() {
+            SymbolGraph sg = GraphIO.parseSymbolGraph("甲 乙\n乙 丙\n");
+            File dir = new File("target/graph-io-test");
+            assertTrue(dir.isDirectory() || dir.mkdirs(), "无法创建测试目录:" + dir.getAbsolutePath());
+            File file = new File(dir, "symbol-round-trip-" + System.nanoTime() + ".txt");
+            try {
+                GraphIO.write(sg, file.getPath());
+                SymbolGraph back = GraphIO.readSymbolGraphFile(file.getPath());
+                assertEquals(sg.vertices(), back.vertices());
+                assertEquals(sg.E(), back.E());
+            }
+            finally {
+                assertTrue(!file.exists() || file.delete(), "测试文件应能删除:" + file.getAbsolutePath());
+            }
+        }
+
+        @Test
+        @DisplayName("每行必须是两个名字,错误能定位到行")
+        void parseErrors() {
+            IllegalArgumentException three = assertThrows(IllegalArgumentException.class,
+                    () -> GraphIO.parseSymbolGraph("甲 乙\n甲 乙 丙\n"));
+            assertTrue(three.getMessage().contains("第 2 行"), three.getMessage());
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseSymbolGraph("甲\n"),
+                    "只有一个名字的行无法确定边");
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseSymbolGraph(null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readSymbolGraph((Reader) null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readSymbolGraph((InputStream) null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readSymbolGraphFile(null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readSymbolGraphFile("no-such-symbol.txt"));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.format((SymbolGraph) null));
+        }
+
+        @Test
+        @DisplayName("调用方传入的 Reader 不被关闭")
+        void callerOwnedReaderNotClosed() {
+            TrackingReader reader = new TrackingReader("甲 乙\n");
+            SymbolGraph sg = GraphIO.readSymbolGraph(reader);
+            assertEquals(2, sg.V());
             assertFalse(reader.closed, "GraphIO 不应关闭调用方传入的 Reader");
             reader.close();
         }

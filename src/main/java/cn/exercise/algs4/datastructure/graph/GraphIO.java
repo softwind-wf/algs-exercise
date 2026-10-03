@@ -41,19 +41,29 @@ import java.util.List;
  *
  * <p><b>方法一览</b>:</p>
  * <ul>
- *   <li>无权图 —— 读:{@link #parse(String)}(文本)、{@link #read(Reader)}、{@link #read(InputStream)}、
- *       {@link #readFile(String)}(后三者默认/要求 UTF-8);写:{@link #format(UndirectedGraph)}、
- *       {@link #write(UndirectedGraph, OutputStream)}、{@link #write(UndirectedGraph, String)};</li>
- *   <li>加权图 —— 读:{@link #parseWeighted(String)}、{@link #readWeighted(InputStream)}、
- *       {@link #readWeightedFile(String)};写:{@link #format(EdgeWeightedGraph)}、
- *       {@link #write(EdgeWeightedGraph, OutputStream)}、{@link #write(EdgeWeightedGraph, String)};</li>
- *   <li>有向加权图 —— 读:{@link #parseDigraph(String)}、{@link #readDigraph(InputStream)}、
- *       {@link #readDigraphFile(String)};写:{@link #format(EdgeWeightedDigraph)}、
- *       {@link #write(EdgeWeightedDigraph, OutputStream)}、{@link #write(EdgeWeightedDigraph, String)}
- *       (文本格式与无向加权图相同);</li>
- *   <li>导出:{@link #toDot(UndirectedGraph)}、{@link #toDot(EdgeWeightedGraph)} 与
- *       {@link #toDot(EdgeWeightedDigraph)}(Graphviz DOT,可用 {@code dot -Tsvg} 出图)。</li>
+ *   <li>无权无向图 —— 读:{@link #parse(String)}、{@link #read(Reader)}、{@link #read(InputStream)}、
+ *       {@link #readFile(String)}(默认 UTF-8);写:{@link #format(UndirectedGraph)} 等;</li>
+ *   <li>无权有向图 —— 读:{@link #parseDigraph(String)}、{@link #readDigraph(InputStream)}、
+ *       {@link #readDigraphFile(String)}(格式与无权无向图相同);</li>
+ *   <li>符号图 —— 读:{@link #parseSymbolGraph(String)}、{@link #readSymbolGraph(InputStream)}、
+ *       {@link #readSymbolGraphFile(String)}(每行一条边、两个名字;顶点按首次出现编号);</li>
+ *   <li>加权无向图 —— 读:{@link #parseWeighted(String)}、{@link #readWeighted(InputStream)}、
+ *       {@link #readWeightedFile(String)};写:{@link #format(EdgeWeightedGraph)} 等;</li>
+ *   <li>加权有向图 —— 读:{@link #parseWeightedDigraph(String)}、
+ *       {@link #readWeightedDigraph(InputStream)}、{@link #readWeightedDigraphFile(String)}
+ *       (文本格式与加权无向图相同);</li>
+ *   <li>AOV 网 —— 读:{@link #parseAov(String)}、{@link #readAovFile(String)};
+ *       写:{@link #format(AOVNetwork)} 等;</li>
+ *   <li>AOE 网 —— 读:{@link #parseAoe(String)}、{@link #readAoeFile(String)};
+ *       写:{@link #format(AOENetwork)} 等;</li>
+ *   <li>导出:{@link #toDot(UndirectedGraph)}、{@link #toDot(EdgeWeightedGraph)}、
+ *       {@link #toDot(EdgeWeightedDigraph)} 与 {@link #toDot(Digraph)}
+ *       (Graphviz DOT,可用 {@code dot -Tsvg} 出图)。</li>
  * </ul>
+ *
+ * <p><b>命名规律</b>:{@code parse/read/readFile} = 无权无向,{@code …Digraph} = 无权有向,
+ * {@code …SymbolGraph} = 符号图,{@code …Weighted} = 加权无向,{@code …WeightedDigraph} = 加权有向,
+ * {@code …Aov/…Aoe} = AOV/AOE 网。</p>
  *
  * <p><b>加权图的文本格式</b>(algs4 的 {@code EdgeWeightedGraph(In)})与无权图只差在
  * 每条边多一个权值 —— 前两项仍是 V、E,随后是 {@code 3E} 项:{@code v w weight} 三元组。
@@ -174,6 +184,168 @@ public final class GraphIO {
     }
 
     // ------------------------------------------------------------------
+    // 读:有向图(无权)
+    // ------------------------------------------------------------------
+
+    /**
+     * 按 algs4 文本格式解析字符串建有向图。<b>格式与无权无向图相同</b>
+     * (第一项 V、第二项 E、随后 2E 个端点),区别只在解释成有向边。
+     *
+     * @param text 图数据文本,不能为 null
+     * @return 解析出的有向图
+     * @throws IllegalArgumentException 文本为 null、为空、格式错误或端点越界
+     */
+    public static Digraph parseDigraph(String text) {
+        if (text == null) {
+            throw new IllegalArgumentException("输入文本不能为 null");
+        }
+        return buildDigraph(tokenize(text));
+    }
+
+    /**
+     * 从字符流读取有向图;<b>流由调用方关闭</b>。
+     *
+     * @param reader 字符流,不能为 null
+     * @return 解析出的有向图
+     * @throws IllegalArgumentException 参数为 null 或内容格式错误
+     * @throws IllegalStateException    读取过程中发生 I/O 错误
+     */
+    public static Digraph readDigraph(Reader reader) {
+        if (reader == null) {
+            throw new IllegalArgumentException("字符流不能为 null");
+        }
+        try {
+            return parseDigraph(readAll(reader));
+        }
+        catch (IOException e) {
+            throw new IllegalStateException("读取图数据失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 从字节流读取(UTF-8)有向图;<b>流由调用方关闭</b>。
+     *
+     * @param in 字节流,不能为 null
+     * @return 解析出的有向图
+     * @throws IllegalArgumentException 参数为 null 或内容格式错误
+     * @throws IllegalStateException    读取过程中发生 I/O 错误
+     */
+    public static Digraph readDigraph(InputStream in) {
+        if (in == null) {
+            throw new IllegalArgumentException("输入流不能为 null");
+        }
+        return readDigraph(new InputStreamReader(in, UTF_8));
+    }
+
+    /**
+     * 读取有向图文件(UTF-8)。本类负责关闭文件流。
+     *
+     * @param path 文件路径,不能为 null
+     * @return 解析出的有向图
+     * @throws IllegalArgumentException 路径为 null、文件不存在、内容格式错误或端点越界
+     * @throws IllegalStateException    读取过程中发生 I/O 错误
+     */
+    public static Digraph readDigraphFile(String path) {
+        if (path == null) {
+            throw new IllegalArgumentException("文件路径不能为 null");
+        }
+        InputStream in = null;
+        try {
+            in = new FileInputStream(path);
+            return readDigraph(in);
+        }
+        catch (FileNotFoundException e) {
+            throw new IllegalArgumentException("文件不存在: " + path, e);
+        }
+        finally {
+            closeQuietly(in);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 读:符号图(顶点是字符串名字)
+    // ------------------------------------------------------------------
+
+    /**
+     * 解析符号图文本:<b>每行一条边,两个顶点名用空白分隔</b>
+     * (与 algs4 的 {@code routes.txt} / {@code movies.txt} 一致;{@code #} 注释与空行忽略)。
+     *
+     * <p>顶点名按<b>首次出现</b>的顺序登记为编号 0、1、2……。
+     * 注意:名字要先在某条边里出现才能被登记,所以<b>孤立顶点无法用这种格式表达</b>
+     * (需要的话请用 {@link SymbolGraph#addVertex(String)} 添加)。</p>
+     *
+     * @param text 符号图文本,不能为 null
+     * @return 解析出的符号图
+     * @throws IllegalArgumentException 文本为 null,或某行不是两个名字
+     */
+    public static SymbolGraph parseSymbolGraph(String text) {
+        if (text == null) {
+            throw new IllegalArgumentException("输入文本不能为 null");
+        }
+        return buildSymbolGraph(text);
+    }
+
+    /**
+     * 从字符流读取符号图;<b>流由调用方关闭</b>。
+     *
+     * @param reader 字符流,不能为 null
+     * @return 解析出的符号图
+     * @throws IllegalArgumentException 参数为 null 或内容格式错误
+     * @throws IllegalStateException    读取过程中发生 I/O 错误
+     */
+    public static SymbolGraph readSymbolGraph(Reader reader) {
+        if (reader == null) {
+            throw new IllegalArgumentException("字符流不能为 null");
+        }
+        try {
+            return parseSymbolGraph(readAll(reader));
+        }
+        catch (IOException e) {
+            throw new IllegalStateException("读取符号图数据失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 从字节流读取(UTF-8)符号图;<b>流由调用方关闭</b>。
+     *
+     * @param in 字节流,不能为 null
+     * @return 解析出的符号图
+     * @throws IllegalArgumentException 参数为 null 或内容格式错误
+     * @throws IllegalStateException    读取过程中发生 I/O 错误
+     */
+    public static SymbolGraph readSymbolGraph(InputStream in) {
+        if (in == null) {
+            throw new IllegalArgumentException("输入流不能为 null");
+        }
+        return readSymbolGraph(new InputStreamReader(in, UTF_8));
+    }
+
+    /**
+     * 读取符号图文件(UTF-8)。本类负责关闭文件流。
+     *
+     * @param path 文件路径,不能为 null
+     * @return 解析出的符号图
+     * @throws IllegalArgumentException 路径为 null、文件不存在或内容格式错误
+     * @throws IllegalStateException    读取过程中发生 I/O 错误
+     */
+    public static SymbolGraph readSymbolGraphFile(String path) {
+        if (path == null) {
+            throw new IllegalArgumentException("文件路径不能为 null");
+        }
+        InputStream in = null;
+        try {
+            in = new FileInputStream(path);
+            return readSymbolGraph(in);
+        }
+        catch (FileNotFoundException e) {
+            throw new IllegalArgumentException("文件不存在: " + path, e);
+        }
+        finally {
+            closeQuietly(in);
+        }
+    }
+
+    // ------------------------------------------------------------------
     // 读:加权图
     // ------------------------------------------------------------------
 
@@ -263,11 +435,11 @@ public final class GraphIO {
      * @return 解析出的有向加权图
      * @throws IllegalArgumentException 文本为 null/为空/格式错误、权值非有限实数或端点越界
      */
-    public static EdgeWeightedDigraph parseDigraph(String text) {
+    public static EdgeWeightedDigraph parseWeightedDigraph(String text) {
         if (text == null) {
             throw new IllegalArgumentException("输入文本不能为 null");
         }
-        return buildDigraph(tokenize(text));
+        return buildWeightedDigraph(tokenize(text));
     }
 
     /**
@@ -278,12 +450,12 @@ public final class GraphIO {
      * @throws IllegalArgumentException 参数为 null 或内容格式错误
      * @throws IllegalStateException    读取过程中发生 I/O 错误
      */
-    public static EdgeWeightedDigraph readDigraph(Reader reader) {
+    public static EdgeWeightedDigraph readWeightedDigraph(Reader reader) {
         if (reader == null) {
             throw new IllegalArgumentException("字符流不能为 null");
         }
         try {
-            return parseDigraph(readAll(reader));
+            return parseWeightedDigraph(readAll(reader));
         }
         catch (IOException e) {
             throw new IllegalStateException("读取图数据失败: " + e.getMessage(), e);
@@ -298,11 +470,11 @@ public final class GraphIO {
      * @throws IllegalArgumentException 参数为 null 或内容格式错误
      * @throws IllegalStateException    读取过程中发生 I/O 错误
      */
-    public static EdgeWeightedDigraph readDigraph(InputStream in) {
+    public static EdgeWeightedDigraph readWeightedDigraph(InputStream in) {
         if (in == null) {
             throw new IllegalArgumentException("输入流不能为 null");
         }
-        return readDigraph(new InputStreamReader(in, UTF_8));
+        return readWeightedDigraph(new InputStreamReader(in, UTF_8));
     }
 
     /**
@@ -313,14 +485,14 @@ public final class GraphIO {
      * @throws IllegalArgumentException 路径为 null、文件不存在、内容格式错误或端点越界
      * @throws IllegalStateException    读取过程中发生 I/O 错误
      */
-    public static EdgeWeightedDigraph readDigraphFile(String path) {
+    public static EdgeWeightedDigraph readWeightedDigraphFile(String path) {
         if (path == null) {
             throw new IllegalArgumentException("文件路径不能为 null");
         }
         InputStream in = null;
         try {
             in = new FileInputStream(path);
-            return readDigraph(in);
+            return readWeightedDigraph(in);
         }
         catch (FileNotFoundException e) {
             throw new IllegalArgumentException("文件不存在: " + path, e);
@@ -596,6 +768,187 @@ public final class GraphIO {
     }
 
     // ------------------------------------------------------------------
+    // 写:有向图(无权)
+    // ------------------------------------------------------------------
+
+    /**
+     * 把有向图转成 algs4 文本格式(可被 {@link #parseDigraph(String)} 原样读回):
+     * 第 1 行顶点数、第 2 行边数,其后每条边一行 {@code "from to"}。
+     *
+     * @param graph 待输出的有向图,不能为 null
+     * @return 文本
+     * @throws IllegalArgumentException {@code graph} 为 null
+     */
+    public static String format(Digraph graph) {
+        if (graph == null) {
+            throw new IllegalArgumentException("待输出的图不能为 null");
+        }
+        String newline = System.lineSeparator();
+        StringBuilder sb = new StringBuilder();
+        sb.append(graph.V()).append(newline);
+        sb.append(graph.E()).append(newline);
+        for (int[] edge : graph.edges()) {
+            sb.append(edge[0]).append(' ').append(edge[1]).append(newline);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 把有向图写入字符流;<b>流由调用方关闭</b>。
+     *
+     * @param graph  待输出的有向图,不能为 null
+     * @param writer 目标字符流,不能为 null
+     * @throws IllegalArgumentException 参数为 null
+     * @throws IllegalStateException    写入过程中发生 I/O 错误
+     */
+    public static void write(Digraph graph, Writer writer) {
+        if (writer == null) {
+            throw new IllegalArgumentException("输出字符流不能为 null");
+        }
+        try {
+            writer.write(format(graph));
+            writer.flush();
+        }
+        catch (IOException e) {
+            throw new IllegalStateException("写出图数据失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 把有向图写入字节流(UTF-8);<b>流由调用方关闭</b>。
+     *
+     * @param graph 待输出的有向图,不能为 null
+     * @param out   目标字节流,不能为 null
+     * @throws IllegalArgumentException 参数为 null
+     * @throws IllegalStateException    写入过程中发生 I/O 错误
+     */
+    public static void write(Digraph graph, OutputStream out) {
+        if (out == null) {
+            throw new IllegalArgumentException("输出流不能为 null");
+        }
+        write(graph, new OutputStreamWriter(out, UTF_8));
+    }
+
+    /**
+     * 把有向图写入文件(UTF-8)。本类负责关闭文件流。
+     *
+     * @param graph 待输出的有向图,不能为 null
+     * @param path  目标文件路径,不能为 null
+     * @throws IllegalArgumentException 参数为 null;目标路径无法创建
+     * @throws IllegalStateException    写入过程中发生 I/O 错误
+     */
+    public static void write(Digraph graph, String path) {
+        if (graph == null) {
+            throw new IllegalArgumentException("待输出的图不能为 null");
+        }
+        if (path == null) {
+            throw new IllegalArgumentException("文件路径不能为 null");
+        }
+        OutputStream out = null;
+        try {
+            out = new FileOutputStream(path);
+            write(graph, out);
+        }
+        catch (FileNotFoundException e) {
+            throw new IllegalArgumentException("无法写入文件: " + path, e);
+        }
+        finally {
+            closeQuietly(out);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 写:符号图
+    // ------------------------------------------------------------------
+
+    /**
+     * 把符号图写成边表:每行 {@code "名字 名字"}(每条边一次,平行边按重数)。
+     *
+     * <p><b>注意</b>:这是<b>有损</b>格式 —— 不属于任何边的"孤立顶点"写不出来
+     * (边表格式的固有局限,与 algs4 的 {@code routes.txt} 一致);
+     * 顶点编号顺序按首次出现决定,重新读入后一般会保持不变。</p>
+     *
+     * @param symbolGraph 待输出的符号图,不能为 null
+     * @return 文本
+     * @throws IllegalArgumentException {@code symbolGraph} 为 null
+     */
+    public static String format(SymbolGraph symbolGraph) {
+        if (symbolGraph == null) {
+            throw new IllegalArgumentException("待输出的符号图不能为 null");
+        }
+        String newline = System.lineSeparator();
+        StringBuilder sb = new StringBuilder();
+        for (String[] edge : symbolGraph.edges()) {
+            sb.append(edge[0]).append(' ').append(edge[1]).append(newline);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 把符号图写入字符流;<b>流由调用方关闭</b>。
+     *
+     * @param symbolGraph 待输出的符号图,不能为 null
+     * @param writer      目标字符流,不能为 null
+     * @throws IllegalArgumentException 参数为 null
+     * @throws IllegalStateException    写入过程中发生 I/O 错误
+     */
+    public static void write(SymbolGraph symbolGraph, Writer writer) {
+        if (writer == null) {
+            throw new IllegalArgumentException("输出字符流不能为 null");
+        }
+        try {
+            writer.write(format(symbolGraph));
+            writer.flush();
+        }
+        catch (IOException e) {
+            throw new IllegalStateException("写出符号图数据失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 把符号图写入字节流(UTF-8);<b>流由调用方关闭</b>。
+     *
+     * @param symbolGraph 待输出的符号图,不能为 null
+     * @param out         目标字节流,不能为 null
+     * @throws IllegalArgumentException 参数为 null
+     * @throws IllegalStateException    写入过程中发生 I/O 错误
+     */
+    public static void write(SymbolGraph symbolGraph, OutputStream out) {
+        if (out == null) {
+            throw new IllegalArgumentException("输出流不能为 null");
+        }
+        write(symbolGraph, new OutputStreamWriter(out, UTF_8));
+    }
+
+    /**
+     * 把符号图写入文件(UTF-8)。本类负责关闭文件流。
+     *
+     * @param symbolGraph 待输出的符号图,不能为 null
+     * @param path        目标文件路径,不能为 null
+     * @throws IllegalArgumentException 参数为 null;目标路径无法创建
+     * @throws IllegalStateException    写入过程中发生 I/O 错误
+     */
+    public static void write(SymbolGraph symbolGraph, String path) {
+        if (symbolGraph == null) {
+            throw new IllegalArgumentException("待输出的符号图不能为 null");
+        }
+        if (path == null) {
+            throw new IllegalArgumentException("文件路径不能为 null");
+        }
+        OutputStream out = null;
+        try {
+            out = new FileOutputStream(path);
+            write(symbolGraph, out);
+        }
+        catch (FileNotFoundException e) {
+            throw new IllegalArgumentException("无法写入文件: " + path, e);
+        }
+        finally {
+            closeQuietly(out);
+        }
+    }
+
+    // ------------------------------------------------------------------
     // 写:加权图
     // ------------------------------------------------------------------
 
@@ -693,7 +1046,7 @@ public final class GraphIO {
     // ------------------------------------------------------------------
 
     /**
-     * 把有向加权图转成 algs4 文本格式(可被 {@link #parseDigraph(String)} 原样读回):
+     * 把有向加权图转成 algs4 文本格式(可被 {@link #parseWeightedDigraph(String)} 原样读回):
      * 每条边输出为 {@code from to weight} 一行。
      *
      * @param graph 待输出的有向加权图,不能为 null
@@ -1057,13 +1410,48 @@ public final class GraphIO {
         return sb.toString();
     }
 
+    /**
+     * 把有向图导出为 Graphviz DOT 文本。有向边用 {@code ->} 连接,可直接用 {@code dot -Tsvg} 出图。
+     *
+     * @param graph 待导出的有向图,不能为 null
+     * @return DOT 文本
+     * @throws IllegalArgumentException {@code graph} 为 null
+     */
+    public static String toDot(Digraph graph) {
+        if (graph == null) {
+            throw new IllegalArgumentException("待导出的图不能为 null");
+        }
+        String newline = System.lineSeparator();
+        StringBuilder sb = new StringBuilder();
+        sb.append("digraph {").append(newline);
+        sb.append("node[shape=circle, style=filled, fixedsize=true, width=0.3, fontsize=\"10pt\"]").append(newline);
+        for (int[] edge : graph.edges()) {
+            sb.append(edge[0]).append(" -> ").append(edge[1]).append(newline);
+        }
+        sb.append("}").append(newline);
+        return sb.toString();
+    }
+
     // ------------------------------------------------------------------
     // 内部:切分与装配
     // ------------------------------------------------------------------
 
-    /** 按空白切分;空串(或全空白)切成 0 个 token 之外的边角情况由 {@link #build} 统一报错 */
+    /**
+     * 去掉注释后按空白切分:整行 {@code #} 注释与行尾 {@code #} 注释都忽略,
+     * 空行不产生 token。这样 V/E/端点这类"扁平 token 流"格式也能像 AOV/AOE/符号图一样
+     * 在文件里写注释。
+     *
+     * @return token 数组;全为空则返回长度 0 的数组(具体报错由 {@link #build} 等统一给出)
+     */
     private static String[] tokenize(String text) {
-        String trimmed = text.trim();
+        StringBuilder sb = new StringBuilder();
+        for (String line : text.split("\\r?\\n")) {
+            String body = stripComment(line);
+            if (!body.isEmpty()) {
+                sb.append(body).append(' ');
+            }
+        }
+        String trimmed = sb.toString().trim();
         if (trimmed.isEmpty()) {
             return new String[0];
         }
@@ -1148,13 +1536,91 @@ public final class GraphIO {
     }
 
     /** 装配有向加权图 */
-    private static EdgeWeightedDigraph buildDigraph(String[] tokens) {
+    private static EdgeWeightedDigraph buildWeightedDigraph(String[] tokens) {
         WeightedTriples t = readWeightedTriples(tokens);
         EdgeWeightedDigraph graph = new EdgeWeightedDigraph(t.vertexCount);
         for (int i = 0; i < t.edgeCount; i++) {
             graph.addEdge(new DirectedEdge(t.from[i], t.to[i], t.weight[i]));
         }
         return graph;
+    }
+
+    /**
+     * 装配无权有向图:与 {@link #build(String[])} 同一套格式(V、E、2E 个端点),
+     * 只是把边解释成有向的。
+     *
+     * @throws IllegalArgumentException 数目不对或端点越界(端点校验委托给 {@code addEdge})
+     */
+    private static Digraph buildDigraph(String[] tokens) {
+        int V = readVertexCount(tokens);
+        int E = readEdgeCount(tokens);
+        if (tokens.length - 2 != 2 * E) {
+            throw new IllegalArgumentException("边端点数目与边数不符:声明 " + E
+                    + " 条边,需要 " + (2 * E) + " 个端点,实际给出 " + (tokens.length - 2) + " 个");
+        }
+        Digraph graph = new Digraph(V);
+        for (int i = 0; i < E; i++) {
+            int v = parseInt(tokens[2 + 2 * i], "第 " + (i + 1) + " 条边的起点");
+            int w = parseInt(tokens[3 + 2 * i], "第 " + (i + 1) + " 条边的终点");
+            graph.addEdge(v, w);
+        }
+        return graph;
+    }
+
+    /** 读出并校验前两项:顶点数、边数 */
+    private static int readVertexCount(String[] tokens) {
+        if (tokens.length == 0) {
+            throw new IllegalArgumentException("输入为空,至少需要给出顶点数");
+        }
+        return parseInt(tokens[0], "顶点数");
+    }
+
+    /** 读出并校验边数 */
+    private static int readEdgeCount(String[] tokens) {
+        if (tokens.length < 2) {
+            throw new IllegalArgumentException("缺少边数:第二项应为边数 E");
+        }
+        int E = parseInt(tokens[1], "边数");
+        if (E < 0) {
+            throw new IllegalArgumentException("边数必须非负,当前为 " + E);
+        }
+        return E;
+    }
+
+    /**
+     * 装配符号图:每行一条边(两个名字),名字按首次出现顺序登记为编号。
+     *
+     * @throws IllegalArgumentException 某行不是两个名字
+     */
+    private static SymbolGraph buildSymbolGraph(String text) {
+        SymbolGraph symbolGraph = new SymbolGraph();
+        String[] lines = text.split("\\r?\\n");
+        List<int[]> edgeIds = new ArrayList<int[]>();
+        for (int index = 0; index < lines.length; index++) {
+            String line = stripComment(lines[index]);
+            if (line.isEmpty()) {
+                continue;
+            }
+            String[] tokens = tokenize(line);
+            if (tokens.length != 2) {
+                throw new IllegalArgumentException("第 " + (index + 1)
+                        + " 行:每条边需要两个顶点名(空白分隔),实际给出 " + tokens.length + " 项");
+            }
+            int a = symbolGraph.indexOf(tokens[0]);
+            if (a < 0) {
+                a = symbolGraph.addVertex(tokens[0]);
+            }
+            int b = symbolGraph.indexOf(tokens[1]);
+            if (b < 0) {
+                b = symbolGraph.addVertex(tokens[1]);
+            }
+            edgeIds.add(new int[]{a, b});
+        }
+        // 名字都登记完再连边(SymbolGraph 要求两端已存在)
+        for (int[] edge : edgeIds) {
+            symbolGraph.addEdge(symbolGraph.nameOf(edge[0]), symbolGraph.nameOf(edge[1]));
+        }
+        return symbolGraph;
     }
 
     /** 加权图文本解析出的中间结果:V、E 与 E 组三元组 */

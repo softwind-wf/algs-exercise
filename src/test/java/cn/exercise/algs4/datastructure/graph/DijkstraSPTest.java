@@ -40,7 +40,7 @@ class DijkstraSPTest {
     private static final double EPS = 1e-9;
 
     private static EdgeWeightedDigraph tinyEWD() {
-        return GraphIO.readDigraphFile("tinyEWD.txt");
+        return GraphIO.readWeightedDigraphFile("tinyEWD.txt");
     }
 
     @Nested
