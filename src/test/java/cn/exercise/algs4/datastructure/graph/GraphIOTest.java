@@ -1166,6 +1166,128 @@ class GraphIOTest {
         }
     }
 
+    @Nested
+    @DisplayName("流网络读写")
+    class FlowNetworkIoTest {
+
+        @Test
+        @DisplayName("readFlowNetworkFile(tinyFN.txt):6 个顶点、8 条弧,容量逐条核对")
+        void readTinyFN() {
+            File file = new File("tinyFN.txt");
+            assertTrue(file.isFile(), "需要工作区根目录下存在 tinyFN.txt");
+            FlowNetwork network = GraphIO.readFlowNetworkFile("tinyFN.txt");
+            assertEquals(6, network.V());
+            assertEquals(8, network.E());
+            assertEquals(5.0, network.outCapacity(0), 1e-9, "0->1 (2.0) 与 0->2 (3.0)");
+            assertEquals(5.0, network.inCapacity(5), 1e-9, "3->5 (2.0) 与 4->5 (3.0)");
+            for (FlowEdge edge : network.edges()) {
+                assertEquals(0.0, edge.flow(), 1e-9, "刚读进来时流量为 0");
+            }
+        }
+
+        @Test
+        @DisplayName("三种入口一致(文本 / 字符流 / 字节流)")
+        void threeEntryPointsAgree() {
+            String text = "3\n2\n0 1 2.5\n1 2 3.5\n";
+            FlowNetwork a = GraphIO.parseFlowNetwork(text);
+            FlowNetwork b = GraphIO.readFlowNetwork(new StringReader(text));
+            FlowNetwork c = GraphIO.readFlowNetwork(
+                    new ByteArrayInputStream(text.getBytes(Charset.forName("UTF-8"))));
+            assertEquals(a.toString(), b.toString());
+            assertEquals(a.toString(), c.toString());
+            assertEquals(2, a.E());
+        }
+
+        @Test
+        @DisplayName("format 形态与往返:只写容量,流量不参与持久化")
+        void roundTrip() {
+            FlowNetwork network = GraphIO.parseFlowNetwork("3\n2\n0 1 2.5\n1 2 3.5\n");
+            new FordFulkerson(network, 0, 2);
+            String[] lines = GraphIO.format(network).split("\\r?\\n");
+            assertEquals("3", lines[0]);
+            assertEquals("2", lines[1]);
+            assertEquals("0 1 2.5", lines[2]);
+
+            FlowNetwork copy = GraphIO.parseFlowNetwork(GraphIO.format(network));
+            assertEquals(network.V(), copy.V());
+            assertEquals(network.E(), copy.E());
+            for (FlowEdge edge : copy.edges()) {
+                assertEquals(0.0, edge.flow(), 1e-9, "重新读入后流量归零");
+            }
+        }
+
+        @Test
+        @DisplayName("格式/语义错误:负容量、自环、项数不对、端点越界都能定位")
+        void parseErrors() {
+            IllegalArgumentException negative = assertThrows(IllegalArgumentException.class,
+                    () -> GraphIO.parseFlowNetwork("3\n1\n0 1 -2.0\n"));
+            assertTrue(negative.getMessage().contains("第 1 条边"), negative.getMessage());
+            assertTrue(negative.getMessage().contains("容量不能为负"), negative.getMessage());
+
+            IllegalArgumentException selfLoop = assertThrows(IllegalArgumentException.class,
+                    () -> GraphIO.parseFlowNetwork("3\n1\n1 1 2.0\n"));
+            assertTrue(selfLoop.getMessage().contains("自环"), selfLoop.getMessage());
+
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseFlowNetwork("3\n1\n0 1\n"));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseFlowNetwork("3\n1\n0 5 1.0\n"));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseFlowNetwork(null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readFlowNetworkFile(null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readFlowNetworkFile("no-such-fn.txt"));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readFlowNetwork((Reader) null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readFlowNetwork((InputStream) null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.format((FlowNetwork) null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.toDot((FlowNetwork) null));
+        }
+
+        @Test
+        @DisplayName("注释与空行被忽略(V/E 式格式现在也支持 #)")
+        void comments() {
+            FlowNetwork network = GraphIO.parseFlowNetwork(
+                    "# 源点 0,汇点 2\n3\n2\n0 1 2.5   # 干管\n\n1 2 3.5\n");
+            assertEquals(3, network.V());
+            assertEquals(2, network.E());
+        }
+
+        @Test
+        @DisplayName("toDot 标出流量/容量")
+        void toDot() {
+            FlowNetwork network = GraphIO.parseFlowNetwork("3\n2\n0 1 2.0\n1 2 3.0\n");
+            new FordFulkerson(network, 0, 2);
+            String dot = GraphIO.toDot(network);
+            assertTrue(dot.startsWith("digraph {"), dot);
+            assertTrue(dot.contains("0 -> 1 [label=\"2.00/2.00\"]"), dot);
+        }
+
+        @Test
+        @DisplayName("写完再读回来一致")
+        void writeAndReadFile() {
+            FlowNetwork network = GraphIO.parseFlowNetwork("3\n2\n0 1 2.5\n1 2 3.5\n");
+            File dir = new File("target/graph-io-test");
+            assertTrue(dir.isDirectory() || dir.mkdirs(), "无法创建测试目录:" + dir.getAbsolutePath());
+            File file = new File(dir, "flow-round-trip-" + System.nanoTime() + ".txt");
+            try {
+                GraphIO.write(network, file.getPath());
+                FlowNetwork back = GraphIO.readFlowNetworkFile(file.getPath());
+                assertEquals(network.V(), back.V());
+                assertEquals(network.E(), back.E());
+                assertEquals(2.5, back.outCapacity(0), 1e-9);
+            }
+            finally {
+                assertTrue(!file.exists() || file.delete(), "测试文件应能删除:" + file.getAbsolutePath());
+            }
+        }
+
+        @Test
+        @DisplayName("调用方传入的 Reader 不被关闭")
+        void callerOwnedReaderNotClosed() {
+            TrackingReader reader = new TrackingReader("3\n1\n0 1 1.0\n");
+            FlowNetwork network = GraphIO.readFlowNetwork(reader);
+            assertEquals(3, network.V());
+            assertFalse(reader.closed, "GraphIO 不应关闭调用方传入的 Reader");
+            reader.close();
+        }
+    }
+
     // ------------------------------------------------------------------
     // 测试辅助
     // ------------------------------------------------------------------

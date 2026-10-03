@@ -346,6 +346,85 @@ public final class GraphIO {
     }
 
     // ------------------------------------------------------------------
+    // 读:流网络
+    // ------------------------------------------------------------------
+
+    /**
+     * 解析流网络文本:与加权有向图<b>同形</b> —— 第一项 V、第二项 E,随后 E 个
+     * {@code from to capacity} 三元组(容量即权值,必须非负有限)。
+     *
+     * @param text 流网络文本,不能为 null
+     * @return 解析出的流网络(流量全部为 0)
+     * @throws IllegalArgumentException 文本为 null/为空/格式错误、容量非法、端点越界或自环
+     */
+    public static FlowNetwork parseFlowNetwork(String text) {
+        if (text == null) {
+            throw new IllegalArgumentException("输入文本不能为 null");
+        }
+        return buildFlowNetwork(tokenize(text));
+    }
+
+    /**
+     * 从字符流读取流网络;<b>流由调用方关闭</b>。
+     *
+     * @param reader 字符流,不能为 null
+     * @return 解析出的流网络
+     * @throws IllegalArgumentException 参数为 null 或内容格式错误
+     * @throws IllegalStateException    读取过程中发生 I/O 错误
+     */
+    public static FlowNetwork readFlowNetwork(Reader reader) {
+        if (reader == null) {
+            throw new IllegalArgumentException("字符流不能为 null");
+        }
+        try {
+            return parseFlowNetwork(readAll(reader));
+        }
+        catch (IOException e) {
+            throw new IllegalStateException("读取流网络数据失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 从字节流读取(UTF-8)流网络;<b>流由调用方关闭</b>。
+     *
+     * @param in 字节流,不能为 null
+     * @return 解析出的流网络
+     * @throws IllegalArgumentException 参数为 null 或内容格式错误
+     * @throws IllegalStateException    读取过程中发生 I/O 错误
+     */
+    public static FlowNetwork readFlowNetwork(InputStream in) {
+        if (in == null) {
+            throw new IllegalArgumentException("输入流不能为 null");
+        }
+        return readFlowNetwork(new InputStreamReader(in, UTF_8));
+    }
+
+    /**
+     * 读取流网络文件(UTF-8)。本类负责关闭文件流。
+     *
+     * @param path 文件路径,不能为 null
+     * @return 解析出的流网络
+     * @throws IllegalArgumentException 路径为 null、文件不存在或内容格式错误
+     * @throws IllegalStateException    读取过程中发生 I/O 错误
+     */
+    public static FlowNetwork readFlowNetworkFile(String path) {
+        if (path == null) {
+            throw new IllegalArgumentException("文件路径不能为 null");
+        }
+        InputStream in = null;
+        try {
+            in = new FileInputStream(path);
+            return readFlowNetwork(in);
+        }
+        catch (FileNotFoundException e) {
+            throw new IllegalArgumentException("文件不存在: " + path, e);
+        }
+        finally {
+            closeQuietly(in);
+        }
+    }
+
+    // ------------------------------------------------------------------
     // 读:加权图
     // ------------------------------------------------------------------
 
@@ -949,6 +1028,100 @@ public final class GraphIO {
     }
 
     // ------------------------------------------------------------------
+    // 写:流网络
+    // ------------------------------------------------------------------
+
+    /**
+     * 把流网络写成 {@link #parseFlowNetwork(String)} 能读回的文本(V、E、每条边一行
+     * {@code "from to capacity"})。
+     *
+     * <p><b>只写容量,不写流量</b>:容量是这张网络的"结构",流量是算法跑出来的结果状态;
+     * 需要保留流量请直接用 {@link FlowNetwork#copy()}。</p>
+     *
+     * @param network 待输出的流网络,不能为 null
+     * @return 流网络文本
+     * @throws IllegalArgumentException {@code network} 为 null
+     */
+    public static String format(FlowNetwork network) {
+        if (network == null) {
+            throw new IllegalArgumentException("待输出的流网络不能为 null");
+        }
+        String newline = System.lineSeparator();
+        StringBuilder sb = new StringBuilder();
+        sb.append(network.V()).append(newline);
+        sb.append(network.E()).append(newline);
+        for (FlowEdge edge : network.edges()) {
+            sb.append(edge.from()).append(' ').append(edge.to()).append(' ')
+                    .append(edge.capacity()).append(newline);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 把流网络写入字符流;<b>流由调用方关闭</b>。
+     *
+     * @param network 待输出的流网络,不能为 null
+     * @param writer  目标字符流,不能为 null
+     * @throws IllegalArgumentException 参数为 null
+     * @throws IllegalStateException    写入过程中发生 I/O 错误
+     */
+    public static void write(FlowNetwork network, Writer writer) {
+        if (writer == null) {
+            throw new IllegalArgumentException("输出字符流不能为 null");
+        }
+        try {
+            writer.write(format(network));
+            writer.flush();
+        }
+        catch (IOException e) {
+            throw new IllegalStateException("写出流网络数据失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 把流网络写入字节流(UTF-8);<b>流由调用方关闭</b>。
+     *
+     * @param network 待输出的流网络,不能为 null
+     * @param out     目标字节流,不能为 null
+     * @throws IllegalArgumentException 参数为 null
+     * @throws IllegalStateException    写入过程中发生 I/O 错误
+     */
+    public static void write(FlowNetwork network, OutputStream out) {
+        if (out == null) {
+            throw new IllegalArgumentException("输出流不能为 null");
+        }
+        write(network, new OutputStreamWriter(out, UTF_8));
+    }
+
+    /**
+     * 把流网络写入文件(UTF-8)。本类负责关闭文件流。
+     *
+     * @param network 待输出的流网络,不能为 null
+     * @param path    目标文件路径,不能为 null
+     * @throws IllegalArgumentException 参数为 null;目标路径无法创建
+     * @throws IllegalStateException    写入过程中发生 I/O 错误
+     */
+    public static void write(FlowNetwork network, String path) {
+        if (network == null) {
+            throw new IllegalArgumentException("待输出的流网络不能为 null");
+        }
+        if (path == null) {
+            throw new IllegalArgumentException("文件路径不能为 null");
+        }
+        OutputStream out = null;
+        try {
+            out = new FileOutputStream(path);
+            write(network, out);
+        }
+        catch (FileNotFoundException e) {
+            throw new IllegalArgumentException("无法写入文件: " + path, e);
+        }
+        finally {
+            closeQuietly(out);
+        }
+    }
+
+    // ------------------------------------------------------------------
     // 写:加权图
     // ------------------------------------------------------------------
 
@@ -1432,6 +1605,31 @@ public final class GraphIO {
         return sb.toString();
     }
 
+    /**
+     * 把流网络导出为 Graphviz DOT 文本:每条弧标出"流量/容量"
+     * (跑过最大流之后出图,一眼就能看出哪些管道被压满了)。
+     *
+     * @param network 待导出的流网络,不能为 null
+     * @return DOT 文本
+     * @throws IllegalArgumentException {@code network} 为 null
+     */
+    public static String toDot(FlowNetwork network) {
+        if (network == null) {
+            throw new IllegalArgumentException("待导出的流网络不能为 null");
+        }
+        String newline = System.lineSeparator();
+        StringBuilder sb = new StringBuilder();
+        sb.append("digraph {").append(newline);
+        sb.append("node[shape=circle, style=filled, fixedsize=true, width=0.3, fontsize=\"10pt\"]").append(newline);
+        for (FlowEdge edge : network.edges()) {
+            sb.append(edge.from()).append(" -> ").append(edge.to())
+                    .append(" [label=\"").append(String.format("%.2f/%.2f", edge.flow(), edge.capacity()))
+                    .append("\"]").append(newline);
+        }
+        sb.append("}").append(newline);
+        return sb.toString();
+    }
+
     // ------------------------------------------------------------------
     // 内部:切分与装配
     // ------------------------------------------------------------------
@@ -1585,6 +1783,25 @@ public final class GraphIO {
             throw new IllegalArgumentException("边数必须非负,当前为 " + E);
         }
         return E;
+    }
+
+    /**
+     * 装配流网络:与加权有向图同一套 token 布局(V、E、E 个三元组),权值解释为容量。
+     *
+     * @throws IllegalArgumentException 数目不对、容量为负或端点越界/自环
+     */
+    private static FlowNetwork buildFlowNetwork(String[] tokens) {
+        WeightedTriples t = readWeightedTriples(tokens);
+        FlowNetwork network = new FlowNetwork(t.vertexCount);
+        for (int i = 0; i < t.edgeCount; i++) {
+            try {
+                network.addEdge(t.from[i], t.to[i], t.weight[i]);
+            }
+            catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("第 " + (i + 1) + " 条边:" + e.getMessage(), e);
+            }
+        }
+        return network;
     }
 
     /**
