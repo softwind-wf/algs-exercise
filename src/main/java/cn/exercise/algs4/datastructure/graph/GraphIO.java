@@ -45,8 +45,12 @@ import java.nio.charset.Charset;
  *   <li>加权图 —— 读:{@link #parseWeighted(String)}、{@link #readWeighted(InputStream)}、
  *       {@link #readWeightedFile(String)};写:{@link #format(EdgeWeightedGraph)}、
  *       {@link #write(EdgeWeightedGraph, OutputStream)}、{@link #write(EdgeWeightedGraph, String)};</li>
- *   <li>导出:{@link #toDot(UndirectedGraph)} 与 {@link #toDot(EdgeWeightedGraph)}
- *       (Graphviz DOT,可用 {@code dot -Tsvg} 出图)。</li>
+ *   <li>有向加权图 —— 读:{@link #parseDigraph(String)}、{@link #readDigraph(InputStream)}、
+ *       {@link #readDigraphFile(String)};写:{@link #format(EdgeWeightedDigraph)}、
+ *       {@link #write(EdgeWeightedDigraph, OutputStream)}、{@link #write(EdgeWeightedDigraph, String)}
+ *       (文本格式与无向加权图相同);</li>
+ *   <li>导出:{@link #toDot(UndirectedGraph)}、{@link #toDot(EdgeWeightedGraph)} 与
+ *       {@link #toDot(EdgeWeightedDigraph)}(Graphviz DOT,可用 {@code dot -Tsvg} 出图)。</li>
  * </ul>
  *
  * <p><b>加权图的文本格式</b>(algs4 的 {@code EdgeWeightedGraph(In)})与无权图只差在
@@ -246,6 +250,85 @@ public final class GraphIO {
     }
 
     // ------------------------------------------------------------------
+    // 读:有向加权图
+    // ------------------------------------------------------------------
+
+    /**
+     * 按 algs4 有向加权图文本格式解析字符串建图。<b>格式与无向加权图完全相同</b>
+     * (V、E、然后 E 个 {@code from to weight} 三元组),区别只在解释成有向边。
+     *
+     * @param text 图数据文本,不能为 null
+     * @return 解析出的有向加权图
+     * @throws IllegalArgumentException 文本为 null/为空/格式错误、权值非有限实数或端点越界
+     */
+    public static EdgeWeightedDigraph parseDigraph(String text) {
+        if (text == null) {
+            throw new IllegalArgumentException("输入文本不能为 null");
+        }
+        return buildDigraph(tokenize(text));
+    }
+
+    /**
+     * 从字符流读取并按 algs4 有向加权图格式建图;<b>流由调用方关闭</b>。
+     *
+     * @param reader 字符流,不能为 null
+     * @return 解析出的有向加权图
+     * @throws IllegalArgumentException 参数为 null 或内容格式错误
+     * @throws IllegalStateException    读取过程中发生 I/O 错误
+     */
+    public static EdgeWeightedDigraph readDigraph(Reader reader) {
+        if (reader == null) {
+            throw new IllegalArgumentException("字符流不能为 null");
+        }
+        try {
+            return parseDigraph(readAll(reader));
+        }
+        catch (IOException e) {
+            throw new IllegalStateException("读取图数据失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 从字节流读取(UTF-8)并按 algs4 有向加权图格式建图;<b>流由调用方关闭</b>。
+     *
+     * @param in 字节流,不能为 null
+     * @return 解析出的有向加权图
+     * @throws IllegalArgumentException 参数为 null 或内容格式错误
+     * @throws IllegalStateException    读取过程中发生 I/O 错误
+     */
+    public static EdgeWeightedDigraph readDigraph(InputStream in) {
+        if (in == null) {
+            throw new IllegalArgumentException("输入流不能为 null");
+        }
+        return readDigraph(new InputStreamReader(in, UTF_8));
+    }
+
+    /**
+     * 按 algs4 有向加权图文本格式读取文件(UTF-8)。本类负责关闭文件流。
+     *
+     * @param path 文件路径,不能为 null
+     * @return 解析出的有向加权图
+     * @throws IllegalArgumentException 路径为 null、文件不存在、内容格式错误或端点越界
+     * @throws IllegalStateException    读取过程中发生 I/O 错误
+     */
+    public static EdgeWeightedDigraph readDigraphFile(String path) {
+        if (path == null) {
+            throw new IllegalArgumentException("文件路径不能为 null");
+        }
+        InputStream in = null;
+        try {
+            in = new FileInputStream(path);
+            return readDigraph(in);
+        }
+        catch (FileNotFoundException e) {
+            throw new IllegalArgumentException("文件不存在: " + path, e);
+        }
+        finally {
+            closeQuietly(in);
+        }
+    }
+
+    // ------------------------------------------------------------------
     // 写:文本 / 流 / 文件
     // ------------------------------------------------------------------
 
@@ -431,6 +514,96 @@ public final class GraphIO {
     }
 
     // ------------------------------------------------------------------
+    // 写:有向加权图
+    // ------------------------------------------------------------------
+
+    /**
+     * 把有向加权图转成 algs4 文本格式(可被 {@link #parseDigraph(String)} 原样读回):
+     * 每条边输出为 {@code from to weight} 一行。
+     *
+     * @param graph 待输出的有向加权图,不能为 null
+     * @return algs4 文本格式的字符串
+     * @throws IllegalArgumentException {@code graph} 为 null
+     */
+    public static String format(EdgeWeightedDigraph graph) {
+        if (graph == null) {
+            throw new IllegalArgumentException("待输出的图不能为 null");
+        }
+        String newline = System.lineSeparator();
+        StringBuilder sb = new StringBuilder();
+        sb.append(graph.V()).append(newline);
+        sb.append(graph.E()).append(newline);
+        for (DirectedEdge e : graph.edges()) {
+            sb.append(e.from()).append(' ').append(e.to()).append(' ').append(e.weight()).append(newline);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 把有向加权图以 algs4 格式(UTF-8)写入字符流;<b>流由调用方关闭</b>。
+     *
+     * @param graph  待输出的有向加权图,不能为 null
+     * @param writer 目标字符流,不能为 null
+     * @throws IllegalArgumentException 参数为 null
+     * @throws IllegalStateException    写入过程中发生 I/O 错误
+     */
+    public static void write(EdgeWeightedDigraph graph, Writer writer) {
+        if (writer == null) {
+            throw new IllegalArgumentException("输出字符流不能为 null");
+        }
+        try {
+            writer.write(format(graph));
+            writer.flush();
+        }
+        catch (IOException e) {
+            throw new IllegalStateException("写出图数据失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 把有向加权图以 algs4 格式(UTF-8)写入字节流;<b>流由调用方关闭</b>。
+     *
+     * @param graph 待输出的有向加权图,不能为 null
+     * @param out   目标字节流,不能为 null
+     * @throws IllegalArgumentException 参数为 null
+     * @throws IllegalStateException    写入过程中发生 I/O 错误
+     */
+    public static void write(EdgeWeightedDigraph graph, OutputStream out) {
+        if (out == null) {
+            throw new IllegalArgumentException("输出流不能为 null");
+        }
+        write(graph, new OutputStreamWriter(out, UTF_8));
+    }
+
+    /**
+     * 把有向加权图以 algs4 格式(UTF-8)写入文件。本类负责关闭文件流。
+     *
+     * @param graph 待输出的有向加权图,不能为 null
+     * @param path  目标文件路径,不能为 null
+     * @throws IllegalArgumentException 参数为 null;目标路径无法创建(如目录不存在)
+     * @throws IllegalStateException    写入过程中发生 I/O 错误
+     */
+    public static void write(EdgeWeightedDigraph graph, String path) {
+        if (graph == null) {
+            throw new IllegalArgumentException("待输出的图不能为 null");
+        }
+        if (path == null) {
+            throw new IllegalArgumentException("文件路径不能为 null");
+        }
+        OutputStream out = null;
+        try {
+            out = new FileOutputStream(path);
+            write(graph, out);
+        }
+        catch (FileNotFoundException e) {
+            throw new IllegalArgumentException("无法写入文件: " + path, e);
+        }
+        finally {
+            closeQuietly(out);
+        }
+    }
+
+    // ------------------------------------------------------------------
     // 导出:Graphviz DOT
     // ------------------------------------------------------------------
 
@@ -484,6 +657,31 @@ public final class GraphIO {
         return sb.toString();
     }
 
+    /**
+     * 把有向加权图导出为 Graphviz DOT 文本。有向边用 {@code ->} 连接并带权值标签
+     * ({@code 0 -> 4 [label="0.38"]}),可直接用 {@code dot -Tsvg} 画图。
+     *
+     * @param graph 待导出的有向加权图,不能为 null
+     * @return DOT 文本
+     * @throws IllegalArgumentException {@code graph} 为 null
+     */
+    public static String toDot(EdgeWeightedDigraph graph) {
+        if (graph == null) {
+            throw new IllegalArgumentException("待导出的图不能为 null");
+        }
+        String newline = System.lineSeparator();
+        StringBuilder sb = new StringBuilder();
+        sb.append("digraph {").append(newline);
+        sb.append("node[shape=circle, style=filled, fixedsize=true, width=0.3, fontsize=\"10pt\"]").append(newline);
+        sb.append("edge[fontsize=\"9pt\"]").append(newline);
+        for (DirectedEdge e : graph.edges()) {
+            sb.append(e.from()).append(" -> ").append(e.to())
+                    .append(" [label=\"").append(e.weight()).append("\"]").append(newline);
+        }
+        sb.append("}").append(newline);
+        return sb.toString();
+    }
+
     // ------------------------------------------------------------------
     // 内部:切分与装配
     // ------------------------------------------------------------------
@@ -528,11 +726,15 @@ public final class GraphIO {
     }
 
     /**
-     * 校验并消费加权图的 token 序列:V、E、然后 3E 个值(每三个是 v、w、weight)。
+     * 校验并消费加权图的 token 序列:V、E、然后 3E 个值(每三个是 from、to、weight)。
+     *
+     * <p>无向加权图与有向加权图的文本格式<b>完全一样</b>(都是三元组),区别只在装配时
+     * 用 {@link Edge} 还是 {@link DirectedEdge}。所以这里先解析成中间结构
+     * {@link WeightedTriples},再交给两个装配方法,避免把同一套校验写两遍。</p>
      *
      * @throws IllegalArgumentException 数目不对、权值非法或端点越界
      */
-    private static EdgeWeightedGraph buildWeighted(String[] tokens) {
+    private static WeightedTriples readWeightedTriples(String[] tokens) {
         if (tokens.length == 0) {
             throw new IllegalArgumentException("输入为空,至少需要给出顶点数");
         }
@@ -549,14 +751,52 @@ public final class GraphIO {
                     + " 条边,每条边需要 v、w、weight 三项,共需 " + (3 * E)
                     + " 项,实际给出 " + (tokens.length - 2) + " 项");
         }
-        EdgeWeightedGraph graph = new EdgeWeightedGraph(V);
+        int[] from = new int[E];
+        int[] to = new int[E];
+        double[] weight = new double[E];
         for (int i = 0; i < E; i++) {
-            int v = parseInt(tokens[2 + 3 * i], "第 " + (i + 1) + " 条边的起点");
-            int w = parseInt(tokens[3 + 3 * i], "第 " + (i + 1) + " 条边的终点");
-            double weight = parseDouble(tokens[4 + 3 * i], "第 " + (i + 1) + " 条边的权值");
-            graph.addEdge(new Edge(v, w, weight));
+            from[i] = parseInt(tokens[2 + 3 * i], "第 " + (i + 1) + " 条边的起点");
+            to[i] = parseInt(tokens[3 + 3 * i], "第 " + (i + 1) + " 条边的终点");
+            weight[i] = parseDouble(tokens[4 + 3 * i], "第 " + (i + 1) + " 条边的权值");
+        }
+        return new WeightedTriples(V, E, from, to, weight);
+    }
+
+    /** 装配无向加权图 */
+    private static EdgeWeightedGraph buildWeighted(String[] tokens) {
+        WeightedTriples t = readWeightedTriples(tokens);
+        EdgeWeightedGraph graph = new EdgeWeightedGraph(t.vertexCount);
+        for (int i = 0; i < t.edgeCount; i++) {
+            graph.addEdge(new Edge(t.from[i], t.to[i], t.weight[i]));
         }
         return graph;
+    }
+
+    /** 装配有向加权图 */
+    private static EdgeWeightedDigraph buildDigraph(String[] tokens) {
+        WeightedTriples t = readWeightedTriples(tokens);
+        EdgeWeightedDigraph graph = new EdgeWeightedDigraph(t.vertexCount);
+        for (int i = 0; i < t.edgeCount; i++) {
+            graph.addEdge(new DirectedEdge(t.from[i], t.to[i], t.weight[i]));
+        }
+        return graph;
+    }
+
+    /** 加权图文本解析出的中间结果:V、E 与 E 组三元组 */
+    private static final class WeightedTriples {
+        final int vertexCount;
+        final int edgeCount;
+        final int[] from;
+        final int[] to;
+        final double[] weight;
+
+        WeightedTriples(int vertexCount, int edgeCount, int[] from, int[] to, double[] weight) {
+            this.vertexCount = vertexCount;
+            this.edgeCount = edgeCount;
+            this.from = from;
+            this.to = to;
+            this.weight = weight;
+        }
     }
 
     /** 解析一个整数 token,失败时给出可定位的错误信息 */

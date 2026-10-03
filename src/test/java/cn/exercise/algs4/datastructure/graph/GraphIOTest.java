@@ -504,6 +504,158 @@ class GraphIOTest {
         }
     }
 
+    @Nested
+    @DisplayName("有向加权图读写")
+    class DigraphIoTest {
+
+        private static final String TINY_EWD_PATH = "tinyEWD.txt";
+
+        @Test
+        @DisplayName("readDigraphFile(tinyEWD.txt):V=8、E=15,出度/入度与样例一致")
+        void readTinyEWDFile() {
+            File file = new File(TINY_EWD_PATH);
+            assertTrue(file.isFile(), "需要工作区根目录下存在 " + TINY_EWD_PATH);
+            EdgeWeightedDigraph g = GraphIO.readDigraphFile(TINY_EWD_PATH);
+            assertEquals(8, g.V());
+            assertEquals(15, g.E());
+            assertEquals(2, g.outDegree(0));
+            assertEquals(1, g.inDegree(0));
+            assertEquals(3, g.outDegree(5));
+            assertEquals(2, g.inDegree(5));
+            assertEquals(3, g.outDegree(6));
+            assertEquals(1, g.inDegree(6));
+            assertEquals(15, g.outDegreeSum());
+        }
+
+        @Test
+        @DisplayName("三种入口一致(文本 / 字符流 / 字节流)")
+        void threeEntryPointsAgree() {
+            String text = "3\n3\n0 1 0.5\n1 2 1.5\n2 0 2.5\n";
+            EdgeWeightedDigraph a = GraphIO.parseDigraph(text);
+            EdgeWeightedDigraph b = GraphIO.readDigraph(new StringReader(text));
+            EdgeWeightedDigraph c = GraphIO.readDigraph(new ByteArrayInputStream(text.getBytes(Charset.forName("UTF-8"))));
+            assertSameDirectedStructure(a, b);
+            assertSameDirectedStructure(a, c);
+            assertEquals(a.toString(), c.toString(), "同一份输入,邻接表顺序也应一致");
+        }
+
+        @Test
+        @DisplayName("格式与无向加权图相同:同一个文本,解析成有向图与无向图的边数一致、解释不同")
+        void sameTextFormatAsUndirected() {
+            String text = "3\n2\n0 1 0.5\n1 2 1.5\n";
+            EdgeWeightedDigraph digraph = GraphIO.parseDigraph(text);
+            EdgeWeightedGraph undirected = GraphIO.parseWeighted(text);
+            assertEquals(undirected.V(), digraph.V());
+            assertEquals(undirected.E(), digraph.E());
+            assertTrue(digraph.hasEdge(0, 1));
+            assertFalse(digraph.hasEdge(1, 0), "有向图里反向边不存在");
+            assertTrue(undirected.hasEdge(1, 0), "无向图里反向可达");
+        }
+
+        @Test
+        @DisplayName("往返:parseDigraph(format(g)) 的 V/E/边三元组一致(含自环与平行边)")
+        void roundTrip() {
+            EdgeWeightedDigraph g = new EdgeWeightedDigraph(5);
+            g.addEdge(0, 1, 0.35);
+            g.addEdge(0, 1, 0.37);      // 平行边
+            g.addEdge(2, 2, 1.5);       // 自环
+            g.addEdge(4, 0, 12.25);
+            g.addEdge(1, 0, 0.0);       // 反向 + 零权
+
+            EdgeWeightedDigraph copy = GraphIO.parseDigraph(GraphIO.format(g));
+            assertSameDirectedStructure(g, copy);
+            assertEquals(g.E(), copy.E());
+            assertEquals(1, copy.selfLoopCount());
+        }
+
+        @Test
+        @DisplayName("write 到文件再 readDigraphFile 回来,结构一致")
+        void writeAndReadFile() {
+            EdgeWeightedDigraph g = GraphIO.parseDigraph("4\n3\n0 1 0.25\n1 2 0.5\n3 0 0.75\n");
+            File dir = new File("target/graph-io-test");
+            assertTrue(dir.isDirectory() || dir.mkdirs(), "无法创建测试目录:" + dir.getAbsolutePath());
+            File file = new File(dir, "digraph-round-trip-" + System.nanoTime() + ".txt");
+            try {
+                GraphIO.write(g, file.getPath());
+                assertTrue(file.isFile());
+                EdgeWeightedDigraph back = GraphIO.readDigraphFile(file.getPath());
+                assertSameDirectedStructure(g, back);
+                assertEquals(0.25, back.weightOf(0, 1), 1e-12);
+            }
+            finally {
+                assertTrue(!file.exists() || file.delete(), "测试文件应能删除:" + file.getAbsolutePath());
+            }
+        }
+
+        @Test
+        @DisplayName("format 的形态:第 1 行 V、第 2 行 E,随后每行 from to weight")
+        void formatShape() {
+            EdgeWeightedDigraph g = new EdgeWeightedDigraph(3);
+            g.addEdge(0, 2, 1.5);
+            String[] lines = GraphIO.format(g).split("\\r?\\n");
+            assertEquals("3", lines[0]);
+            assertEquals("1", lines[1]);
+            assertEquals("0 2 1.5", lines[2]);
+            assertEquals(3, lines.length);
+        }
+
+        @Test
+        @DisplayName("格式错误与 null 参数:与无向加权图同一套校验")
+        void errors() {
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseDigraph(""));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseDigraph("5"));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseDigraph("5 1 0 1 0.5 2 3"), "三元组多于声明");
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseDigraph("5 1 0 1 abc"), "权值非实数");
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseDigraph("5 1 0 1 NaN"), "NaN 权值");
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseDigraph("5 1 0 5 0.5"), "端点越界");
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseDigraph(null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readDigraphFile(null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readDigraphFile("no-such-digraph.txt"));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readDigraph((Reader) null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readDigraph((InputStream) null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.format((EdgeWeightedDigraph) null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.toDot((EdgeWeightedDigraph) null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.write((EdgeWeightedDigraph) null, "target/x.txt"));
+        }
+
+        @Test
+        @DisplayName("有向 DOT:digraph + 箭头 + 权值标签")
+        void toDotDigraph() {
+            EdgeWeightedDigraph g = new EdgeWeightedDigraph(3);
+            g.addEdge(0, 1, 0.35);
+            g.addEdge(1, 0, 1.5);
+            String dot = GraphIO.toDot(g);
+            assertTrue(dot.startsWith("digraph {"), dot);
+            assertTrue(dot.contains("0 -> 1 [label=\"0.35\"]"), dot);
+            assertTrue(dot.contains("1 -> 0 [label=\"1.5\"]"), dot);
+            assertEquals(1, occurrences(dot, "0 -> 1"));
+            assertEquals(1, occurrences(dot, "1 -> 0"), "反向边是另一条边,必须各自输出");
+        }
+
+        /** V、E、出度、入度、自环数与边三元组多重集一致 */
+        private void assertSameDirectedStructure(EdgeWeightedDigraph expected, EdgeWeightedDigraph actual) {
+            assertEquals(expected.V(), actual.V(), "顶点数");
+            assertEquals(expected.E(), actual.E(), "边数");
+            assertEquals(expected.outDegreeSum(), actual.outDegreeSum(), "出度之和");
+            assertEquals(expected.selfLoopCount(), actual.selfLoopCount(), "自环数");
+            for (int v = 0; v < expected.V(); v++) {
+                assertEquals(expected.outDegree(v), actual.outDegree(v), "顶点 " + v + " 的出度");
+                assertEquals(expected.inDegree(v), actual.inDegree(v), "顶点 " + v + " 的入度");
+            }
+            List<String> a = new ArrayList<String>();
+            List<String> b = new ArrayList<String>();
+            for (DirectedEdge e : expected.edges()) {
+                a.add(e.from() + "->" + e.to() + " " + e.weight());
+            }
+            for (DirectedEdge e : actual.edges()) {
+                b.add(e.from() + "->" + e.to() + " " + e.weight());
+            }
+            java.util.Collections.sort(a);
+            java.util.Collections.sort(b);
+            assertEquals(a, b, "边多重集(含方向与权值)不一致");
+        }
+    }
+
     // ------------------------------------------------------------------
     // 测试辅助
     // ------------------------------------------------------------------
