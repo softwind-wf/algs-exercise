@@ -102,23 +102,7 @@ final class MaxFlowTestSupport {
      * @return 随机流网络
      */
     static FlowNetwork randomNetwork(Random rnd, int V, int edgeCount, int maxCapacity) {
-        FlowNetwork network = new FlowNetwork(V);
-        int source = 0;
-        int sink = V - 1;
-        // 先保证每个中间顶点都从源点可达、也能到达汇点
-        for (int v = 1; v < sink; v++) {
-            network.addEdge(source, v, 1 + rnd.nextInt(maxCapacity));
-            network.addEdge(v, sink, 1 + rnd.nextInt(maxCapacity));
-        }
-        for (int i = 0; i < edgeCount; i++) {
-            int from = rnd.nextInt(V - 1);
-            int to = from + 1 + rnd.nextInt(sink - from);
-            if (from == to || (from == source && to == sink && rnd.nextBoolean())) {
-                continue;
-            }
-            network.addEdge(from, to, 1 + rnd.nextInt(maxCapacity));
-        }
-        return network;
+        return GraphGenerator.flowNetwork(rnd, V, edgeCount, maxCapacity);
     }
 
     /** 把网络复制成 algs4 的流网络(用于与参考实现对拍) */

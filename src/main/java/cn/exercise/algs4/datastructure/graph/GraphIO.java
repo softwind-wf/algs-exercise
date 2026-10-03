@@ -1630,6 +1630,182 @@ public final class GraphIO {
         return sb.toString();
     }
 
+    /**
+     * 把 AOV 网导出为 Graphviz DOT 文本:顶点是活动(用名字),弧是先后约束。
+     *
+     * @param network 待导出的 AOV 网,不能为 null
+     * @return DOT 文本
+     * @throws IllegalArgumentException {@code network} 为 null
+     */
+    public static String toDot(AOVNetwork network) {
+        if (network == null) {
+            throw new IllegalArgumentException("待导出的 AOV 网不能为 null");
+        }
+        String newline = System.lineSeparator();
+        StringBuilder sb = new StringBuilder();
+        sb.append("digraph {").append(newline);
+        sb.append("node[shape=box, fontsize=\"10pt\"]").append(newline);
+        for (int v = 0; v < network.activityCount(); v++) {
+            sb.append('"').append(network.nameOf(v)).append('"').append(newline);
+        }
+        for (int v = 0; v < network.activityCount(); v++) {
+            for (int w : network.successors(v)) {
+                sb.append('"').append(network.nameOf(v)).append("\" -> \"")
+                        .append(network.nameOf(w)).append('"').append(newline);
+            }
+        }
+        sb.append("}").append(newline);
+        return sb.toString();
+    }
+
+    /**
+     * 把 AOE 网导出为 Graphviz DOT 文本:顶点是事件,弧是活动(标签为"活动名/工期")。
+     *
+     * @param network 待导出的 AOE 网,不能为 null
+     * @return DOT 文本
+     * @throws IllegalArgumentException {@code network} 为 null
+     */
+    public static String toDot(AOENetwork network) {
+        if (network == null) {
+            throw new IllegalArgumentException("待导出的 AOE 网不能为 null");
+        }
+        String newline = System.lineSeparator();
+        StringBuilder sb = new StringBuilder();
+        sb.append("digraph {").append(newline);
+        sb.append("node[shape=circle, style=filled, fixedsize=true, width=0.3, fontsize=\"10pt\"]")
+                .append(newline);
+        for (int a = 0; a < network.activityCount(); a++) {
+            sb.append(network.eventName(network.activityFrom(a))).append(" -> ")
+                    .append(network.eventName(network.activityTo(a)))
+                    .append(" [label=\"").append(network.activityName(a)).append('/');
+            double duration = network.activityDuration(a);
+            sb.append(duration == Math.rint(duration)
+                    ? String.valueOf((long) duration) : String.valueOf(duration));
+            sb.append("\"]").append(newline);
+        }
+        sb.append("}").append(newline);
+        return sb.toString();
+    }
+
+    /**
+     * 把符号图导出为 Graphviz DOT 文本:顶点标签是<b>名字</b>(机场代码、演员姓名……)。
+     *
+     * @param symbolGraph 待导出的符号图,不能为 null
+     * @return DOT 文本
+     * @throws IllegalArgumentException {@code symbolGraph} 为 null
+     */
+    public static String toDot(SymbolGraph symbolGraph) {
+        if (symbolGraph == null) {
+            throw new IllegalArgumentException("待导出的符号图不能为 null");
+        }
+        String newline = System.lineSeparator();
+        StringBuilder sb = new StringBuilder();
+        sb.append("graph {").append(newline);
+        sb.append("node[shape=circle, fontsize=\"10pt\"]").append(newline);
+        for (String name : symbolGraph.vertices()) {
+            sb.append('"').append(name).append('"').append(newline);
+        }
+        for (String[] edge : symbolGraph.edges()) {
+            sb.append('"').append(edge[0]).append("\" -- \"").append(edge[1]).append('"').append(newline);
+        }
+        sb.append("}").append(newline);
+        return sb.toString();
+    }
+
+    // ------------------------------------------------------------------
+    // 写:邻接矩阵表示
+    // ------------------------------------------------------------------
+
+    /**
+     * 把邻接矩阵表示写成与邻接表<b>完全相同</b>的文本格式(V、E、每条弧一行 {@code "from to weight"}),
+     * 于是两种表示可以互相读、互相验证。
+     *
+     * <p>读回来请用 {@link #readWeightedDigraphFile(String)}(得到邻接表),
+     * 再用 {@code new AdjMatrixEdgeWeightedDigraph(that)} 转成矩阵。</p>
+     *
+     * @param graph 待输出的矩阵表示,不能为 null
+     * @return 文本
+     * @throws IllegalArgumentException {@code graph} 为 null
+     */
+    public static String format(AdjMatrixEdgeWeightedDigraph graph) {
+        if (graph == null) {
+            throw new IllegalArgumentException("待输出的图不能为 null");
+        }
+        String newline = System.lineSeparator();
+        StringBuilder sb = new StringBuilder();
+        sb.append(graph.V()).append(newline);
+        sb.append(graph.E()).append(newline);
+        for (DirectedEdge edge : graph.edges()) {
+            sb.append(edge.from()).append(' ').append(edge.to()).append(' ')
+                    .append(edge.weight()).append(newline);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 把邻接矩阵表示写入字符流;<b>流由调用方关闭</b>。
+     *
+     * @param graph  待输出的矩阵表示,不能为 null
+     * @param writer 目标字符流,不能为 null
+     * @throws IllegalArgumentException 参数为 null
+     * @throws IllegalStateException    写入过程中发生 I/O 错误
+     */
+    public static void write(AdjMatrixEdgeWeightedDigraph graph, Writer writer) {
+        if (writer == null) {
+            throw new IllegalArgumentException("输出字符流不能为 null");
+        }
+        try {
+            writer.write(format(graph));
+            writer.flush();
+        }
+        catch (IOException e) {
+            throw new IllegalStateException("写出图数据失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 把邻接矩阵表示写入字节流(UTF-8);<b>流由调用方关闭</b>。
+     *
+     * @param graph 待输出的矩阵表示,不能为 null
+     * @param out   目标字节流,不能为 null
+     * @throws IllegalArgumentException 参数为 null
+     * @throws IllegalStateException    写入过程中发生 I/O 错误
+     */
+    public static void write(AdjMatrixEdgeWeightedDigraph graph, OutputStream out) {
+        if (out == null) {
+            throw new IllegalArgumentException("输出流不能为 null");
+        }
+        write(graph, new OutputStreamWriter(out, UTF_8));
+    }
+
+    /**
+     * 把邻接矩阵表示写入文件(UTF-8)。本类负责关闭文件流。
+     *
+     * @param graph 待输出的矩阵表示,不能为 null
+     * @param path  目标文件路径,不能为 null
+     * @throws IllegalArgumentException 参数为 null;目标路径无法创建
+     * @throws IllegalStateException    写入过程中发生 I/O 错误
+     */
+    public static void write(AdjMatrixEdgeWeightedDigraph graph, String path) {
+        if (graph == null) {
+            throw new IllegalArgumentException("待输出的图不能为 null");
+        }
+        if (path == null) {
+            throw new IllegalArgumentException("文件路径不能为 null");
+        }
+        OutputStream out = null;
+        try {
+            out = new FileOutputStream(path);
+            write(graph, out);
+        }
+        catch (FileNotFoundException e) {
+            throw new IllegalArgumentException("无法写入文件: " + path, e);
+        }
+        finally {
+            closeQuietly(out);
+        }
+    }
+
     // ------------------------------------------------------------------
     // 内部:切分与装配
     // ------------------------------------------------------------------

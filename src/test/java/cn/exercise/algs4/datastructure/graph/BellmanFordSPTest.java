@@ -305,15 +305,7 @@ class BellmanFordSPTest {
 
     /** 随机有向加权图;{@code allowNegative} 为 true 时权值取 [-2, 2] */
     static EdgeWeightedDigraph randomDigraph(Random rnd, int V, boolean allowNegative) {
-        EdgeWeightedDigraph graph = new EdgeWeightedDigraph(V);
-        int edges = rnd.nextInt(V * 2 + 3);
-        for (int i = 0; i < edges; i++) {
-            int from = rnd.nextInt(V);
-            int to = rnd.nextInt(V);
-            double weight = allowNegative ? -2 + rnd.nextDouble() * 4 : rnd.nextDouble() * 2;
-            graph.addEdge(from, to, weight);
-        }
-        return graph;
+        return DigraphGenerator.edgeWeighted(rnd, V, rnd.nextInt(V * 2 + 3), allowNegative);
     }
 
     /** 独立检查器:边列表必须首尾相接成环,且总权值为负 */

@@ -213,6 +213,26 @@ public final class AOENetwork {
     }
 
     // ------------------------------------------------------------------
+    // 与其它结构的转换
+    // ------------------------------------------------------------------
+
+    /**
+     * 取出"只保留拓扑结构"的无权有向图:事件 = 顶点,活动 = 弧(工期丢弃)。
+     * 需要拓扑排序、有向可达性、环检测、强连通分量这类只看结构的算法时,
+     * 把它交给 {@link TopologicalSort}、{@link DirectedPaths}、{@link DirectedCycle}、
+     * {@link StronglyConnectedComponents}(与 {@link AOVNetwork#toDigraph()} 对称)。
+     *
+     * @return 与事件数、活动数一致的无权有向图
+     */
+    public Digraph toDigraph() {
+        Digraph digraph = new Digraph(eventNames.size());
+        for (int a = 0; a < activityNames.size(); a++) {
+            digraph.addEdge(activityFrom.get(a), activityTo.get(a));
+        }
+        return digraph;
+    }
+
+    // ------------------------------------------------------------------
     // 查询:事件
     // ------------------------------------------------------------------
 

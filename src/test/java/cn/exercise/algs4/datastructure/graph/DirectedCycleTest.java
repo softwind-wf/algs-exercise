@@ -235,10 +235,6 @@ class DirectedCycleTest {
 
     /** 随机有向图(允许平行边与自环) */
     static Digraph randomDigraph(Random rnd, int V, int E) {
-        Digraph graph = new Digraph(V);
-        for (int i = 0; i < E; i++) {
-            graph.addEdge(rnd.nextInt(V), rnd.nextInt(V));
-        }
-        return graph;
+        return DigraphGenerator.anyEdges(rnd, V, E);
     }
 }

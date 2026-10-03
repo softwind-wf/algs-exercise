@@ -107,16 +107,7 @@ final class SpTestSupport {
 
     /** 随机有向图;{@code allowNegative} 为 true 时权值落在 [-1, 1) */
     static EdgeWeightedDigraph randomDigraph(Random rnd, int V, int edgeCount, boolean allowNegative) {
-        EdgeWeightedDigraph g = new EdgeWeightedDigraph(V);
-        for (int i = 0; i < edgeCount; i++) {
-            int from = rnd.nextInt(V);
-            int to = rnd.nextInt(V);
-            double weight = allowNegative
-                    ? (rnd.nextInt(2000) - 1000) / 1000.0
-                    : rnd.nextInt(1000) / 1000.0;
-            g.addEdge(from, to, weight);
-        }
-        return g;
+        return DigraphGenerator.edgeWeighted(rnd, V, edgeCount, allowNegative);
     }
 
     /**
@@ -124,19 +115,7 @@ final class SpTestSupport {
      * 因此<b>必然没有环</b>,是测试"带负权边的正确性"最省事的造图方式。
      */
     static EdgeWeightedDigraph randomDag(Random rnd, int V, int edgeCount, boolean allowNegative) {
-        EdgeWeightedDigraph g = new EdgeWeightedDigraph(V);
-        if (V < 2) {
-            return g;
-        }
-        for (int i = 0; i < edgeCount; i++) {
-            int from = rnd.nextInt(V - 1);
-            int to = from + 1 + rnd.nextInt(V - from - 1);
-            double weight = allowNegative
-                    ? (rnd.nextInt(2000) - 1000) / 1000.0
-                    : rnd.nextInt(1000) / 1000.0;
-            g.addEdge(from, to, weight);
-        }
-        return g;
+        return DigraphGenerator.edgeWeightedDag(rnd, V, edgeCount, allowNegative);
     }
 
     /** 断言两张 V×V 距离矩阵逐格一致 */

@@ -154,6 +154,38 @@ public final class FlowNetwork {
 
     /**
      * @param v 顶点编号
+     * @return v 的出度:以 v 为起点的边数
+     * @throws IllegalArgumentException 顶点越界
+     */
+    public int outDegree(int v) {
+        validateVertex(v);
+        int degree = 0;
+        for (FlowEdge edge : adjacency.get(v)) {
+            if (edge.from() == v) {
+                degree++;
+            }
+        }
+        return degree;
+    }
+
+    /**
+     * @param v 顶点编号
+     * @return v 的入度:以 v 为终点的边数
+     * @throws IllegalArgumentException 顶点越界
+     */
+    public int inDegree(int v) {
+        validateVertex(v);
+        int degree = 0;
+        for (FlowEdge edge : adjacency.get(v)) {
+            if (edge.to() == v) {
+                degree++;
+            }
+        }
+        return degree;
+    }
+
+    /**
+     * @param v 顶点编号
      * @return v 的出容量之和(只算以 v 为起点的边)
      * @throws IllegalArgumentException 顶点越界
      */

@@ -1288,6 +1288,87 @@ class GraphIOTest {
         }
     }
 
+    @Nested
+    @DisplayName("其它导出:网络类图与邻接矩阵")
+    class ExportTest {
+
+        @Test
+        @DisplayName("toDot(AOVNetwork):顶点用活动名,弧是先后约束")
+        void toDotAov() {
+            AOVNetwork network = GraphIO.readAovFile("coursesAOV.txt");
+            String dot = GraphIO.toDot(network);
+            assertTrue(dot.startsWith("digraph {"), dot);
+            assertTrue(dot.contains("\"线性代数\""), dot);
+            assertTrue(dot.contains("\"高等数学\" -> \"离散数学\""), dot);
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.toDot((AOVNetwork) null));
+        }
+
+        @Test
+        @DisplayName("toDot(AOENetwork):弧上标出活动名与工期")
+        void toDotAoe() {
+            AOENetwork network = GraphIO.readAoeFile("projectAOE.txt");
+            String dot = GraphIO.toDot(network);
+            assertTrue(dot.startsWith("digraph {"), dot);
+            assertTrue(dot.contains("E0 -> E1 [label=\"A0/1\"]"), dot);
+            assertTrue(dot.contains("E10 -> E12 [label=\"A13/7\"]"), dot);
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.toDot((AOENetwork) null));
+        }
+
+        @Test
+        @DisplayName("toDot(SymbolGraph):顶点标签是名字,边用无向符号")
+        void toDotSymbolGraph() {
+            String dot = GraphIO.toDot(GraphIO.readSymbolGraphFile("routes.txt"));
+            assertTrue(dot.startsWith("graph {"), dot);
+            assertTrue(dot.contains("\"JFK\""), dot);
+            assertTrue(dot.contains("\"JFK\" -- \"ORD\""), dot);
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.toDot((SymbolGraph) null));
+        }
+
+        @Test
+        @DisplayName("邻接矩阵的写出与读回(用加权有向图格式)")
+        void matrixFormatAndRoundTrip() {
+            EdgeWeightedDigraph list = GraphIO.readWeightedDigraphFile("tinyEWD.txt");
+            AdjMatrixEdgeWeightedDigraph matrix = new AdjMatrixEdgeWeightedDigraph(list);
+            String[] lines = GraphIO.format(matrix).split("\\r?\\n");
+            assertEquals(String.valueOf(matrix.V()), lines[0]);
+            assertEquals(String.valueOf(matrix.E()), lines[1]);
+
+            EdgeWeightedDigraph back = GraphIO.parseWeightedDigraph(GraphIO.format(matrix));
+            assertEquals(list.V(), back.V());
+            assertEquals(list.E(), back.E());
+            for (int v = 0; v < list.V(); v++) {
+                for (DirectedEdge edge : list.adj(v)) {
+                    assertEquals(edge.weight(), back.weightOf(edge.from(), edge.to()), 1e-9);
+                }
+            }
+            assertThrows(IllegalArgumentException.class,
+                    () -> GraphIO.format((AdjMatrixEdgeWeightedDigraph) null));
+            assertThrows(IllegalArgumentException.class,
+                    () -> GraphIO.write((AdjMatrixEdgeWeightedDigraph) null, "target/x.txt"));
+            assertThrows(IllegalArgumentException.class,
+                    () -> GraphIO.write(matrix, (String) null));
+        }
+
+        @Test
+        @DisplayName("邻接矩阵写文件再读回")
+        void matrixWriteFile() {
+            AdjMatrixEdgeWeightedDigraph matrix = new AdjMatrixEdgeWeightedDigraph(
+                    GraphIO.readWeightedDigraphFile("tinyEWD.txt"));
+            File dir = new File("target/graph-io-test");
+            assertTrue(dir.isDirectory() || dir.mkdirs(), "无法创建测试目录:" + dir.getAbsolutePath());
+            File file = new File(dir, "matrix-" + System.nanoTime() + ".txt");
+            try {
+                GraphIO.write(matrix, file.getPath());
+                EdgeWeightedDigraph back = GraphIO.readWeightedDigraphFile(file.getPath());
+                assertEquals(matrix.V(), back.V());
+                assertEquals(matrix.E(), back.E());
+            }
+            finally {
+                assertTrue(!file.exists() || file.delete(), "测试文件应能删除:" + file.getAbsolutePath());
+            }
+        }
+    }
+
     // ------------------------------------------------------------------
     // 测试辅助
     // ------------------------------------------------------------------

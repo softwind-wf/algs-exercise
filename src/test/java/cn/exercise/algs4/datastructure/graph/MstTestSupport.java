@@ -185,14 +185,7 @@ final class MstTestSupport {
 
     /** 生成一张随机加权图,所有边权互不相同(便于"不同算法边集逐条相同"的断言) */
     static EdgeWeightedGraph randomGraphWithDistinctWeights(java.util.Random rnd, int V, int edgeCount) {
-        EdgeWeightedGraph g = new EdgeWeightedGraph(V);
-        Set<Integer> usedKeys = new HashSet<Integer>();
-        for (int i = 0; i < edgeCount; i++) {
-            int v = rnd.nextInt(V);
-            int w = rnd.nextInt(V);
-            g.addEdge(v, w, distinctWeight(rnd, usedKeys));
-        }
-        return g;
+        return GraphGenerator.edgeWeightedDistinctWeights(rnd, V, edgeCount);
     }
 
     /** 取一个尚未用过的权值(千分之一精度,互异) */

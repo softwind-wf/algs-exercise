@@ -249,16 +249,7 @@ class AcyclicSPTest {
      * {@code allowNegative} 为 true 时权值取 [-2, 2.5],否则取 [0, 2.5]。
      */
     static EdgeWeightedDigraph randomDag(Random rnd, int V, boolean allowNegative) {
-        EdgeWeightedDigraph graph = new EdgeWeightedDigraph(V);
-        for (int from = 0; from < V; from++) {
-            for (int to = from + 1; to < V; to++) {
-                if (rnd.nextDouble() < 0.35) {
-                    double weight = allowNegative ? -2 + rnd.nextDouble() * 4.5 : rnd.nextDouble() * 2.5;
-                    graph.addEdge(from, to, weight);
-                }
-            }
-        }
-        return graph;
+        return DigraphGenerator.edgeWeightedDagByProbability(rnd, V, 0.35, allowNegative);
     }
 
     /** 供其它测试复用:把图的所有边收集成"from->to"字符串 */

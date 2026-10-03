@@ -474,28 +474,9 @@ class TopologicalSortTest {
         return true;
     }
 
-    /** 随机 DAG:先随机一个隐藏的拓扑顺序,只加"从前指向后"的边 */
+    /** 随机 DAG:交给 {@link DigraphGenerator#dag}(只从小号指向大号,必然无环) */
     private static Digraph randomDag(Random rnd, int V, int edgeCount) {
-        int[] hiddenOrder = new int[V];
-        for (int i = 0; i < V; i++) {
-            hiddenOrder[i] = i;
-        }
-        for (int i = V - 1; i > 0; i--) {                // 洗牌
-            int j = rnd.nextInt(i + 1);
-            swap(hiddenOrder, i, j);
-        }
-        Digraph g = new Digraph(V);
-        for (int i = 0; i < edgeCount; i++) {
-            int from = rnd.nextInt(V);
-            int to = rnd.nextInt(V);
-            if (from == to) {
-                continue;
-            }
-            int forward = position(hiddenOrder, from) < position(hiddenOrder, to) ? from : to;
-            int backward = forward == from ? to : from;
-            g.addEdge(forward, backward);
-        }
-        return g;
+        return DigraphGenerator.dag(rnd, V, edgeCount);
     }
 
     private static int position(int[] order, int value) {
