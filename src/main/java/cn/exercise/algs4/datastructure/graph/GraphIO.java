@@ -11,6 +11,8 @@ import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Writer;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 图的文本/文件读写工具:把"外部文本格式"和"图的数据结构"彻底分开。
@@ -329,6 +331,92 @@ public final class GraphIO {
     }
 
     // ------------------------------------------------------------------
+    // 读:AOV 网(顶点表示活动的网)
+    // ------------------------------------------------------------------
+
+    /**
+     * 解析 AOV 网的文本表示。<b>格式(逐行、无损,孤立活动也能表达)</b>:
+     * <pre>
+     *   活动名                      ← 该活动没有前置(如"线性代数")
+     *   活动名: 前置1, 前置2         ← 该活动的前置课程
+     *   # 注释行 / 空行             ← 忽略
+     * </pre>
+     * 行的先后顺序就是活动编号;活动名里不要出现冒号与逗号。冒号支持中英文两种写法,
+     * 前置列表里允许写 {@code —}(破折号,教材里表示"无前置")。
+     * 解析分两遍:先登记全部活动,再连约束 —— 所以前置可以写在后面(支持前向引用)。
+     *
+     * @param text AOV 网文本,不能为 null
+     * @return 解析出的 AOV 网
+     * @throws IllegalArgumentException 文本为 null、活动名为空或重复、前置活动不存在等
+     */
+    public static AOVNetwork parseAov(String text) {
+        if (text == null) {
+            throw new IllegalArgumentException("输入文本不能为 null");
+        }
+        return buildAov(text);
+    }
+
+    /**
+     * 从字符流读取 AOV 网;<b>流由调用方关闭</b>。
+     *
+     * @param reader 字符流,不能为 null
+     * @return 解析出的 AOV 网
+     * @throws IllegalArgumentException 参数为 null 或内容格式错误
+     * @throws IllegalStateException    读取过程中发生 I/O 错误
+     */
+    public static AOVNetwork readAov(Reader reader) {
+        if (reader == null) {
+            throw new IllegalArgumentException("字符流不能为 null");
+        }
+        try {
+            return parseAov(readAll(reader));
+        }
+        catch (IOException e) {
+            throw new IllegalStateException("读取 AOV 网数据失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 从字节流读取(UTF-8)AOV 网;<b>流由调用方关闭</b>。
+     *
+     * @param in 字节流,不能为 null
+     * @return 解析出的 AOV 网
+     * @throws IllegalArgumentException 参数为 null 或内容格式错误
+     * @throws IllegalStateException    读取过程中发生 I/O 错误
+     */
+    public static AOVNetwork readAov(InputStream in) {
+        if (in == null) {
+            throw new IllegalArgumentException("输入流不能为 null");
+        }
+        return readAov(new InputStreamReader(in, UTF_8));
+    }
+
+    /**
+     * 读取 AOV 网文件(UTF-8)。本类负责关闭文件流。
+     *
+     * @param path 文件路径,不能为 null
+     * @return 解析出的 AOV 网
+     * @throws IllegalArgumentException 路径为 null、文件不存在或内容格式错误
+     * @throws IllegalStateException    读取过程中发生 I/O 错误
+     */
+    public static AOVNetwork readAovFile(String path) {
+        if (path == null) {
+            throw new IllegalArgumentException("文件路径不能为 null");
+        }
+        InputStream in = null;
+        try {
+            in = new FileInputStream(path);
+            return readAov(in);
+        }
+        catch (FileNotFoundException e) {
+            throw new IllegalArgumentException("文件不存在: " + path, e);
+        }
+        finally {
+            closeQuietly(in);
+        }
+    }
+
+    // ------------------------------------------------------------------
     // 写:文本 / 流 / 文件
     // ------------------------------------------------------------------
 
@@ -604,6 +692,107 @@ public final class GraphIO {
     }
 
     // ------------------------------------------------------------------
+    // 写:AOV 网
+    // ------------------------------------------------------------------
+
+    /**
+     * 把 AOV 网写成 {@link #parseAov(String)} 能原样读回的文本:每个活动一行,
+     * 有前置时写 {@code "活动名: 前置1, 前置2"}。这是<b>无损</b>格式 ——
+     * 每个活动都占一行,所以没有任何约束的孤立活动也不会丢失,活动编号顺序即行序。
+     *
+     * @param network 待输出的 AOV 网,不能为 null
+     * @return AOV 网文本
+     * @throws IllegalArgumentException {@code network} 为 null
+     */
+    public static String format(AOVNetwork network) {
+        if (network == null) {
+            throw new IllegalArgumentException("待输出的 AOV 网不能为 null");
+        }
+        String newline = System.lineSeparator();
+        StringBuilder sb = new StringBuilder();
+        for (int v = 0; v < network.activityCount(); v++) {
+            String name = network.nameOf(v);
+            List<String> prerequisites = network.predecessorNames(name);
+            sb.append(name);
+            if (!prerequisites.isEmpty()) {
+                sb.append(": ");
+                for (int i = 0; i < prerequisites.size(); i++) {
+                    if (i > 0) {
+                        sb.append(", ");
+                    }
+                    sb.append(prerequisites.get(i));
+                }
+            }
+            sb.append(newline);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 把 AOV 网写入字符流;<b>流由调用方关闭</b>。
+     *
+     * @param network 待输出的 AOV 网,不能为 null
+     * @param writer  目标字符流,不能为 null
+     * @throws IllegalArgumentException 参数为 null
+     * @throws IllegalStateException    写入过程中发生 I/O 错误
+     */
+    public static void write(AOVNetwork network, Writer writer) {
+        if (writer == null) {
+            throw new IllegalArgumentException("输出字符流不能为 null");
+        }
+        try {
+            writer.write(format(network));
+            writer.flush();
+        }
+        catch (IOException e) {
+            throw new IllegalStateException("写出 AOV 网数据失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 把 AOV 网写入字节流(UTF-8);<b>流由调用方关闭</b>。
+     *
+     * @param network 待输出的 AOV 网,不能为 null
+     * @param out     目标字节流,不能为 null
+     * @throws IllegalArgumentException 参数为 null
+     * @throws IllegalStateException    写入过程中发生 I/O 错误
+     */
+    public static void write(AOVNetwork network, OutputStream out) {
+        if (out == null) {
+            throw new IllegalArgumentException("输出流不能为 null");
+        }
+        write(network, new OutputStreamWriter(out, UTF_8));
+    }
+
+    /**
+     * 把 AOV 网写入文件(UTF-8)。本类负责关闭文件流。
+     *
+     * @param network 待输出的 AOV 网,不能为 null
+     * @param path    目标文件路径,不能为 null
+     * @throws IllegalArgumentException 参数为 null;目标路径无法创建
+     * @throws IllegalStateException    写入过程中发生 I/O 错误
+     */
+    public static void write(AOVNetwork network, String path) {
+        if (network == null) {
+            throw new IllegalArgumentException("待输出的 AOV 网不能为 null");
+        }
+        if (path == null) {
+            throw new IllegalArgumentException("文件路径不能为 null");
+        }
+        OutputStream out = null;
+        try {
+            out = new FileOutputStream(path);
+            write(network, out);
+        }
+        catch (FileNotFoundException e) {
+            throw new IllegalArgumentException("无法写入文件: " + path, e);
+        }
+        finally {
+            closeQuietly(out);
+        }
+    }
+
+    // ------------------------------------------------------------------
     // 导出:Graphviz DOT
     // ------------------------------------------------------------------
 
@@ -797,6 +986,87 @@ public final class GraphIO {
             this.to = to;
             this.weight = weight;
         }
+    }
+
+    /**
+     * 解析 AOV 网文本。分两遍:先把每一行左边的活动名全部登记(于是活动编号 = 行序),
+     * 再逐行连约束 —— 这样前置活动写在后面也没问题(支持前向引用)。
+     *
+     * @throws IllegalArgumentException 活动名为空/重复、前置活动不存在、自己先于自己或约束重复
+     */
+    private static AOVNetwork buildAov(String text) {
+        AOVNetwork network = new AOVNetwork();
+        String[] lines = text.split("\\r?\\n");
+        List<String> activities = new ArrayList<String>();
+        List<String> prerequisiteTexts = new ArrayList<String>();
+        List<Integer> lineNumbers = new ArrayList<Integer>();
+
+        // 第一遍:登记全部活动(顺序即编号)
+        for (int index = 0; index < lines.length; index++) {
+            String line = lines[index].trim();
+            if (line.isEmpty() || line.startsWith("#")) {
+                continue;
+            }
+            int colon = indexOfSeparator(line);
+            String name = (colon < 0 ? line : line.substring(0, colon)).trim();
+            String prerequisites = colon < 0 ? "" : line.substring(colon + 1).trim();
+            if (name.isEmpty()) {
+                throw new IllegalArgumentException("第 " + (index + 1) + " 行:活动名为空");
+            }
+            try {
+                network.addActivity(name);
+            }
+            catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("第 " + (index + 1) + " 行:" + e.getMessage(), e);
+            }
+            activities.add(name);
+            prerequisiteTexts.add(prerequisites);
+            lineNumbers.add(index + 1);
+        }
+
+        // 第二遍:连约束(此刻全部活动都已登记)
+        for (int i = 0; i < activities.size(); i++) {
+            String name = activities.get(i);
+            for (String prerequisite : splitPrerequisites(prerequisiteTexts.get(i))) {
+                try {
+                    network.addPrecedence(prerequisite, name);
+                }
+                catch (IllegalArgumentException e) {
+                    throw new IllegalArgumentException("第 " + lineNumbers.get(i) + " 行:" + e.getMessage(), e);
+                }
+            }
+        }
+        return network;
+    }
+
+    /** 找出行内分隔"活动名"与"前置列表"的冒号(半角与全角都认) */
+    private static int indexOfSeparator(String line) {
+        int ascii = line.indexOf(':');
+        int fullWidth = line.indexOf('：');
+        if (ascii < 0) {
+            return fullWidth;
+        }
+        if (fullWidth < 0) {
+            return ascii;
+        }
+        return Math.min(ascii, fullWidth);
+    }
+
+    /** 拆分前置列表:按半角/全角逗号切分;忽略空项与教材里表示"无前置"的破折号 */
+    private static List<String> splitPrerequisites(String text) {
+        List<String> result = new ArrayList<String>();
+        if (text.isEmpty()) {
+            return result;
+        }
+        String normalized = text.replace('，', ',');
+        for (String token : normalized.split(",")) {
+            String name = token.trim();
+            if (name.isEmpty() || "—".equals(name) || "-".equals(name) || "–".equals(name)) {
+                continue;
+            }
+            result.add(name);
+        }
+        return result;
     }
 
     /** 解析一个整数 token,失败时给出可定位的错误信息 */

@@ -14,6 +14,7 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.TreeSet;
 
@@ -653,6 +654,155 @@ class GraphIOTest {
             java.util.Collections.sort(a);
             java.util.Collections.sort(b);
             assertEquals(a, b, "边多重集(含方向与权值)不一致");
+        }
+    }
+
+    @Nested
+    @DisplayName("AOV 网读写")
+    class AovIoTest {
+
+        /** 教材 p.480 表 9-1 / 图 9-20 的课程 AOV 网 */
+        private static final String AOV_PATH = "coursesAOV.txt";
+
+        @Test
+        @DisplayName("readAovFile(coursesAOV.txt):11 门课、11 条约束,编号与图 9-20 一致")
+        void readTextbookFile() {
+            File file = new File(AOV_PATH);
+            assertTrue(file.isFile(), "需要工作区根目录下存在 " + AOV_PATH);
+            AOVNetwork net = GraphIO.readAovFile(AOV_PATH);
+            assertEquals(11, net.activityCount());
+            assertEquals(11, net.precedenceCount());
+            assertEquals("线性代数", net.nameOf(0));
+            assertEquals("数据结构", net.nameOf(3));
+            assertEquals("数据结构课程设计(Java语言实现)", net.nameOf(9));
+            assertEquals("Android应用开发", net.nameOf(10));
+            assertEquals(Arrays.asList("高等数学", "线性代数"), net.predecessorNames("离散数学"));
+            assertEquals(Arrays.asList("Java语言编程", "数据结构"), net.predecessorNames("Android操作系统"));
+        }
+
+        @Test
+        @DisplayName("三种入口一致(文本 / 字符流 / 字节流)")
+        void threeEntryPointsAgree() {
+            String text = "A\nB: A\nC: A, B\n";
+            AOVNetwork a = GraphIO.parseAov(text);
+            AOVNetwork b = GraphIO.readAov(new StringReader(text));
+            AOVNetwork c = GraphIO.readAov(new ByteArrayInputStream(text.getBytes(Charset.forName("UTF-8"))));
+            assertEquals(a.toString(), b.toString());
+            assertEquals(a.toString(), c.toString());
+            assertEquals(3, a.activityCount());
+            assertEquals(3, a.precedenceCount(), "A→B、A→C、B→C 三条约束");
+        }
+
+        @Test
+        @DisplayName("往返无损:孤立活动也保留,约束集合不变")
+        void roundTripIsLossless() {
+            AOVNetwork net = new AOVNetwork(new String[]{"甲", "乙", "丙", "孤立活动"});
+            net.addPrecedence("甲", "乙");
+            net.addPrecedence("乙", "丙");
+            net.addPrecedence("甲", "丙");
+
+            String text = GraphIO.format(net);
+            assertTrue(text.contains("孤立活动"), "孤立活动必须出现在文本里:\n" + text);
+            AOVNetwork copy = GraphIO.parseAov(text);
+
+            assertEquals(net.activities(), copy.activities(), "活动顺序(编号)一致");
+            assertEquals(net.activityCount(), copy.activityCount());
+            assertEquals(net.precedenceCount(), copy.precedenceCount());
+            for (String activity : net.activities()) {
+                assertEquals(new java.util.HashSet<String>(net.predecessorNames(activity)),
+                        new java.util.HashSet<String>(copy.predecessorNames(activity)),
+                        activity + " 的先修集合");
+            }
+        }
+
+        @Test
+        @DisplayName("format 形态:每个活动一行,有先修时写「活动: 先修1, 先修2」")
+        void formatShape() {
+            AOVNetwork net = new AOVNetwork(new String[]{"A", "B"});
+            net.addPrecedence("A", "B");
+            String[] lines = GraphIO.format(net).split("\\r?\\n");
+            assertEquals(2, lines.length);
+            assertEquals("A", lines[0]);
+            assertEquals("B: A", lines[1]);
+        }
+
+        @Test
+        @DisplayName("两遍解析:先修可以写在后面(支持前向引用)")
+        void forwardReference() {
+            AOVNetwork net = GraphIO.parseAov("后续课程: 基础课程\n基础课程\n");
+            assertEquals(2, net.activityCount());
+            assertEquals(0, net.indexOf("后续课程"), "行的先后决定编号");
+            assertEquals(1, net.indexOf("基础课程"));
+            assertEquals(Arrays.asList("基础课程"), net.predecessorNames("后续课程"));
+        }
+
+        @Test
+        @DisplayName("容忍全角标点与教材里表示「无先修」的破折号")
+        void punctuationTolerance() {
+            AOVNetwork net = GraphIO.parseAov("# 注释\n甲: —\n乙：甲，丙\n丙\n\n");
+            assertEquals(3, net.activityCount());
+            assertEquals(2, net.precedenceCount());
+            assertEquals(Arrays.asList("甲", "丙"), net.predecessorNames("乙"),
+                    "「乙：甲，丙」表示甲、丙都是乙的先修");
+            assertEquals(0, net.predecessorNames("甲").size(), "「甲: —」表示甲没有先修");
+        }
+
+        @Test
+        @DisplayName("格式错误:空活动名、重复活动、未知先修、自己先于自己都能定位到行")
+        void parseErrors() {
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseAov(": 甲\n"));
+            IllegalArgumentException duplicate = assertThrows(IllegalArgumentException.class,
+                    () -> GraphIO.parseAov("甲\n甲\n"));
+            assertTrue(duplicate.getMessage().contains("第 2 行"), duplicate.getMessage());
+            IllegalArgumentException unknown = assertThrows(IllegalArgumentException.class,
+                    () -> GraphIO.parseAov("甲\n乙: 不存在的课\n"));
+            assertTrue(unknown.getMessage().contains("第 2 行"), unknown.getMessage());
+            assertTrue(unknown.getMessage().contains("不在 AOV 网中"), unknown.getMessage());
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseAov("甲: 甲\n"));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseAov(null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readAovFile(null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readAovFile("no-such-aov.txt"));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readAov((Reader) null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readAov((InputStream) null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.format((AOVNetwork) null));
+        }
+
+        @Test
+        @DisplayName("纯注释与空行的文件解析成空网")
+        void commentsOnly() {
+            AOVNetwork empty = GraphIO.parseAov("# 只有注释\n\n   \n");
+            assertEquals(0, empty.activityCount());
+            assertEquals(0, empty.precedenceCount());
+        }
+
+        @Test
+        @DisplayName("write 到文件再读回来,结构与约束一致")
+        void writeAndReadFile() {
+            AOVNetwork net = GraphIO.parseAov("甲\n乙: 甲\n丙: 甲, 乙\n");
+            File dir = new File("target/graph-io-test");
+            assertTrue(dir.isDirectory() || dir.mkdirs(), "无法创建测试目录:" + dir.getAbsolutePath());
+            File file = new File(dir, "aov-round-trip-" + System.nanoTime() + ".txt");
+            try {
+                GraphIO.write(net, file.getPath());
+                assertTrue(file.isFile());
+                AOVNetwork back = GraphIO.readAovFile(file.getPath());
+                assertEquals(net.activities(), back.activities());
+                assertEquals(net.precedenceCount(), back.precedenceCount());
+                assertEquals(Arrays.asList("甲", "乙"), back.predecessorNames("丙"));
+            }
+            finally {
+                assertTrue(!file.exists() || file.delete(), "测试文件应能删除:" + file.getAbsolutePath());
+            }
+        }
+
+        @Test
+        @DisplayName("调用方传入的 Reader 不被关闭")
+        void callerOwnedReaderNotClosed() {
+            TrackingReader reader = new TrackingReader("甲\n乙: 甲\n");
+            AOVNetwork net = GraphIO.readAov(reader);
+            assertEquals(2, net.activityCount());
+            assertFalse(reader.closed, "GraphIO 不应关闭调用方传入的 Reader");
+            reader.close();
         }
     }
 
