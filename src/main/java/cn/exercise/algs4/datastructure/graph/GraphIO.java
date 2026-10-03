@@ -417,6 +417,93 @@ public final class GraphIO {
     }
 
     // ------------------------------------------------------------------
+    // 读:AOE 网(边表示活动的网)
+    // ------------------------------------------------------------------
+
+    /**
+     * 解析 AOE 网的文本表示。<b>格式(两段式、无损)</b>:
+     * <pre>
+     *   # 第一行有效内容:事件清单(空格分隔,顺序即编号)
+     *   E0 E1 E2 ... E12
+     *   # 其后每行一个活动:活动名 起点事件 终点事件 工期
+     *   A0 E0 E1 1
+     *   A1 E0 E4 2
+     * </pre>
+     * 空行与 {@code #} 开头的注释行忽略。事件清单必须写全,这样"孤立事件"(没有任何活动的
+     * 里程碑)也不会丢;活动的两端必须已在事件清单里。
+     *
+     * @param text AOE 网文本,不能为 null
+     * @return 解析出的 AOE 网
+     * @throws IllegalArgumentException 文本为 null、缺少事件清单、活动行格式错误、工期非法等
+     */
+    public static AOENetwork parseAoe(String text) {
+        if (text == null) {
+            throw new IllegalArgumentException("输入文本不能为 null");
+        }
+        return buildAoe(text);
+    }
+
+    /**
+     * 从字符流读取 AOE 网;<b>流由调用方关闭</b>。
+     *
+     * @param reader 字符流,不能为 null
+     * @return 解析出的 AOE 网
+     * @throws IllegalArgumentException 参数为 null 或内容格式错误
+     * @throws IllegalStateException    读取过程中发生 I/O 错误
+     */
+    public static AOENetwork readAoe(Reader reader) {
+        if (reader == null) {
+            throw new IllegalArgumentException("字符流不能为 null");
+        }
+        try {
+            return parseAoe(readAll(reader));
+        }
+        catch (IOException e) {
+            throw new IllegalStateException("读取 AOE 网数据失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 从字节流读取(UTF-8)AOE 网;<b>流由调用方关闭</b>。
+     *
+     * @param in 字节流,不能为 null
+     * @return 解析出的 AOE 网
+     * @throws IllegalArgumentException 参数为 null 或内容格式错误
+     * @throws IllegalStateException    读取过程中发生 I/O 错误
+     */
+    public static AOENetwork readAoe(InputStream in) {
+        if (in == null) {
+            throw new IllegalArgumentException("输入流不能为 null");
+        }
+        return readAoe(new InputStreamReader(in, UTF_8));
+    }
+
+    /**
+     * 读取 AOE 网文件(UTF-8)。本类负责关闭文件流。
+     *
+     * @param path 文件路径,不能为 null
+     * @return 解析出的 AOE 网
+     * @throws IllegalArgumentException 路径为 null、文件不存在或内容格式错误
+     * @throws IllegalStateException    读取过程中发生 I/O 错误
+     */
+    public static AOENetwork readAoeFile(String path) {
+        if (path == null) {
+            throw new IllegalArgumentException("文件路径不能为 null");
+        }
+        InputStream in = null;
+        try {
+            in = new FileInputStream(path);
+            return readAoe(in);
+        }
+        catch (FileNotFoundException e) {
+            throw new IllegalArgumentException("文件不存在: " + path, e);
+        }
+        finally {
+            closeQuietly(in);
+        }
+    }
+
+    // ------------------------------------------------------------------
     // 写:文本 / 流 / 文件
     // ------------------------------------------------------------------
 
@@ -793,6 +880,105 @@ public final class GraphIO {
     }
 
     // ------------------------------------------------------------------
+    // 写:AOE 网
+    // ------------------------------------------------------------------
+
+    /**
+     * 把 AOE 网写成 {@link #parseAoe(String)} 能原样读回的文本:第一行是事件清单,
+     * 其后每个活动一行 {@code "活动名 起点事件 终点事件 工期"}。这是<b>无损</b>格式 ——
+     * 事件清单单列一行,所以孤立事件也不会丢;事件与活动的编号顺序即行序。
+     *
+     * @param network 待输出的 AOE 网,不能为 null
+     * @return AOE 网文本
+     * @throws IllegalArgumentException {@code network} 为 null
+     */
+    public static String format(AOENetwork network) {
+        if (network == null) {
+            throw new IllegalArgumentException("待输出的 AOE 网不能为 null");
+        }
+        String newline = System.lineSeparator();
+        StringBuilder sb = new StringBuilder();
+        for (int v = 0; v < network.eventCount(); v++) {
+            if (v > 0) {
+                sb.append(' ');
+            }
+            sb.append(network.eventName(v));
+        }
+        sb.append(newline);
+        for (int a = 0; a < network.activityCount(); a++) {
+            sb.append(network.activityName(a)).append(' ')
+                    .append(network.eventName(network.activityFrom(a))).append(' ')
+                    .append(network.eventName(network.activityTo(a))).append(' ')
+                    .append(network.activityDuration(a)).append(newline);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 把 AOE 网写入字符流;<b>流由调用方关闭</b>。
+     *
+     * @param network 待输出的 AOE 网,不能为 null
+     * @param writer  目标字符流,不能为 null
+     * @throws IllegalArgumentException 参数为 null
+     * @throws IllegalStateException    写入过程中发生 I/O 错误
+     */
+    public static void write(AOENetwork network, Writer writer) {
+        if (writer == null) {
+            throw new IllegalArgumentException("输出字符流不能为 null");
+        }
+        try {
+            writer.write(format(network));
+            writer.flush();
+        }
+        catch (IOException e) {
+            throw new IllegalStateException("写出 AOE 网数据失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 把 AOE 网写入字节流(UTF-8);<b>流由调用方关闭</b>。
+     *
+     * @param network 待输出的 AOE 网,不能为 null
+     * @param out     目标字节流,不能为 null
+     * @throws IllegalArgumentException 参数为 null
+     * @throws IllegalStateException    写入过程中发生 I/O 错误
+     */
+    public static void write(AOENetwork network, OutputStream out) {
+        if (out == null) {
+            throw new IllegalArgumentException("输出流不能为 null");
+        }
+        write(network, new OutputStreamWriter(out, UTF_8));
+    }
+
+    /**
+     * 把 AOE 网写入文件(UTF-8)。本类负责关闭文件流。
+     *
+     * @param network 待输出的 AOE 网,不能为 null
+     * @param path    目标文件路径,不能为 null
+     * @throws IllegalArgumentException 参数为 null;目标路径无法创建
+     * @throws IllegalStateException    写入过程中发生 I/O 错误
+     */
+    public static void write(AOENetwork network, String path) {
+        if (network == null) {
+            throw new IllegalArgumentException("待输出的 AOE 网不能为 null");
+        }
+        if (path == null) {
+            throw new IllegalArgumentException("文件路径不能为 null");
+        }
+        OutputStream out = null;
+        try {
+            out = new FileOutputStream(path);
+            write(network, out);
+        }
+        catch (FileNotFoundException e) {
+            throw new IllegalArgumentException("无法写入文件: " + path, e);
+        }
+        finally {
+            closeQuietly(out);
+        }
+    }
+
+    // ------------------------------------------------------------------
     // 导出:Graphviz DOT
     // ------------------------------------------------------------------
 
@@ -1003,8 +1189,8 @@ public final class GraphIO {
 
         // 第一遍:登记全部活动(顺序即编号)
         for (int index = 0; index < lines.length; index++) {
-            String line = lines[index].trim();
-            if (line.isEmpty() || line.startsWith("#")) {
+            String line = stripComment(lines[index]);
+            if (line.isEmpty()) {
                 continue;
             }
             int colon = indexOfSeparator(line);
@@ -1067,6 +1253,67 @@ public final class GraphIO {
             result.add(name);
         }
         return result;
+    }
+
+    /**
+     * 解析 AOE 网文本:第一行有效内容是事件清单(空格分隔),其后每行是一个活动
+     * {@code 名称 起点 终点 工期}。
+     *
+     * @throws IllegalArgumentException 缺少事件清单、活动行项数不对、事件不存在或工期非法
+     */
+    private static AOENetwork buildAoe(String text) {
+        AOENetwork network = new AOENetwork();
+        String[] lines = text.split("\\r?\\n");
+        int eventLineIndex = -1;
+
+        // 第一遍:找出事件清单并登记(先有事件,才能连活动)
+        for (int index = 0; index < lines.length && eventLineIndex < 0; index++) {
+            String line = stripComment(lines[index]);
+            if (line.isEmpty()) {
+                continue;
+            }
+            eventLineIndex = index;
+            for (String event : tokenize(line)) {
+                try {
+                    network.addEvent(event);
+                }
+                catch (IllegalArgumentException e) {
+                    throw new IllegalArgumentException("第 " + (index + 1) + " 行:" + e.getMessage(), e);
+                }
+            }
+        }
+        if (eventLineIndex < 0) {
+            throw new IllegalArgumentException("缺少事件清单:第一行有效内容应为事件名列表(空格分隔)");
+        }
+
+        // 第二遍:连活动
+        for (int index = eventLineIndex + 1; index < lines.length; index++) {
+            String line = stripComment(lines[index]);
+            if (line.isEmpty()) {
+                continue;
+            }
+            String[] tokens = tokenize(line);
+            int lineNumber = index + 1;
+            if (tokens.length != 4) {
+                throw new IllegalArgumentException("第 " + lineNumber
+                        + " 行:活动行需要 4 项「活动名 起点事件 终点事件 工期」,实际给出 " + tokens.length + " 项");
+            }
+            double duration = parseDouble(tokens[3], "第 " + lineNumber + " 行的工期");
+            try {
+                network.addActivity(tokens[0], tokens[1], tokens[2], duration);
+            }
+            catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("第 " + lineNumber + " 行:" + e.getMessage(), e);
+            }
+        }
+        return network;
+    }
+
+    /** 去掉行内注释(从第一个 # 开始)并 trim;全为空则返回空串 */
+    private static String stripComment(String line) {
+        int hash = line.indexOf('#');
+        String body = hash < 0 ? line : line.substring(0, hash);
+        return body.trim();
     }
 
     /** 解析一个整数 token,失败时给出可定位的错误信息 */

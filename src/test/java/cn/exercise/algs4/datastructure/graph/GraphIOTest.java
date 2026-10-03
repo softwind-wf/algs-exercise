@@ -806,6 +806,167 @@ class GraphIOTest {
         }
     }
 
+    @Nested
+    @DisplayName("AOE 网读写")
+    class AoeIoTest {
+
+        /** 教材 p.484 图 9-24 的 AOE 网 */
+        private static final String AOE_PATH = "projectAOE.txt";
+
+        @Test
+        @DisplayName("readAoeFile(projectAOE.txt):13 个事件、18 个活动,弧与工期逐条核对")
+        void readTextbookFile() {
+            File file = new File(AOE_PATH);
+            assertTrue(file.isFile(), "需要工作区根目录下存在 " + AOE_PATH);
+            AOENetwork net = GraphIO.readAoeFile(AOE_PATH);
+            assertEquals(13, net.eventCount());
+            assertEquals(18, net.activityCount());
+            assertEquals("E0", net.eventName(0));
+            assertEquals("E12", net.eventName(12));
+            assertEquals("E0", net.eventName(net.activityFrom("A0")));
+            assertEquals("E1", net.eventName(net.activityTo("A0")));
+            assertEquals(1.0, net.activityDuration("A0"), 0.0);
+            assertEquals("E7", net.eventName(net.activityFrom("A9")));
+            assertEquals("E6", net.eventName(net.activityTo("A9")));
+            assertEquals(6.0, net.activityDuration("A9"), 0.0);
+            assertEquals(9.0, net.activityDuration("A12"), 0.0);
+            assertEquals(Arrays.asList(0), net.sourceEvents());
+            assertEquals(Arrays.asList(12), net.sinkEvents());
+        }
+
+        @Test
+        @DisplayName("三种入口一致(文本 / 字符流 / 字节流)")
+        void threeEntryPointsAgree() {
+            String text = "E0 E1 E2\nA0 E0 E1 3\nA1 E1 E2 4\n";
+            AOENetwork a = GraphIO.parseAoe(text);
+            AOENetwork b = GraphIO.readAoe(new StringReader(text));
+            AOENetwork c = GraphIO.readAoe(new ByteArrayInputStream(text.getBytes(Charset.forName("UTF-8"))));
+            assertEquals(a.toString(), b.toString());
+            assertEquals(a.toString(), c.toString());
+            assertEquals(3, a.eventCount());
+            assertEquals(2, a.activityCount());
+        }
+
+        @Test
+        @DisplayName("往返无损:孤立事件也保留,活动与工期不变")
+        void roundTripIsLossless() {
+            AOENetwork net = new AOENetwork();
+            net.addEvent("E0");
+            net.addEvent("E1");
+            net.addEvent("E2");
+            net.addEvent("孤立事件");
+            net.addActivity("A0", "E0", "E1", 2);
+            net.addActivity("A1", "E1", "E2", 0.5);
+
+            String text = GraphIO.format(net);
+            assertTrue(text.contains("孤立事件"), "孤立事件必须出现在事件清单里:\n" + text);
+            AOENetwork copy = GraphIO.parseAoe(text);
+
+            assertEquals(net.eventNames(), copy.eventNames(), "事件编号顺序一致");
+            assertEquals(net.activityNames(), copy.activityNames());
+            for (String activity : net.activityNames()) {
+                assertEquals(net.activityDuration(activity), copy.activityDuration(activity), 0.0);
+                assertEquals(net.eventName(net.activityFrom(activity)),
+                        copy.eventName(copy.activityFrom(activity)));
+                assertEquals(net.eventName(net.activityTo(activity)),
+                        copy.eventName(copy.activityTo(activity)));
+            }
+        }
+
+        @Test
+        @DisplayName("format 形态:第一行事件清单,其后每个活动一行")
+        void formatShape() {
+            AOENetwork net = new AOENetwork();
+            net.addEvent("E0");
+            net.addEvent("E1");
+            net.addActivity("A0", "E0", "E1", 1.0);
+            String[] lines = GraphIO.format(net).split("\\r?\\n");
+            assertEquals(2, lines.length);
+            assertEquals("E0 E1", lines[0]);
+            assertEquals("A0 E0 E1 1.0", lines[1]);
+        }
+
+        @Test
+        @DisplayName("空行与行内 # 注释都被忽略")
+        void commentsAndBlankLines() {
+            AOENetwork net = GraphIO.parseAoe(
+                    "# 事件清单\n\nE0 E1 E2   # 三个事件\n\nA0 E0 E1 3   # 第一条活动\nA1 E1 E2 4\n");
+            assertEquals(3, net.eventCount());
+            assertEquals(2, net.activityCount());
+            assertEquals(3.0, net.activityDuration("A0"), 0.0);
+        }
+
+        @Test
+        @DisplayName("格式错误:缺少事件清单、活动行项数不对、事件不存在、工期非法都能定位到行")
+        void parseErrors() {
+            IllegalArgumentException missing = assertThrows(IllegalArgumentException.class,
+                    () -> GraphIO.parseAoe("# 只有注释\n\n"));
+            assertTrue(missing.getMessage().contains("事件清单"), missing.getMessage());
+
+            IllegalArgumentException tokens = assertThrows(IllegalArgumentException.class,
+                    () -> GraphIO.parseAoe("E0 E1\nA0 E0 E1\n"));
+            assertTrue(tokens.getMessage().contains("第 2 行"), tokens.getMessage());
+
+            IllegalArgumentException unknown = assertThrows(IllegalArgumentException.class,
+                    () -> GraphIO.parseAoe("E0 E1\nA0 E0 E9 3\n"));
+            assertTrue(unknown.getMessage().contains("第 2 行"), unknown.getMessage());
+            assertTrue(unknown.getMessage().contains("E9"), unknown.getMessage());
+
+            IllegalArgumentException negative = assertThrows(IllegalArgumentException.class,
+                    () -> GraphIO.parseAoe("E0 E1\nA0 E0 E1 -3\n"));
+            assertTrue(negative.getMessage().contains("工期不能为负"), negative.getMessage());
+
+            assertThrows(IllegalArgumentException.class,
+                    () -> GraphIO.parseAoe("E0 E1\nA0 E0 E1 abc\n"), "工期非数字");
+            assertThrows(IllegalArgumentException.class,
+                    () -> GraphIO.parseAoe("E0 E0\n"), "事件重名");
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.parseAoe(null));
+        }
+
+        @Test
+        @DisplayName("write 到文件再读回来,事件与活动一致")
+        void writeAndReadFile() {
+            AOENetwork net = GraphIO.parseAoe("E0 E1 E2\nA0 E0 E1 2\nA1 E1 E2 3\n");
+            File dir = new File("target/graph-io-test");
+            assertTrue(dir.isDirectory() || dir.mkdirs(), "无法创建测试目录:" + dir.getAbsolutePath());
+            File file = new File(dir, "aoe-round-trip-" + System.nanoTime() + ".txt");
+            try {
+                GraphIO.write(net, file.getPath());
+                assertTrue(file.isFile());
+                AOENetwork back = GraphIO.readAoeFile(file.getPath());
+                assertEquals(net.eventNames(), back.eventNames());
+                assertEquals(net.activityNames(), back.activityNames());
+                assertEquals(3.0, back.activityDuration("A1"), 0.0);
+            }
+            finally {
+                assertTrue(!file.exists() || file.delete(), "测试文件应能删除:" + file.getAbsolutePath());
+            }
+        }
+
+        @Test
+        @DisplayName("参数为 null 抛 IllegalArgumentException")
+        void nullArguments() {
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readAoeFile(null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readAoeFile("no-such-aoe.txt"));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readAoe((Reader) null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.readAoe((InputStream) null));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.format((AOENetwork) null));
+            assertThrows(IllegalArgumentException.class,
+                    () -> GraphIO.write((AOENetwork) null, "target/x.txt"));
+            assertThrows(IllegalArgumentException.class, () -> GraphIO.write(new AOENetwork(), (String) null));
+        }
+
+        @Test
+        @DisplayName("调用方传入的 Reader 不被关闭")
+        void callerOwnedReaderNotClosed() {
+            TrackingReader reader = new TrackingReader("E0 E1\nA0 E0 E1 1\n");
+            AOENetwork net = GraphIO.readAoe(reader);
+            assertEquals(2, net.eventCount());
+            assertFalse(reader.closed, "GraphIO 不应关闭调用方传入的 Reader");
+            reader.close();
+        }
+    }
+
     // ------------------------------------------------------------------
     // 测试辅助
     // ------------------------------------------------------------------
