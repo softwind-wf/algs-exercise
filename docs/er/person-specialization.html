@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>实体集 person 的特化（employee / student）— E-R 图</title>
+<style>
+  :root{
+    --ink:#1f2d3d; --ink-soft:#4a5b6d; --line:#37474f;
+    --entity:#e3eefb; --attr:#fdf4dd; --isa:#eef1f4;
+    --key:#0b6bcb; --page:#ffffff; --rule:#d8e0e8;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--page);color:var(--ink);
+    font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB","Noto Sans SC",system-ui,sans-serif;}
+  .wrap{max-width:1180px;margin:0 auto;padding:34px 26px 46px}
+  h1{font-size:25px;margin:0 0 6px;letter-spacing:.2px}
+  .sub{margin:0 0 4px;color:var(--ink-soft);font-size:14.5px}
+  .src{color:#7b8794;font-size:13px;margin:0 0 22px}
+  figure{margin:0 0 8px;border:1px solid var(--rule);border-radius:12px;background:#fff;padding:6px 10px 2px}
+  svg{display:block;width:100%;height:auto}
+  figcaption{color:var(--ink-soft);font-size:13.5px;padding:8px 6px 10px;border-top:1px dashed var(--rule)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(288px,1fr));gap:14px;margin-top:22px}
+  .card{border:1px solid var(--rule);border-radius:11px;padding:14px 16px;background:#fcfdfe}
+  .card h2{font-size:15px;margin:0 0 8px;color:#123a63}
+  .card p,.card li{font-size:14px;line-height:1.66;color:#2c3a48;margin:0}
+  .card ul{margin:0;padding-left:18px}
+  .card li+li{margin-top:4px}
+  code,.mono{font-family:"Cascadia Mono",Consolas,"Courier New",monospace;font-size:13.2px}
+  pre{margin:0;background:#f5f8fb;border:1px solid var(--rule);border-radius:8px;padding:10px 12px;
+      overflow-x:auto;font-family:"Cascadia Mono",Consolas,"Courier New",monospace;font-size:13px;line-height:1.62;color:#22303d}
+  .legend{display:flex;flex-wrap:wrap;gap:16px 24px;margin-top:20px;padding:12px 16px;border:1px solid var(--rule);
+      border-radius:11px;background:#fcfdfe;font-size:13.5px;color:#2c3a48}
+  .legend span{display:flex;align-items:center;gap:8px}
+  .sw{width:30px;height:19px;border:2px solid var(--line);display:inline-block}
+  .sw.e{background:var(--entity);border-radius:2px}
+  .sw.a{background:var(--attr);border-radius:50%}
+  .sw.i{background:var(--isa);clip-path:polygon(50% 0,100% 100%,0 100%)}
+  .sw.t{background:#fff;clip-path:polygon(50% 0,100% 100%,0 100%)}
+  .sw.l{height:0;border:0;border-top:2px solid var(--line);width:30px}
+  .note{margin-top:14px;font-size:13.5px;color:#6b7785}
+  @media print{
+    .wrap{max-width:none;padding:0}
+    .cards{grid-template-columns:1fr 1fr}
+    body{font-size:12px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>实体集 person 的特化：employee / student</h1>
+  <p class="sub">Specialization（特化）：把实体集 person 按属性差异划分为子集 employee 与 student</p>
+  <p class="src">依据《数据库系统概念》第 7 章扩展的 E-R 特性（7.8.1 特化）— Chen 记号</p>
+
+  <figure>
+    <svg viewBox="0 0 1200 856" role="img" aria-label="person 特化为 employee 与 student 的 E-R 图">
+      <defs>
+        <style>
+          .ent{fill:#e3eefb;stroke:#37474f;stroke-width:2.4}
+          .att{fill:#fdf4dd;stroke:#37474f;stroke-width:2.2}
+          .isa{fill:#eef1f4;stroke:#37474f;stroke-width:2.4}
+          .edge{stroke:#37474f;stroke-width:2.2;fill:none}
+          .nm{font-size:22px;font-weight:700;fill:#1f2d3d;text-anchor:middle;dominant-baseline:middle}
+          .an{font-size:18px;fill:#1f2d3d;text-anchor:middle;dominant-baseline:middle}
+          .key{font-size:18px;fill:#1f2d3d;text-anchor:middle;dominant-baseline:middle;text-decoration:underline}
+          .il{font-size:17px;font-weight:700;fill:#37474f;text-anchor:middle;dominant-baseline:middle;letter-spacing:.6px}
+          .tag{font-size:14px;fill:#6b7785;text-anchor:middle;dominant-baseline:middle}
+        </style>
+      </defs>
+
+      <!-- 父实体集 person -->
+      <rect class="ent" x="480" y="240" width="240" height="72" rx="4"/>
+      <text class="nm" x="600" y="277">person</text>
+
+      <!-- person 的属性（ID 为主键，下划线） -->
+      <ellipse class="att" cx="185" cy="276" rx="64" ry="31"/>
+      <text class="key" x="185" y="277">ID</text>
+      <ellipse class="att" cx="600" cy="118" rx="76" ry="31"/>
+      <text class="an" x="600" y="119">name</text>
+      <ellipse class="att" cx="1016" cy="276" rx="88" ry="31"/>
+      <text class="an" x="1016" y="277">address</text>
+
+      <line class="edge" x1="480" y1="276" x2="249" y2="276"/>
+      <line class="edge" x1="600" y1="240" x2="600" y2="149"/>
+      <line class="edge" x1="720" y1="276" x2="928" y2="276"/>
+
+      <!-- 特化：ISA 三角 -->
+      <line class="edge" x1="600" y1="312" x2="600" y2="352"/>
+      <polygon class="isa" points="600,352 670,424 530,424"/>
+      <text class="il" x="600" y="409">ISA</text>
+
+      <!-- 子实体集 -->
+      <line class="edge" x1="530" y1="424" x2="345" y2="540"/>
+      <line class="edge" x1="670" y1="424" x2="855" y2="540"/>
+
+      <rect class="ent" x="225" y="540" width="240" height="72" rx="4"/>
+      <text class="nm" x="345" y="577">employee</text>
+      <rect class="ent" x="735" y="540" width="240" height="72" rx="4"/>
+      <text class="nm" x="855" y="577">student</text>
+
+      <!-- 子实体集附加属性 -->
+      <line class="edge" x1="345" y1="612" x2="345" y2="712"/>
+      <ellipse class="att" cx="345" cy="744" rx="78" ry="31"/>
+      <text class="an" x="345" y="745">salary</text>
+      <line class="edge" x1="855" y1="612" x2="855" y2="712"/>
+      <ellipse class="att" cx="855" cy="744" rx="92" ry="31"/>
+      <text class="an" x="855" y="745">tot_cred</text>
+
+      <!-- 继承提示：子实体集隐式包含 person 的属性（置于全部连线之下，避免遮挡） -->
+      <text class="tag" x="600" y="822">employee 与 student 继承 person 的属性 ID、name、address，并各自附加 salary / tot_cred</text>
+
+      <!-- 约束标注 -->
+      <text class="tag" x="600" y="52">单线 = 部分特化（partial）：一个人可以既不是雇员也不是学生；本例为重叠（overlapping）特化</text>
+    </svg>
+    <figcaption>图 1　person 到 employee、student 的特化。矩形＝实体集，椭圆＝属性，三角＝ISA 特化（子实体集继承父实体集全部属性，并拥有自己的附加属性）。</figcaption>
+  </figure>
+
+  <div class="legend">
+    <span><i class="sw e"></i>实体集</span>
+    <span><i class="sw a"></i>属性</span>
+    <span><i class="sw i"></i>ISA 特化/概化</span>
+    <span><i class="sw l"></i>连接（父子集、实体—属性）</span>
+    <span>下划线属性 = 主键</span>
+  </div>
+
+  <p class="note">矢量版：<a href="person-specialization.svg">person-specialization.svg</a>（可直接插入 Word / PPT 并无损缩放）；位图版：<span class="mono">person-specialization-er.png</span></p>
+
+  <div class="cards">
+    <div class="card">
+      <h2>语义</h2>
+      <ul>
+        <li>特化（specialization）：从实体集 person 中，按属性差异分出子集 employee 与 student。</li>
+        <li>概化（generalization）：反过来，由 employee 与 student 的共同属性（ID、name、address）归纳出 person。</li>
+        <li>ISA 关系：每个 employee / student 实体同时也是一个 person 实体——属性继承，无需重复存储。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>约束（可标注在 ISA 上）</h2>
+      <ul>
+        <li><b>部分 / 全特化</b>：本例用单线表示部分特化——一个人可以既非雇员也非学生。</li>
+        <li><b>不相交 / 重叠</b>：教材示例允许“是雇员、是学生、都是、都不是”，即重叠（overlapping）。</li>
+        <li>若改为全特化用双线连到 ISA；若改为不相交，则在 ISA 旁标注 d（disjoint）。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>属性清单</h2>
+      <ul>
+        <li><b>person</b>：ID（主键）、name、address</li>
+        <li><b>employee</b>：继承三者 + salary</li>
+        <li><b>student</b>：继承三者 + tot_cred</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>对应的关系模式</h2>
+      <pre>person  (ID, name, address)
+employee(ID, name, address, salary)
+student (ID, name, address, tot_cred)</pre>
+      <p class="note" style="margin-top:8px">若子实体集为部分特化，employee / student 中只出现各自子集的 person；其余 person 仅存在于 person 关系中。</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h2>Mermaid 等价写法（如需要）</h2>
+    <pre>erDiagram
+    person  { string ID PK  string name  string address }
+    employee { string ID PK  string name  string address  decimal salary }
+    student  { string ID PK  string name  string address  int tot_cred }
+    person ||--o| employee : "ISA (partial/overlapping)"
+    person ||--o| student  : "ISA (partial/overlapping)"</pre>
+  </div>
+</div>
+</body>
+</html>

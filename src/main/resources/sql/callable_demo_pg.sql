@@ -2,10 +2,10 @@
 -- PostgreSQL 可调用语句（Callable Statement）演示
 --
 -- 建库:  psql.bat -d postgres "CREATE DATABASE callable_demo"
--- 执行:  必须用真实 psql 客户端 —— PgSqlRunner 按半角分号切分语句, 解析不了 $$ 函数体内的
---        分号, 用 psql.bat 执行时函数定义会报 Unterminated dollar quote:
---          "C:\Program Files\PostgreSQL\17\bin\psql.exe" -h localhost -U postgres -v ON_ERROR_STOP=1 -d callable_demo -f src\main\resources\sql\callable_demo_pg.sql
---        实测: 用真实 psql 执行 exit 0 无报错, employee 3 行, it_employees() 正常返回。
+-- 执行:  psql.bat -d callable_demo -f src\main\resources\sql\callable_demo_pg.sql
+--        （psql.bat 现在转发官方 psql.exe, $$ 函数体、注释里的分号、-v ON_ERROR_STOP=1 都支持;
+--          旧版 psql.bat 走 JDBC 切分器时这里会报 Unterminated dollar quote）
+-- 实测: 用真实 psql 执行 exit 0 无报错, employee 3 行, it_employees() 正常返回。
 --
 -- 演示对象（供 JDBC CallableStatement 调用）:
 --   1. 标量函数      dept_count(VARCHAR) -> INT     返回单个值

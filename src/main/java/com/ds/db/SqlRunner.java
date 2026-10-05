@@ -83,8 +83,7 @@ public class SqlRunner {
             }
             for (String statement : splitSql(sql)) {
                 execute(conn, statement);
-            }
-        }
+            }        }
     }
 
     /** 执行单条 SQL：SELECT 打印表格，其余打印影响行数 */
@@ -175,32 +174,9 @@ public class SqlRunner {
         return sb.toString();
     }
 
-    /** 按分号分割 SQL（忽略单引号/双引号内的分号） */
+    /** 按分号分割 SQL（引用/注释安全; MySQL 语法下单引号内反斜杠是转义符） */
     private static List<String> splitSql(String sql) {
-        List<String> parts = new ArrayList<>();
-        StringBuilder cur = new StringBuilder();
-        char quote = 0;
-        for (int i = 0; i < sql.length(); i++) {
-            char c = sql.charAt(i);
-            if (quote != 0) {
-                cur.append(c);
-                if (c == quote) {
-                    quote = 0;
-                }
-            } else if (c == '\'' || c == '"') {
-                quote = c;
-                cur.append(c);
-            } else if (c == ';') {
-                parts.add(cur.toString());
-                cur.setLength(0);
-            } else {
-                cur.append(c);
-            }
-        }
-        if (cur.toString().trim().length() > 0) {
-            parts.add(cur.toString());
-        }
-        return parts;
+        return SqlScriptSplitter.split(sql, true);
     }
 
     private static String readStdin() throws IOException {

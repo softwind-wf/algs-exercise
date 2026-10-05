@@ -22,6 +22,11 @@ import java.util.Properties;
 /**
  * 通用 JDBC SQL 执行工具（PostgreSQL 版）—— 让命令行 / Claude Code 直接操作 PostgreSQL。
  *
+ * <p><b>注意：{@code psql.bat} 现在优先调用 PostgreSQL 自带的 {@code psql.exe}，本身并不走这个类；
+ * 只有机器上找不到 {@code psql.exe} 时才退回这里（JDBC 兜底）。</b>直接用官方的 psql 时，
+ * {@code $$ 函数体}、注释里的分号、{@code \set} 等元命令全都支持；本类则受 JDBC 限制，
+ * 遇到 psql 元命令只会打印一行提示并跳过。</p>
+ *
  * <p>用法：</p>
  * <pre>
  *   PgSqlRunner "SELECT * FROM course"
@@ -70,7 +75,7 @@ public class PgSqlRunner {
         String url = "jdbc:postgresql://localhost:" + props.getProperty("port", "5432") + "/" + db;
         try (Connection conn = DriverManager.getConnection(url,
                 props.getProperty("user"), props.getProperty("password"))) {
-            for (String statement : splitSql(sql)) {
+            for (String statement : SqlScriptSplitter.split(sql)) {
                 execute(conn, statement);
             }
         }
@@ -80,6 +85,10 @@ public class PgSqlRunner {
     private static void execute(Connection conn, String statement) {
         String trimmed = statement.trim();
         if (trimmed.isEmpty()) {
+            return;
+        }
+        if (SqlScriptSplitter.isMetaCommand(trimmed)) {
+            System.err.println("ⓘ 跳过 psql 元命令(JDBC 版不支持, 请用 psql.bat 走官方 psql): " + trimmed);
             return;
         }
         try (Statement st = conn.createStatement()) {
@@ -164,32 +173,9 @@ public class PgSqlRunner {
         return sb.toString();
     }
 
-    /** 按分号分割 SQL（忽略单引号/双引号内的分号） */
+    /** 按分号分割 SQL(引用/美元引用/注释安全),纯注释片段丢弃 */
     private static List<String> splitSql(String sql) {
-        List<String> parts = new ArrayList<>();
-        StringBuilder cur = new StringBuilder();
-        char quote = 0;
-        for (int i = 0; i < sql.length(); i++) {
-            char c = sql.charAt(i);
-            if (quote != 0) {
-                cur.append(c);
-                if (c == quote) {
-                    quote = 0;
-                }
-            } else if (c == '\'' || c == '"') {
-                quote = c;
-                cur.append(c);
-            } else if (c == ';') {
-                parts.add(cur.toString());
-                cur.setLength(0);
-            } else {
-                cur.append(c);
-            }
-        }
-        if (cur.toString().trim().length() > 0) {
-            parts.add(cur.toString());
-        }
-        return parts;
+        return SqlScriptSplitter.split(sql);
     }
 
     private static String readStdin() throws IOException {
@@ -211,6 +197,9 @@ public class PgSqlRunner {
         System.out.println("  PgSqlRunner -f <脚本.sql>          执行 SQL 文件");
         System.out.println("  echo \"SQL\" | PgSqlRunner         从标准输入读取");
         System.out.println("  （未指定 -d 时默认连接 university 库）");
+        System.out.println();
+        System.out.println("提示: 该 JDBC 版不支持 psql 元命令(\\set / \\i / \\echo …);");
+        System.out.println("      平时请直接用 psql.bat —— 它优先调用官方 psql.exe, 元命令与 $$ 都支持。");
     }
 
     /** 从 pg.properties 读取连接配置：优先 classpath，其次相对路径兜底 */

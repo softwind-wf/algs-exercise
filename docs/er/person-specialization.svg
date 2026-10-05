@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 856" width="1200" height="856" role="img" aria-label="person 特化为 employee 与 student 的 E-R 图">
+  <title>实体集 person 的特化：employee / student</title>
+  <desc>Specialization：实体集 person 特化为子实体集 employee（附加属性 salary）与 student（附加属性 tot_cred），子实体集继承 person 的 ID、name、address。依据《数据库系统概念》7.8.1 特化小节。</desc>
+  <defs>
+    <style>
+      .ent{fill:#e3eefb;stroke:#37474f;stroke-width:2.4}
+      .att{fill:#fdf4dd;stroke:#37474f;stroke-width:2.2}
+      .isa{fill:#eef1f4;stroke:#37474f;stroke-width:2.4}
+      .edge{stroke:#37474f;stroke-width:2.2;fill:none}
+      .nm{font:700 22px "Microsoft YaHei","PingFang SC",system-ui,sans-serif;fill:#1f2d3d;text-anchor:middle;dominant-baseline:middle}
+      .an{font:400 18px "Microsoft YaHei","PingFang SC",system-ui,sans-serif;fill:#1f2d3d;text-anchor:middle;dominant-baseline:middle}
+      .key{font:400 18px "Microsoft YaHei","PingFang SC",system-ui,sans-serif;fill:#1f2d3d;text-anchor:middle;dominant-baseline:middle;text-decoration:underline}
+      .il{font:700 17px "Microsoft YaHei","PingFang SC",system-ui,sans-serif;fill:#37474f;text-anchor:middle;dominant-baseline:middle;letter-spacing:.6px}
+      .tag{font:400 14px "Microsoft YaHei","PingFang SC",system-ui,sans-serif;fill:#6b7785;text-anchor:middle;dominant-baseline:middle}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="856" fill="#ffffff"/>
+
+  <text class="tag" x="600" y="52">单线 = 部分特化（partial）：一个人可以既不是雇员也不是学生；本例为重叠（overlapping）特化</text>
+
+  <!-- 父实体集 person -->
+  <rect class="ent" x="480" y="240" width="240" height="72" rx="4"/>
+  <text class="nm" x="600" y="277">person</text>
+
+  <!-- person 的属性（ID 为主键，下划线） -->
+  <ellipse class="att" cx="185" cy="276" rx="64" ry="31"/>
+  <text class="key" x="185" y="277">ID</text>
+  <ellipse class="att" cx="600" cy="118" rx="76" ry="31"/>
+  <text class="an" x="600" y="119">name</text>
+  <ellipse class="att" cx="1016" cy="276" rx="88" ry="31"/>
+  <text class="an" x="1016" y="277">address</text>
+
+  <line class="edge" x1="480" y1="276" x2="249" y2="276"/>
+  <line class="edge" x1="600" y1="240" x2="600" y2="149"/>
+  <line class="edge" x1="720" y1="276" x2="928" y2="276"/>
+
+  <!-- 特化：ISA 三角 -->
+  <line class="edge" x1="600" y1="312" x2="600" y2="352"/>
+  <polygon class="isa" points="600,352 670,424 530,424"/>
+  <text class="il" x="600" y="409">ISA</text>
+
+  <!-- 子实体集 -->
+  <line class="edge" x1="530" y1="424" x2="345" y2="540"/>
+  <line class="edge" x1="670" y1="424" x2="855" y2="540"/>
+
+  <rect class="ent" x="225" y="540" width="240" height="72" rx="4"/>
+  <text class="nm" x="345" y="577">employee</text>
+  <rect class="ent" x="735" y="540" width="240" height="72" rx="4"/>
+  <text class="nm" x="855" y="577">student</text>
+
+  <!-- 子实体集附加属性 -->
+  <line class="edge" x1="345" y1="612" x2="345" y2="712"/>
+  <ellipse class="att" cx="345" cy="744" rx="78" ry="31"/>
+  <text class="an" x="345" y="745">salary</text>
+  <line class="edge" x1="855" y1="612" x2="855" y2="712"/>
+  <ellipse class="att" cx="855" cy="744" rx="92" ry="31"/>
+  <text class="an" x="855" y="745">tot_cred</text>
+
+  <!-- 继承提示：子实体集隐式包含 person 的属性（置于全部连线之下，避免遮挡） -->
+  <text class="tag" x="600" y="822">employee 与 student 继承 person 的属性 ID、name、address，并各自附加 salary / tot_cred</text>
+</svg>

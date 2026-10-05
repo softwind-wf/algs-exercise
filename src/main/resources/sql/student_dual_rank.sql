@@ -9,7 +9,7 @@
 --       所以能在同一行里同时看到两种口径的名次。
 -- ============================================================
 
--- 注: psql 客户端专用的 ON_ERROR_STOP 设置已移除(psql.bat / sql.bat 走 JDBC, 不识别 psql 元命令)
+-- 注: psql.bat / sql.bat 现在分别转发官方的 psql.exe / mysql.exe(元命令、$$、注释里的分号都能用)
 
 SELECT '===== 双 RANK: 总名次(overall) 与 系内名次(dept) 同时输出 =====' AS section;
 SELECT ID,

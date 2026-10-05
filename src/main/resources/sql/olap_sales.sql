@@ -16,7 +16,7 @@
 --   psql.bat -d university -f src\main\resources\sql\olap_sales.sql
 -- ============================================================
 
--- 注: psql 客户端专用的 ON_ERROR_STOP 设置已移除(psql.bat / sql.bat 走 JDBC, 不识别 psql 元命令)
+-- 注: psql.bat / sql.bat 现在分别转发官方的 psql.exe / mysql.exe(元命令、$$、注释里的分号都能用)
 
 -- ============================================================
 -- 1. 建表：维属性 + 度量属性，用 CHECK 约束落实教材给出的取值域
