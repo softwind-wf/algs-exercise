@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<title>习题 7.21 汽车公司数据库设计</title>
+<style>
+  html,body{margin:0;padding:0;background:#eef1f5;color:#1b2733;}
+  body{font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;}
+  .page{background:#fff;padding:26px 40px 60px;}
+  h1{font-size:26px;margin:0 0 6px;}
+  h2{font-size:20px;margin:30px 0 10px;border-left:5px solid #1f4e79;padding-left:10px;}
+  h3{font-size:17px;margin:18px 0 6px;}
+  p,li{font-size:16px;line-height:1.85;}
+  table{border-collapse:collapse;width:100%;margin:10px 0 6px;font-size:15px;}
+  th,td{border:1px solid #b9c4d0;padding:7px 10px;text-align:left;vertical-align:top;}
+  th{background:#e8eef6;}
+  pre{background:#f5f7fa;border:1px solid #ccd6e0;border-radius:6px;padding:12px;font-size:14px;line-height:1.6;overflow:auto;
+      font-family:Consolas,"Courier New",monospace;}
+  .note{background:#fff8e6;border-left:5px solid #e0a800;padding:10px 14px;margin:10px 0;font-size:15px;line-height:1.8;}
+  .fig{border:1px solid #ccd6e0;border-radius:8px;margin:8px 0 4px;}
+  .cap{font-size:14px;color:#5a6a7a;margin:0 0 18px;}
+</style></head>
+<body><div class="page">
+
+<h1>实践习题 7.21 · 汽车公司数据库设计</h1>
+<p><b>题目：</b>为一个汽车公司设计一个数据库，用于协助它的经销商维护客户记录以及经销商库存，并协助销售人员订购车辆。<br>
+每辆车由车辆编号（VIN）唯一标识；每辆单独的车都是公司提供的特定品牌的特定模型（例如，XF 是塔塔汽车捷豹品牌的模型）。
+每个模型都可以有不同的选项，但是一辆车可能只有一些（或没有）可用的选项。数据库需要保存关于模型、品牌、选项的信息，以及每个经销商、顾客和车的信息。<br>
+<b>要求：</b>设计应包括 E-R 图、关系模式的集合，以及包括主码约束和外码约束的一组约束。</p>
+
+<h2>一、E-R 图</h2>
+<div class="fig"><svg id="fig-721" xmlns="http://www.w3.org/2000/svg" width="2400" height="1532" viewBox="0 0 2400 1532" font-family="Microsoft YaHei, PingFang SC, Arial, sans-serif">
+  <rect x="0" y="0" width="2400" height="1532" fill="#ffffff"/>
+  <text x="1200" y="40" text-anchor="middle" font-size="23" font-weight="bold" fill="#12314f">习题 7.21 汽车公司 E-R 图（品牌-车型-选装件-车辆-经销商-顾客-销售员-订单）</text>
+  <g transform="translate(0,62)">
+  <line x1="206" y1="190" x2="292" y2="190" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="876" y1="164" x2="945" y2="164" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="1826" y1="684" x2="1904" y2="684" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="876" y1="684" x2="903" y2="684" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="206" y1="684" x2="284" y2="684" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="1426" y1="971" x2="1520" y2="971" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="226" y1="1297" x2="278" y2="1297" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="876" y1="1284" x2="945" y2="1284" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="280" y1="180" x2="600" y2="180" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="950" y1="180" x2="600" y2="180" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="950" y1="180" x2="950" y2="400" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="950" y1="700" x2="950" y2="400" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="950" y1="180" x2="1450" y2="180" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1900" y1="700" x2="1450" y2="180" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="950" y1="700" x2="1450" y2="700" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1900" y1="700" x2="1450" y2="700" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="280" y1="700" x2="600" y2="700" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="950" y1="700" x2="600" y2="700" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="280" y1="700" x2="300" y2="1000" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="300" y1="1300" x2="300" y2="1000" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="280" y1="700" x2="900" y2="850" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1500" y1="1000" x2="900" y2="850" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1500" y1="1000" x2="1300" y2="1150" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="950" y1="1300" x2="1300" y2="1150" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="300" y1="1300" x2="600" y2="1300" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="950" y1="1300" x2="600" y2="1300" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="950" y1="700" x2="950" y2="1000" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="950" y1="1300" x2="950" y2="1000" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="950" y1="180" x2="600" y2="1050" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="950" y1="1300" x2="600" y2="1050" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="950" y1="1300" x2="1350" y2="900" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1900" y1="700" x2="1350" y2="900" stroke="#3d4a57" stroke-width="2"/>
+  <rect x="190" y="133" width="180" height="94" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <rect x="860" y="107" width="180" height="146" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <rect x="1810" y="627" width="180" height="146" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <rect x="860" y="627" width="180" height="146" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <rect x="190" y="627" width="180" height="146" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <rect x="1410" y="914" width="180" height="172" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <rect x="210" y="1240" width="180" height="120" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <rect x="860" y="1227" width="180" height="146" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <polygon points="600,130.0 688.0,180 600,230.0 512.0,180" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="950,350.0 1038.0,400 950,450.0 862.0,400" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="1450,130.0 1538.0,180 1450,230.0 1362.0,180" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="1450,650.0 1538.0,700 1450,750.0 1362.0,700" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="600,650.0 688.0,700 600,750.0 512.0,700" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="300,950.0 388.0,1000 300,1050.0 212.0,1000" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="900,800.0 988.0,850 900,900.0 812.0,850" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="950,950.0 1038.0,1000 950,1050.0 862.0,1000" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="600,1000.0 688.0,1050 600,1100.0 512.0,1050" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="1350,850.0 1438.0,900 1350,950.0 1262.0,900" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="1300,1100.0 1388.0,1150 1300,1200.0 1212.0,1150" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="600,1250.0 688.0,1300 600,1350.0 512.0,1300" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <rect x="1480" y="1140" width="880" height="160" rx="8" fill="#fbfcfe" stroke="#9fb0c0" stroke-width="1.4"/>
+  <text x="280" y="156" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">brand</text>
+  <text x="206" y="186" font-size="15" fill="#26343f">brand_name</text>
+  <text x="206" y="212" font-size="15" fill="#26343f">country</text>
+  <text x="950" y="130" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">model</text>
+  <text x="876" y="160" font-size="15" fill="#26343f">model_id</text>
+  <text x="876" y="186" font-size="15" fill="#26343f">model_name</text>
+  <text x="876" y="212" font-size="15" fill="#26343f">model_year</text>
+  <text x="876" y="238" font-size="15" fill="#26343f">msrp</text>
+  <text x="1900" y="650" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">option</text>
+  <text x="1826" y="680" font-size="15" fill="#26343f">option_id</text>
+  <text x="1826" y="706" font-size="15" fill="#26343f">option_name</text>
+  <text x="1826" y="732" font-size="15" fill="#26343f">option_group</text>
+  <text x="1826" y="758" font-size="15" fill="#26343f">price</text>
+  <text x="950" y="650" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">car</text>
+  <text x="876" y="680" font-size="15" fill="#26343f">vin</text>
+  <text x="876" y="706" font-size="15" fill="#26343f">color</text>
+  <text x="876" y="732" font-size="15" fill="#26343f">manufacture_date</text>
+  <text x="876" y="758" font-size="15" fill="#26343f">status</text>
+  <text x="280" y="650" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">dealer</text>
+  <text x="206" y="680" font-size="15" fill="#26343f">dealer_id</text>
+  <text x="206" y="706" font-size="15" fill="#26343f">dealer_name</text>
+  <text x="206" y="732" font-size="15" fill="#26343f">address</text>
+  <text x="206" y="758" font-size="15" fill="#26343f">phone</text>
+  <text x="1500" y="937" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">customer</text>
+  <text x="1426" y="967" font-size="15" fill="#26343f">customer_id</text>
+  <text x="1426" y="993" font-size="15" fill="#26343f">name</text>
+  <text x="1426" y="1019" font-size="15" fill="#26343f">address</text>
+  <text x="1426" y="1045" font-size="15" fill="#26343f">phone</text>
+  <text x="1426" y="1071" font-size="15" fill="#26343f">email</text>
+  <text x="300" y="1263" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">salesperson</text>
+  <text x="226" y="1293" font-size="15" fill="#26343f">emp_id</text>
+  <text x="226" y="1319" font-size="15" fill="#26343f">name</text>
+  <text x="226" y="1345" font-size="15" fill="#26343f">phone</text>
+  <text x="950" y="1250" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">orders</text>
+  <text x="876" y="1280" font-size="15" fill="#26343f">order_no</text>
+  <text x="876" y="1306" font-size="15" fill="#26343f">order_date</text>
+  <text x="876" y="1332" font-size="15" fill="#26343f">order_type</text>
+  <text x="876" y="1358" font-size="15" fill="#26343f">total_price</text>
+  <text x="600" y="186" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">belongs_to</text>
+  <text x="950" y="406" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">has_car</text>
+  <text x="1450" y="186" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">available_option</text>
+  <text x="1450" y="706" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">installed_option</text>
+  <text x="600" y="706" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">dealer_car</text>
+  <text x="300" y="1006" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">works_for</text>
+  <text x="900" y="856" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">customer_of</text>
+  <text x="950" y="1006" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">for_car</text>
+  <text x="600" y="1056" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">for_model</text>
+  <text x="1350" y="906" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">order_option</text>
+  <text x="1300" y="1156" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">places</text>
+  <text x="600" y="1306" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">handles</text>
+  <text x="456" y="202" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="758" y="158" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="928" y="301" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="972" y="535" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="1225" y="202" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">M</text>
+  <text x="1669" y="400" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="1225" y="722" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">M</text>
+  <text x="1652" y="678" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="456" y="722" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="758" y="678" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="269" y="866" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="322" y="1135" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="616" y="804" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="1175" y="896" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="1377" y="1065" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="1151" y="1238" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="465" y="1322" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="758" y="1278" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="928" y="865" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="972" y="1135" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">0..1</text>
+  <text x="737" y="650" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="770" y="1145" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="1186" y="1096" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">M</text>
+  <text x="1590" y="789" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="1494" y="1166" font-size="15" fill="#24303c">图例：矩形=实体集（框内为属性，下划线=主码）；菱形=联系集；</text>
+  <text x="1494" y="1190" font-size="15" fill="#24303c">      边上标注为两端比值（1 : N、M : N、1 : 0..1）。</text>
+  <text x="1494" y="1214" font-size="15" fill="#24303c">两种订单：for_car 指向一辆具体现车（现货订单）；</text>
+  <text x="1494" y="1238" font-size="15" fill="#24303c">      for_model 指向车型（订制订单，选装件见 order_option，可为 0 个）。</text>
+  <text x="1494" y="1262" font-size="15" fill="#24303c">选装件两层：model_option=该车型可装哪些；car_option=这辆车实际装了哪些，</text>
+  <text x="1494" y="1286" font-size="15" fill="#24303c">      必须满足 car_option ⊆ model_option；订单同理（order_option ⊆ model_option）。</text>
+  </g>
+</svg></div>
+<p class="cap">图 7.21-1：汽车公司 E-R 图（8 个实体集、12 个联系集）。</p>
+
+<h3>表 1　实体集与主码</h3>
+<table>
+<tr><th style="width:16%">实体集</th><th style="width:16%">主码</th><th style="width:38%">其他属性</th><th style="width:30%">说明</th></tr>
+<tr><td>brand 品牌</td><td>brand_name</td><td>country</td><td>捷豹 / 路虎 / 大众 …</td></tr>
+<tr><td>model 车型</td><td>model_id</td><td>model_name, model_year, msrp</td><td>XF、F-PACE；属于一个品牌</td></tr>
+<tr><td>option 选装件</td><td>option_id</td><td>option_name, option_group, price</td><td>真皮座椅、全景天窗…</td></tr>
+<tr><td>car 车辆</td><td><b>vin</b></td><td>color, manufacture_date, status</td><td>题目指定的唯一标识</td></tr>
+<tr><td>dealer 经销商</td><td>dealer_id</td><td>dealer_name, address, phone</td><td>持有库存、维护客户</td></tr>
+<tr><td>customer 顾客</td><td>customer_id</td><td>name, address, phone, email</td><td>客户档案挂在经销商下</td></tr>
+<tr><td>salesperson 销售员</td><td>emp_id</td><td>name, phone</td><td>隶属于一个经销商</td></tr>
+<tr><td>orders 订单</td><td>order_no</td><td>order_date, order_type, total_price</td><td>销售员代客下单</td></tr>
+</table>
+
+<h3>表 2　联系集、基数与参与度</h3>
+<table>
+<tr><th style="width:20%">联系集</th><th style="width:22%">参与实体</th><th style="width:10%">基数</th><th style="width:48%">语义/参与度</th></tr>
+<tr><td>belongs_to</td><td>brand — model</td><td>1 : N</td><td>一个品牌有多个车型；每个车型只属于一个品牌（model 全参与）</td></tr>
+<tr><td>has_car</td><td>model — car</td><td>1 : N</td><td>每辆车都是某个车型的一辆具体车（car 全参与）</td></tr>
+<tr><td>available_option</td><td>model — option</td><td>M : N</td><td>该车型可选装哪些件；双方部分参与（车型可以没有可选项）</td></tr>
+<tr><td>installed_option</td><td>car — option</td><td>M : N</td><td>这辆车实际装了哪些件；<b>必须是该车型可选项的子集</b>，且可为空（题目：可能只有一些或没有）</td></tr>
+<tr><td>dealer_car</td><td>dealer — car</td><td>1 : N</td><td>车辆归属某经销商库存（car 全参与）</td></tr>
+<tr><td>works_for</td><td>dealer — salesperson</td><td>1 : N</td><td>销售员属于一个经销商（salesperson 全参与）</td></tr>
+<tr><td>customer_of</td><td>dealer — customer</td><td>1 : N</td><td>客户档案由某个经销商维护（customer 全参与）</td></tr>
+<tr><td>places</td><td>customer — orders</td><td>1 : N</td><td>一个顾客可有多个订单（orders 全参与）</td></tr>
+<tr><td>handles</td><td>salesperson — orders</td><td>1 : N</td><td>一个销售员可接多个订单（orders 全参与）</td></tr>
+<tr><td>for_car</td><td>car — orders</td><td>1 : 0..1</td><td><b>现货订单</b>：指名要某一辆具体车（VIN）；一辆车最多挂一个订单</td></tr>
+<tr><td>for_model</td><td>model — orders</td><td>1 : N</td><td><b>订制订单</b>：按车型下单，出厂前的车还没有 VIN</td></tr>
+<tr><td>order_option</td><td>orders — option</td><td>M : N</td><td>订制订单选了哪些选装件（可以是 0 个）；同样必须落在该车型的可选项内</td></tr>
+</table>
+
+<h2>二、关系模式的集合</h2>
+<pre>brand       (brand_name, country)                                  -- 主码 brand_name
+model       (model_id, brand_name, model_name, model_year, msrp)    -- 主码 model_id；外码 brand_name → brand
+            UNIQUE (brand_name, model_name, model_year)             -- 同品牌同车型同年份不重复
+option      (option_id, option_name, option_group, price)           -- 主码 option_id；UNIQUE(option_name)
+dealer      (dealer_id, dealer_name, address, phone)                -- 主码 dealer_id
+customer    (customer_id, name, address, phone, email, dealer_id)   -- 主码 customer_id；外码 dealer_id → dealer
+salesperson (emp_id, name, phone, dealer_id)                        -- 主码 emp_id；外码 dealer_id → dealer
+car         (vin, model_id, dealer_id, color, manufacture_date, status)
+                                                                    -- 主码 vin；外码 model_id → model, dealer_id → dealer
+model_option (model_id, option_id)                                  -- 主码 (model_id, option_id)；两个外码
+car_option   (vin, option_id)                                       -- 主码 (vin, option_id)；两个外码
+orders      (order_no, order_date, order_type, customer_id, emp_id, vin, model_id, total_price)
+                                                                    -- 主码 order_no
+                                                                    -- 外码 customer_id → customer, emp_id → salesperson,
+                                                                    --      vin → car(可空), model_id → model
+order_option (order_no, option_id)                                  -- 主码 (order_no, option_id)；两个外码</pre>
+<p>映射规则与教材一致：1:N 联系把 1 端主码并入 N 端（model.brand_name、car.model_id / dealer_id、
+customer.dealer_id、salesperson.dealer_id、orders.customer_id / emp_id）；M:N 联系各自单独建表（model_option、car_option、order_option）。
+order_option 是"订制订单"那一边的 M:N，没有它就无法表达"客户给这辆车选了哪些选装件"。</p>
+
+<h2>三、约束</h2>
+<h3>表 3　主码约束</h3>
+<table>
+<tr><th style="width:34%">关系</th><th style="width:30%">主码</th><th style="width:36%">其它候选码（UNIQUE）</th></tr>
+<tr><td>brand</td><td>brand_name</td><td>——</td></tr>
+<tr><td>model</td><td>model_id</td><td>(brand_name, model_name, model_year)</td></tr>
+<tr><td>option</td><td>option_id</td><td>option_name</td></tr>
+<tr><td>dealer</td><td>dealer_id</td><td>——</td></tr>
+<tr><td>customer</td><td>customer_id</td><td>email</td></tr>
+<tr><td>salesperson</td><td>emp_id</td><td>——</td></tr>
+<tr><td>car</td><td>vin</td><td>——</td></tr>
+<tr><td>orders</td><td>order_no</td><td>——</td></tr>
+<tr><td>model_option / car_option / order_option</td><td>两端属性组合</td><td>——</td></tr>
+</table>
+
+<h3>表 4　外码约束（含删除策略）</h3>
+<table>
+<tr><th style="width:26%">子关系.属性</th><th style="width:20%">引用</th><th style="width:54%">含义与删除策略</th></tr>
+<tr><td>model.brand_name</td><td>brand</td><td>车型所属品牌；有车型的品牌不许删（RESTRICT）</td></tr>
+<tr><td>car.model_id</td><td>model</td><td>车的车型；有车的车型不许删（RESTRICT）</td></tr>
+<tr><td>car.dealer_id</td><td>dealer</td><td>车在哪个经销商；有车的经销商不许删（RESTRICT）</td></tr>
+<tr><td>customer.dealer_id</td><td>dealer</td><td>客户档案归属；NOT NULL</td></tr>
+<tr><td>salesperson.dealer_id</td><td>dealer</td><td>销售员归属；NOT NULL</td></tr>
+<tr><td>orders.customer_id</td><td>customer</td><td>下单顾客；NOT NULL</td></tr>
+<tr><td>orders.emp_id</td><td>salesperson</td><td>接单销售员；NOT NULL</td></tr>
+<tr><td>orders.vin</td><td>car</td><td><b>可空</b>：只有现货订单才有 VIN</td></tr>
+<tr><td>orders.model_id</td><td>model</td><td>NOT NULL：现货按车的车型、订制按所选车型</td></tr>
+<tr><td>model_option.model_id / option_id</td><td>model / option</td><td>车型可选项，两端 NOT NULL</td></tr>
+<tr><td>car_option.vin / option_id</td><td>car / option</td><td>车辆已装选项，两端 NOT NULL</td></tr>
+<tr><td>order_option.order_no / option_id</td><td>orders / option</td><td>订制订单所选选项，两端 NOT NULL</td></tr>
+</table>
+
+<h3>表 5　语义约束（CHECK 与触发器）</h3>
+<table>
+<tr><th style="width:24%">约束</th><th style="width:76%">内容与实现</th></tr>
+<tr><td>VIN 格式</td><td>17 位、不含字母 I/O/Q：<code>CHECK (vin ~ '^[A-HJ-NPR-Z0-9]{17}$')</code>（真实 VIN 规则）</td></tr>
+<tr><td>订单类型</td><td><code>CHECK (order_type IN ('现货','订制'))</code></td></tr>
+<tr><td>订单完整性</td><td><code>CHECK ((order_type='现货' AND vin IS NOT NULL) OR (order_type='订制' AND vin IS NULL))</code></td></tr>
+<tr><td>金额/库存非负</td><td>msrp &gt; 0、option.price ≥ 0、orders.total_price ≥ 0</td></tr>
+<tr><td>车辆状态</td><td><code>CHECK (status IN ('在库','在途','已售'))</code></td></tr>
+<tr><td><b>car_option ⊆ model_option</b></td><td>触发器：车装的选装件必须是该车车型的可选项（跨三张表，CHECK 表达不了）</td></tr>
+<tr><td><b>order_option ⊆ model_option</b></td><td>触发器：订制订单选的选装件必须落在该订单车型的可选项内</td></tr>
+<tr><td><b>现货订单车型一致</b></td><td>触发器：现货订单的 model_id 必须等于该 VIN 的车型</td></tr>
+<tr><td><b>现货订单不得带选装件</b></td><td>触发器：现货订单的车是现成的，选装件以 car_option 为准，order_option 只属于订制订单</td></tr>
+</table>
+
+<div class="note"><b>两个设计要点：</b><br>
+① <b>两种订单</b>：题目要"协助销售人员订购车辆"。现车直接卖 → 订单指向 VIN（for_car）；向工厂订制 → 出厂前还没有 VIN，只能按车型下单并挑选装件（for_model + order_option）。用一条 CHECK 把两种订单的完整性钉死，比拆成两张订单表更省事（若要更"教材化"，也可把 orders 做成"现货订单 / 订制订单"的<b>不相交全概化</b>，代价是多一层表）。<br>
+② <b>选装件有两层</b>：车型"可以有哪些"（model_option）与某辆车"实际装了哪些"（car_option）必须分开，题目那句"一辆车可能只有一些（或没有）可用的选项"说的正是后者；两者的子集关系只能靠触发器保证。<br>
+③ <b>范式</b>：orders 里没有冗余存 dealer_id（销售员已带经销商），避免传递依赖；若要记录"客户是在哪个经销商下的单"，应当显式加 dealer_id 并接受这一处有意为之的冗余。</div>
+
+<h2>四、Mermaid 版（可直接粘贴渲染）</h2>
+<pre>erDiagram
+    BRAND       ||--o{ MODEL        : "belongs_to(1:N)"
+    MODEL       ||--o{ CAR          : "has_car(1:N)"
+    MODEL       }o--o{ OPTION       : "available_option(M:N)"
+    CAR         }o--o{ OPTION       : "installed_option(M:N)"
+    DEALER      ||--o{ CAR          : "dealer_car(1:N)"
+    DEALER      ||--o{ SALESPERSON  : "works_for(1:N)"
+    DEALER      ||--o{ CUSTOMER     : "customer_of(1:N)"
+    CUSTOMER    ||--o{ ORDERS       : "places(1:N)"
+    SALESPERSON ||--o{ ORDERS       : "handles(1:N)"
+    CAR         ||--o| ORDERS       : "for_car(1:0..1)"
+    MODEL       ||--o{ ORDERS       : "for_model(1:N)"
+    ORDERS      }o--o{ OPTION       : "order_option(M:N)"</pre>
+
+</div></body></html>
