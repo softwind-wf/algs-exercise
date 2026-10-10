@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<title>习题 7.22 全球快递公司数据库设计</title>
+<style>
+  html,body{margin:0;padding:0;background:#eef1f5;color:#1b2733;}
+  body{font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;}
+  .page{background:#fff;padding:26px 40px 60px;}
+  h1{font-size:26px;margin:0 0 6px;}
+  h2{font-size:20px;margin:30px 0 10px;border-left:5px solid #1f4e79;padding-left:10px;}
+  h3{font-size:17px;margin:18px 0 6px;}
+  p,li{font-size:16px;line-height:1.85;}
+  table{border-collapse:collapse;width:100%;margin:10px 0 6px;font-size:15px;}
+  th,td{border:1px solid #b9c4d0;padding:7px 10px;text-align:left;vertical-align:top;}
+  th{background:#e8eef6;}
+  pre{background:#f5f7fa;border:1px solid #ccd6e0;border-radius:6px;padding:12px;font-size:14px;line-height:1.6;overflow:auto;
+      font-family:Consolas,"Courier New",monospace;}
+  .note{background:#fff8e6;border-left:5px solid #e0a800;padding:10px 14px;margin:10px 0;font-size:15px;line-height:1.8;}
+  .fig{border:1px solid #ccd6e0;border-radius:8px;margin:8px 0 4px;}
+  .cap{font-size:14px;color:#5a6a7a;margin:0 0 18px;}
+</style></head>
+<body><div class="page">
+
+<h1>实践习题 7.22 · 全球快递公司数据库设计</h1>
+<p><b>题目：</b>为全球性的快递公司（例如 DHL 或 FedEx）设计一个数据库。数据库必须能够追踪寄件的客户和收件的客户；
+有些客户可能两者都是。由于每个包裹必须是可标识且可追踪的，因此数据库必须能够存储包裹的位置信息以及它的历史位置。
+位置包括卡车、飞机、机场和仓库。<br>
+<b>要求：</b>设计应包括 E-R 图、关系模式的集合，以及包括主码约束和外码约束的一组约束。</p>
+
+<h2>一、E-R 图</h2>
+<div class="fig"><svg id="fig-722" xmlns="http://www.w3.org/2000/svg" width="2260" height="1432" viewBox="0 0 2260 1432" font-family="Microsoft YaHei, PingFang SC, Arial, sans-serif">
+  <rect x="0" y="0" width="2260" height="1432" fill="#ffffff"/>
+  <text x="1130" y="40" text-anchor="middle" font-size="23" font-weight="bold" fill="#12314f">习题 7.22 全球快递公司 E-R 图（客户=寄件人/收件人 · 包裹 · 位置(概化) · 位置历史(弱实体)）</text>
+  <g transform="translate(0,62)">
+  <line x1="208" y1="273" x2="302" y2="273" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="878" y1="260" x2="972" y2="260" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="1563" y1="273" x2="1681" y2="273" stroke="#3a2c73" stroke-width="1.4" stroke-dasharray="5 4"/>
+  <line x1="1563" y1="299" x2="1664" y2="299" stroke="#3a2c73" stroke-width="1.4" stroke-dasharray="5 4"/>
+  <line x1="1378" y1="712" x2="1472" y2="712" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="228" y1="1149" x2="322" y2="1149" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="688" y1="1136" x2="782" y2="1136" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="1178" y1="1149" x2="1272" y2="1149" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="1688" y1="1136" x2="1782" y2="1136" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="878" y1="619" x2="981" y2="619" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="280" y1="300" x2="615" y2="190" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="615" y1="190" x2="950" y2="300" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="280" y1="300" x2="615" y2="415" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="615" y1="415" x2="950" y2="300" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="950" y1="300" x2="1300" y2="300" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1300" y1="300" x2="1640" y2="300" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1640" y1="300" x2="1700" y2="540" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1700" y1="540" x2="1450" y2="700" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="950" y1="300" x2="950" y2="470" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="950" y1="470" x2="950" y2="620" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1450" y1="700" x2="1450" y2="856" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1450" y1="944" x2="1450" y2="1010" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="300" y1="1010" x2="1760" y2="1010" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="300" y1="1010" x2="300" y2="1150" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="760" y1="1010" x2="760" y2="1150" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1250" y1="1010" x2="1250" y2="1150" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1760" y1="1010" x2="1760" y2="1150" stroke="#3d4a57" stroke-width="2"/>
+  <rect x="190" y="214" width="180" height="172" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <rect x="860" y="201" width="180" height="198" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <rect x="1545" y="214" width="190" height="172" rx="7" fill="#e6e0f5" stroke="#4b3b8f" stroke-width="2.2"/>
+  <rect x="1553" y="222" width="174" height="156" rx="5" fill="none" stroke="#4b3b8f" stroke-width="2"/>
+  <rect x="1360" y="653" width="180" height="94" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <rect x="210" y="1090" width="180" height="120" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <rect x="670" y="1077" width="180" height="146" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <rect x="1160" y="1090" width="180" height="120" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <rect x="1670" y="1077" width="180" height="146" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <rect x="860" y="560" width="180" height="120" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <polygon points="615,140.0 703.0,190 615,240.0 527.0,190" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="615,365.0 703.0,415 615,465.0 527.0,415" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="1300,248.0 1395.0,300 1300,352.0 1205.0,300" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="1300,255 1382,300 1300,345 1218,300" fill="none" stroke="#b07d00" stroke-width="2"/>
+  <polygon points="1700,488.0 1795.0,540 1700,592.0 1605.0,540" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="950,430.0 1045.0,470 950,510.0 855.0,470" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="1378,944 1522,944 1450,856" fill="#e6e0f5" stroke="#4b3b8f" stroke-width="2.2"/>
+  <rect x="240" y="1250" width="2000" height="112" rx="8" fill="#fbfcfe" stroke="#9fb0c0" stroke-width="1.4"/>
+  <text x="280" y="239" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">customer</text>
+  <text x="208" y="269" font-size="15" fill="#26343f">customer_id</text>
+  <text x="208" y="295" font-size="15" fill="#26343f">name</text>
+  <text x="208" y="321" font-size="15" fill="#26343f">phone</text>
+  <text x="208" y="347" font-size="15" fill="#26343f">email</text>
+  <text x="208" y="373" font-size="15" fill="#26343f">address</text>
+  <text x="950" y="226" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">package</text>
+  <text x="878" y="256" font-size="15" fill="#26343f">tracking_no</text>
+  <text x="878" y="282" font-size="15" fill="#26343f">weight_kg</text>
+  <text x="878" y="308" font-size="15" fill="#26343f">size_cm</text>
+  <text x="878" y="334" font-size="15" fill="#26343f">declared_value</text>
+  <text x="878" y="360" font-size="15" fill="#26343f">created_at</text>
+  <text x="878" y="386" font-size="15" fill="#26343f">status</text>
+  <text x="1640" y="239" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">package_event</text>
+  <text x="1563" y="269" font-size="15" fill="#3a2c73">tracking_no ⌁</text>
+  <text x="1563" y="295" font-size="15" fill="#3a2c73">event_seq ⌁</text>
+  <text x="1563" y="321" font-size="15" fill="#3a2c73">event_time</text>
+  <text x="1563" y="347" font-size="15" fill="#3a2c73">event_type</text>
+  <text x="1563" y="373" font-size="15" fill="#3a2c73">note</text>
+  <text x="1450" y="678" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">location</text>
+  <text x="1378" y="708" font-size="15" fill="#26343f">location_id</text>
+  <text x="1378" y="734" font-size="15" fill="#26343f">location_name</text>
+  <text x="300" y="1115" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">truck</text>
+  <text x="228" y="1145" font-size="15" fill="#26343f">location_id</text>
+  <text x="228" y="1171" font-size="15" fill="#26343f">plate_no</text>
+  <text x="228" y="1197" font-size="15" fill="#26343f">capacity_kg</text>
+  <text x="760" y="1102" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">plane</text>
+  <text x="688" y="1132" font-size="15" fill="#26343f">location_id</text>
+  <text x="688" y="1158" font-size="15" fill="#26343f">tail_no</text>
+  <text x="688" y="1184" font-size="15" fill="#26343f">model</text>
+  <text x="688" y="1210" font-size="15" fill="#26343f">capacity_kg</text>
+  <text x="1250" y="1115" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">airport</text>
+  <text x="1178" y="1145" font-size="15" fill="#26343f">location_id</text>
+  <text x="1178" y="1171" font-size="15" fill="#26343f">iata_code</text>
+  <text x="1178" y="1197" font-size="15" fill="#26343f">city</text>
+  <text x="1760" y="1102" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">warehouse</text>
+  <text x="1688" y="1132" font-size="15" fill="#26343f">location_id</text>
+  <text x="1688" y="1158" font-size="15" fill="#26343f">wh_code</text>
+  <text x="1688" y="1184" font-size="15" fill="#26343f">city</text>
+  <text x="1688" y="1210" font-size="15" fill="#26343f">capacity_m3</text>
+  <text x="950" y="585" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">service</text>
+  <text x="878" y="615" font-size="15" fill="#26343f">service_code</text>
+  <text x="878" y="641" font-size="15" fill="#26343f">service_name</text>
+  <text x="878" y="667" font-size="15" fill="#26343f">sla_days</text>
+  <text x="615" y="196" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">sends</text>
+  <text x="615" y="421" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">receives</text>
+  <text x="1300" y="306" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">tracks</text>
+  <text x="1700" y="546" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">at_location</text>
+  <text x="950" y="476" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">uses_service</text>
+  <text x="1450" y="916" text-anchor="middle" font-size="16" font-weight="bold" fill="#3a2c73">ISA</text>
+  <text x="562" y="231" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="715" y="246" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="548" y="415" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="729" y="399" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="1237" y="322" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="1409" y="322" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="1668" y="502" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="1608" y="573" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="928" y="439" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="928" y="518" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="254" y="1276" font-size="15" fill="#24303c">图例：矩形=实体集（框内为属性，下划线=主码）；双矩形=弱实体（虚线部分键）；菱形=联系集；双菱形=标识联系；三角=概化 ISA（本图 total + disjoint）。</text>
+  <text x="254" y="1300" font-size="15" fill="#24303c">客户只有一套：同一 customer 既可出现在 sends（寄件）也可出现在 receives（收件），所以“有些客户两者都是”不用建两张客户表。</text>
+  <text x="254" y="1324" font-size="15" fill="#24303c">位置是概化超类，卡车/飞机/机场/仓库是四个子类（全概化 + 不相交：每个位置恰好属于其中一类）。</text>
+  <text x="254" y="1348" font-size="15" fill="#24303c">包裹的“当前位置”不单独存字段，而是历史表里 event_time 最大的那条（派生的，用视图现算）。</text>
+  </g>
+</svg></div>
+<p class="cap">图 7.22-1：全球快递公司 E-R 图（4 个实体集 + 位置概化的 4 个子类 + 1 个弱实体；5 个联系集）。</p>
+
+<h3>表 1　实体集与主码</h3>
+<table>
+<tr><th style="width:18%">实体集</th><th style="width:16%">主码</th><th style="width:40%">其他属性</th><th style="width:26%">说明</th></tr>
+<tr><td>customer 客户</td><td>customer_id</td><td>name, phone, email, address</td><td><b>寄件人与收件人共用一套客户</b></td></tr>
+<tr><td>package 包裹</td><td><b>tracking_no</b></td><td>weight_kg, size_cm, declared_value, created_at, status</td><td>题目要求的"可标识"靠运单号</td></tr>
+<tr><td>service 服务类型</td><td>service_code</td><td>service_name, sla_days</td><td>标准/加急/次日达</td></tr>
+<tr><td>location 位置（超类）</td><td>location_id</td><td>location_name</td><td>被概化的四类位置</td></tr>
+<tr><td>— truck 卡车</td><td>location_id</td><td>plate_no, capacity_kg</td><td>子类</td></tr>
+<tr><td>— plane 飞机</td><td>location_id</td><td>tail_no, model, capacity_kg</td><td>子类</td></tr>
+<tr><td>— airport 机场</td><td>location_id</td><td>iata_code, city</td><td>子类</td></tr>
+<tr><td>— warehouse 仓库</td><td>location_id</td><td>wh_code, city, capacity_m3</td><td>子类</td></tr>
+<tr><td>package_event 位置历史<br>（<b>弱实体</b>）</td><td>(tracking_no, event_seq)</td><td>event_time, event_type, note</td><td>挂在包裹下，靠"运单号 + 事件序号"唯一</td></tr>
+</table>
+
+<h3>表 2　联系集、基数与参与度</h3>
+<table>
+<tr><th style="width:20%">联系集</th><th style="width:22%">参与实体</th><th style="width:10%">基数</th><th style="width:48%">语义/参与度</th></tr>
+<tr><td>sends 寄件</td><td>customer — package</td><td>1 : N</td><td>一个客户可寄多个包裹；每个包裹恰有一个寄件人（package 全参与）</td></tr>
+<tr><td>receives 收件</td><td>customer — package</td><td>1 : N</td><td>一个客户可收多个包裹；每个包裹恰有一个收件人（package 全参与）</td></tr>
+<tr><td>uses_service</td><td>package — service</td><td>N : 1</td><td>每个包裹选一种服务（package 全参与）</td></tr>
+<tr><td>tracks 记录<br>（<b>标识联系</b>）</td><td>package — package_event</td><td>1 : N</td><td>弱实体 package_event 靠包裹才能标识；一个包裹有 0..N 条事件</td></tr>
+<tr><td>at_location 位于</td><td>location — package_event</td><td>1 : N</td><td>每条事件发生在一个位置（卡车/飞机/机场/仓库）上；event 全参与</td></tr>
+<tr><td>ISA 概化</td><td>location → truck/plane/airport/warehouse</td><td>—</td><td><b>全概化 total + 不相交 disjoint</b>：每个位置恰属于其中一类</td></tr>
+</table>
+
+<h2>二、关系模式的集合</h2>
+<pre>customer (customer_id, name, phone, email, address)                 -- 主码 customer_id；UNIQUE(email)
+service  (service_code, service_name, sla_days)                     -- 主码 service_code
+package  (tracking_no, sender_id, receiver_id, service_code,
+          weight_kg, length_cm, width_cm, height_cm,
+          declared_value, created_at, status)                       -- 主码 tracking_no
+                                                                    -- 外码 sender_id, receiver_id → customer
+                                                                    -- 外码 service_code → service
+location (location_id, location_name)                               -- 主码 location_id（概化超类）
+truck    (location_id, plate_no, capacity_kg)                       -- 主码 location_id 且外码 → location
+plane    (location_id, tail_no, model, capacity_kg)                 -- 主码 location_id 且外码 → location
+airport  (location_id, iata_code, city)                             -- 主码 location_id 且外码 → location
+warehouse(location_id, wh_code, city, capacity_m3)                  -- 主码 location_id 且外码 → location
+package_event (tracking_no, event_seq, event_time, location_id, event_type, note)
+                                                                    -- 主码 (tracking_no, event_seq)  ← 弱实体
+                                                                    -- 外码 tracking_no → package, location_id → location</pre>
+<p>映射规则：1:N 联系把 1 端主码并入 N 端（package 里塞两个外码分别表示寄件人/收件人，
+package_event 里塞 location_id）；弱实体的主码 = 标识联系另一端的主码 + 部分键（tracking_no + event_seq）；
+概化按"超类表 + 子类表，子类主码同时是外码"落地。</p>
+
+<h2>三、约束</h2>
+<h3>表 3　主码约束与候选码</h3>
+<table>
+<tr><th style="width:30%">关系</th><th style="width:34%">主码</th><th style="width:36%">其它候选码（UNIQUE）</th></tr>
+<tr><td>customer</td><td>customer_id</td><td>email</td></tr>
+<tr><td>service</td><td>service_code</td><td>service_name</td></tr>
+<tr><td>package</td><td>tracking_no</td><td>——</td></tr>
+<tr><td>location</td><td>location_id</td><td>——</td></tr>
+<tr><td>truck / plane / airport / warehouse</td><td>location_id（同时是外码）</td><td>plate_no / tail_no / iata_code / wh_code</td></tr>
+<tr><td>package_event（弱实体）</td><td>(tracking_no, event_seq)</td><td>——</td></tr>
+</table>
+
+<h3>表 4　外码约束</h3>
+<table>
+<tr><th style="width:26%">子关系.属性</th><th style="width:18%">引用</th><th style="width:56%">含义与删除策略</th></tr>
+<tr><td>package.sender_id</td><td>customer</td><td>寄件客户，NOT NULL；客户有包裹时不许删（RESTRICT）</td></tr>
+<tr><td>package.receiver_id</td><td>customer</td><td>收件客户，NOT NULL；同一客户可以既是 sender 又是 receiver</td></tr>
+<tr><td>package.service_code</td><td>service</td><td>所选服务，NOT NULL</td></tr>
+<tr><td>truck / plane / airport / warehouse .location_id</td><td>location</td><td>子类主码 = 超类外码；有子类行的超类行不许删</td></tr>
+<tr><td>package_event.tracking_no</td><td>package</td><td>属于哪个包裹，NOT NULL（弱实体的标识外码）</td></tr>
+<tr><td>package_event.location_id</td><td>location</td><td>事件发生在哪个位置，NOT NULL</td></tr>
+</table>
+
+<h3>表 5　语义约束（CHECK 与触发器）</h3>
+<table>
+<tr><th style="width:26%">约束</th><th style="width:74%">内容与实现</th></tr>
+<tr><td>包裹基本量</td><td><code>weight_kg &gt; 0</code>、三边尺寸 &gt; 0、<code>declared_value &gt;= 0</code></td></tr>
+<tr><td>包裹状态</td><td><code>CHECK (status IN ('已收寄','运输中','派送中','已签收','异常'))</code></td></tr>
+<tr><td>事件序号/类型</td><td><code>event_seq &gt;= 1</code>；<code>CHECK (event_type IN ('收寄','入库','出库','装机','卸机','装车','派送','签收','异常'))</code></td></tr>
+<tr><td>服务时限</td><td><code>sla_days &gt; 0</code></td></tr>
+<tr><td><b>位置概化</b></td><td>触发器：每个 <code>location</code> <b>恰好</b>有一张子类行 —— 0 行报"全概化被破坏"，≥2 行报"不相交被破坏"（一个函数 + 5 枚可延迟约束触发器）</td></tr>
+<tr><td><b>事件不得早于收寄</b></td><td>触发器：<code>event_time &gt;= package.created_at</code>（跨表，CHECK 写不出来）</td></tr>
+<tr><td><b>轨迹单调</b></td><td>触发器：同一包裹内 <code>event_time</code> 必须随 <code>event_seq</code> 递增，防止把历史写成乱序</td></tr>
+</table>
+
+<div class="note"><b>三个设计要点：</b><br>
+① <b>客户只有一套</b>：题目说"有些客户可能两者都是"。若把寄件人、收件人建成两个实体集，同一个客户就会有两条记录（数据重复、且无法表达"这个人既寄又收"）。
+正确做法是共用 <code>customer</code>，用 <code>sends</code> / <code>receives</code> 两个联系（关系模式里体现为 package 上的两个不同外码），必要时还可以让 sender = receiver（自己寄给自己）。<br>
+② <b>位置用概化</b>：卡车、飞机、机场、仓库属性差很多（车牌/机尾号/三字码/仓号），但都要能被事件的 location 引用，所以抽出超类 <code>location</code>。
+本题是<b>全概化 + 不相交</b>，这与上一题（网上书店，重叠概化）正好相反：重叠只能"超类表 + 子类表"，而不相交还可以用"单表 + 判别列 + CHECK"。<br>
+③ <b>"当前位置"是派生数据，不建字段</b>：包裹的当前位置 = 历史表中 <code>event_time</code> 最大的那条事件的 location，用视图现算即可；
+强行存一列 current_location 会与历史不一致（要么靠触发器维护，要么干脆不存）。</div>
+
+<h2>四、Mermaid 版（可直接粘贴渲染）</h2>
+<pre>erDiagram
+    CUSTOMER  ||--o{ PACKAGE       : "sends(1:N)"
+    CUSTOMER  ||--o{ PACKAGE       : "receives(1:N)"
+    SERVICE   ||--o{ PACKAGE       : "uses_service(1:N)"
+    PACKAGE   ||--o{ PACKAGE_EVENT : "tracks(1:N, 标识联系)"
+    LOCATION  ||--o{ PACKAGE_EVENT : "at_location(1:N)"
+    LOCATION  ||--|| TRUCK          : "ISA(total, disjoint)"
+    LOCATION  ||--|| PLANE          : "ISA(total, disjoint)"
+    LOCATION  ||--|| AIRPORT        : "ISA(total, disjoint)"
+    LOCATION  ||--|| WAREHOUSE      : "ISA(total, disjoint)"</pre>
+
+</div></body></html>
