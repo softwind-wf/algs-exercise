@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<title>习题 7.23 航空公司数据库设计</title>
+<style>
+  html,body{margin:0;padding:0;background:#eef1f5;color:#1b2733;}
+  body{font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;}
+  .page{background:#fff;padding:26px 40px 60px;}
+  h1{font-size:26px;margin:0 0 6px;}
+  h2{font-size:20px;margin:30px 0 10px;border-left:5px solid #1f4e79;padding-left:10px;}
+  h3{font-size:17px;margin:18px 0 6px;}
+  p,li{font-size:16px;line-height:1.85;}
+  table{border-collapse:collapse;width:100%;margin:10px 0 6px;font-size:15px;}
+  th,td{border:1px solid #b9c4d0;padding:7px 10px;text-align:left;vertical-align:top;}
+  th{background:#e8eef6;}
+  pre{background:#f5f7fa;border:1px solid #ccd6e0;border-radius:6px;padding:12px;font-size:14px;line-height:1.6;overflow:auto;
+      font-family:Consolas,"Courier New",monospace;}
+  .note{background:#fff8e6;border-left:5px solid #e0a800;padding:10px 14px;margin:10px 0;font-size:15px;line-height:1.8;}
+  .fig{border:1px solid #ccd6e0;border-radius:8px;margin:8px 0 4px;}
+  .cap{font-size:14px;color:#5a6a7a;margin:0 0 18px;}
+</style></head>
+<body><div class="page">
+
+<h1>实践习题 7.23 · 航空公司数据库设计</h1>
+<p><b>题目：</b>为航空公司设计一个数据库。数据库必须追踪客户和他们的预订、航班、他们在航班上的状态、座位分配，
+以及未来航班的时刻表和飞行路线。<br>
+<b>要求：</b>设计应包括 E-R 图、关系模式的集合，以及包括主码约束和外码约束的一组约束。</p>
+
+<h2>一、E-R 图</h2>
+<div class="fig"><svg id="fig-723" xmlns="http://www.w3.org/2000/svg" width="2500" height="1432" viewBox="0 0 2500 1432" font-family="Microsoft YaHei, PingFang SC, Arial, sans-serif">
+  <rect x="0" y="0" width="2500" height="1432" fill="#ffffff"/>
+  <text x="1250" y="40" text-anchor="middle" font-size="23" font-weight="bold" fill="#12314f">习题 7.23 航空公司 E-R 图（机队 · 航线航段 · 时刻表 · 航班 · 客户预订与座位）</text>
+  <g transform="translate(0,62)">
+  <line x1="123" y1="136" x2="201" y2="136" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="686" y1="149" x2="738" y2="149" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="1176" y1="162" x2="1245" y2="162" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="1776" y1="123" x2="1868" y2="123" stroke="#3a2c73" stroke-width="1.4" stroke-dasharray="5 4"/>
+  <line x1="1776" y1="149" x2="1851" y2="149" stroke="#3a2c73" stroke-width="1.4" stroke-dasharray="5 4"/>
+  <line x1="1776" y1="686" x2="1878" y2="686" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="1076" y1="467" x2="1170" y2="467" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="826" y1="873" x2="903" y2="873" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="826" y1="899" x2="920" y2="899" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="1362" y1="1123" x2="1471" y2="1123" stroke="#3a2c73" stroke-width="1.4" stroke-dasharray="5 4"/>
+  <line x1="1362" y1="1149" x2="1438" y2="1149" stroke="#3a2c73" stroke-width="1.4" stroke-dasharray="5 4"/>
+  <line x1="776" y1="1136" x2="862" y2="1136" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="156" y1="1123" x2="250" y2="1123" stroke="#26343f" stroke-width="1.4"/>
+  <line x1="200" y1="150" x2="470" y2="150" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="470" y1="150" x2="760" y2="150" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="760" y1="150" x2="700" y2="500" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="700" y1="500" x2="900" y2="900" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1250" y1="150" x2="1550" y2="150" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1550" y1="150" x2="1850" y2="150" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1850" y1="700" x2="1600" y2="400" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1600" y1="400" x2="1850" y2="150" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1850" y1="700" x2="2100" y2="400" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="2100" y1="400" x2="1850" y2="150" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1250" y1="150" x2="1200" y2="330" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1200" y1="330" x2="1150" y2="520" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1150" y1="520" x2="1000" y2="720" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1000" y1="720" x2="900" y2="900" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="900" y1="900" x2="1450" y2="900" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1450" y1="900" x2="1450" y2="1150" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="850" y1="1150" x2="1150" y2="1150" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="1150" y1="1150" x2="1450" y2="1150" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="230" y1="1150" x2="550" y2="1150" stroke="#3d4a57" stroke-width="2"/>
+  <line x1="550" y1="1150" x2="850" y2="1150" stroke="#3d4a57" stroke-width="2"/>
+  <rect x="105" y="77" width="190" height="146" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <rect x="668" y="90" width="185" height="120" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <rect x="1158" y="103" width="185" height="94" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <rect x="1758" y="64" width="185" height="172" rx="7" fill="#e6e0f5" stroke="#4b3b8f" stroke-width="2.2"/>
+  <rect x="1766" y="72" width="169" height="156" rx="5" fill="none" stroke="#4b3b8f" stroke-width="2"/>
+  <rect x="1758" y="627" width="185" height="146" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <rect x="1058" y="408" width="185" height="224" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <rect x="808" y="814" width="185" height="172" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <rect x="1344" y="1064" width="212" height="172" rx="7" fill="#e6e0f5" stroke="#4b3b8f" stroke-width="2.2"/>
+  <rect x="1352" y="1072" width="196" height="156" rx="5" fill="none" stroke="#4b3b8f" stroke-width="2"/>
+  <rect x="758" y="1077" width="185" height="146" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <rect x="138" y="1064" width="185" height="172" rx="7" fill="#dbe9f7" stroke="#1f4e79" stroke-width="2.2"/>
+  <polygon points="470,105.0 555.0,150 470,195.0 385.0,150" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="700,452.0 785.0,500 700,548.0 615.0,500" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="1550,102.0 1635.0,150 1550,198.0 1465.0,150" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="1550,109 1623,150 1550,191 1477,150" fill="none" stroke="#b07d00" stroke-width="2"/>
+  <polygon points="1600,352.0 1700.0,400 1600,448.0 1500.0,400" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="2100,352.0 2200.0,400 2100,448.0 2000.0,400" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="1200,285.0 1288.0,330 1200,375.0 1112.0,330" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="1000,674.0 1095.0,720 1000,766.0 905.0,720" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="1450,854.0 1545.0,900 1450,946.0 1355.0,900" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="1150,1102.0 1235.0,1150 1150,1198.0 1065.0,1150" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <polygon points="1150,1109 1223,1150 1150,1191 1077,1150" fill="none" stroke="#b07d00" stroke-width="2"/>
+  <polygon points="550,1105.0 625.0,1150 550,1195.0 475.0,1150" fill="#fdf0d0" stroke="#b07d00" stroke-width="2.2"/>
+  <rect x="1620" y="950" width="830" height="208" rx="8" fill="#fbfcfe" stroke="#9fb0c0" stroke-width="1.4"/>
+  <text x="200" y="102" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">aircraft_type</text>
+  <text x="123" y="132" font-size="15" fill="#26343f">type_code</text>
+  <text x="123" y="158" font-size="15" fill="#26343f">manufacturer</text>
+  <text x="123" y="184" font-size="15" fill="#26343f">model</text>
+  <text x="123" y="210" font-size="15" fill="#26343f">seat_capacity</text>
+  <text x="760" y="115" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">airplane</text>
+  <text x="686" y="145" font-size="15" fill="#26343f">reg_no</text>
+  <text x="686" y="171" font-size="15" fill="#26343f">delivery_date</text>
+  <text x="686" y="197" font-size="15" fill="#26343f">status</text>
+  <text x="1250" y="128" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">route</text>
+  <text x="1176" y="158" font-size="15" fill="#26343f">route_no</text>
+  <text x="1176" y="184" font-size="15" fill="#26343f">route_name</text>
+  <text x="1850" y="89" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">route_leg</text>
+  <text x="1776" y="119" font-size="15" fill="#3a2c73">route_no ⌁</text>
+  <text x="1776" y="145" font-size="15" fill="#3a2c73">leg_no ⌁</text>
+  <text x="1776" y="171" font-size="15" fill="#3a2c73">from_code</text>
+  <text x="1776" y="197" font-size="15" fill="#3a2c73">to_code</text>
+  <text x="1776" y="223" font-size="15" fill="#3a2c73">distance_km</text>
+  <text x="1850" y="652" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">airport</text>
+  <text x="1776" y="682" font-size="15" fill="#26343f">airport_code</text>
+  <text x="1776" y="708" font-size="15" fill="#26343f">airport_name</text>
+  <text x="1776" y="734" font-size="15" fill="#26343f">city</text>
+  <text x="1776" y="760" font-size="15" fill="#26343f">country</text>
+  <text x="1150" y="433" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">timetable</text>
+  <text x="1076" y="463" font-size="15" fill="#26343f">schedule_id</text>
+  <text x="1076" y="489" font-size="15" fill="#26343f">flight_no</text>
+  <text x="1076" y="515" font-size="15" fill="#26343f">day_of_week</text>
+  <text x="1076" y="541" font-size="15" fill="#26343f">dep_time</text>
+  <text x="1076" y="567" font-size="15" fill="#26343f">arr_time</text>
+  <text x="1076" y="593" font-size="15" fill="#26343f">valid_from</text>
+  <text x="1076" y="619" font-size="15" fill="#26343f">valid_to</text>
+  <text x="900" y="839" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">flight</text>
+  <text x="826" y="869" font-size="15" fill="#26343f">flight_no</text>
+  <text x="826" y="895" font-size="15" fill="#26343f">flight_date</text>
+  <text x="826" y="921" font-size="15" fill="#26343f">dep_time</text>
+  <text x="826" y="947" font-size="15" fill="#26343f">arr_time</text>
+  <text x="826" y="973" font-size="15" fill="#26343f">flight_status</text>
+  <text x="1450" y="1089" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">booking_segment</text>
+  <text x="1362" y="1119" font-size="15" fill="#3a2c73">booking_id ⌁</text>
+  <text x="1362" y="1145" font-size="15" fill="#3a2c73">seg_no ⌁</text>
+  <text x="1362" y="1171" font-size="15" fill="#3a2c73">cabin_class</text>
+  <text x="1362" y="1197" font-size="15" fill="#3a2c73">seat_no</text>
+  <text x="1362" y="1223" font-size="15" fill="#3a2c73">segment_status</text>
+  <text x="850" y="1102" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">booking</text>
+  <text x="776" y="1132" font-size="15" fill="#26343f">booking_id</text>
+  <text x="776" y="1158" font-size="15" fill="#26343f">booking_date</text>
+  <text x="776" y="1184" font-size="15" fill="#26343f">total_amount</text>
+  <text x="776" y="1210" font-size="15" fill="#26343f">booking_status</text>
+  <text x="230" y="1089" text-anchor="middle" font-size="20" font-weight="bold" fill="#12314f">customer</text>
+  <text x="156" y="1119" font-size="15" fill="#26343f">customer_id</text>
+  <text x="156" y="1145" font-size="15" fill="#26343f">name</text>
+  <text x="156" y="1171" font-size="15" fill="#26343f">phone</text>
+  <text x="156" y="1197" font-size="15" fill="#26343f">email</text>
+  <text x="156" y="1223" font-size="15" fill="#26343f">address</text>
+  <text x="470" y="156" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">of_type</text>
+  <text x="700" y="506" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">uses</text>
+  <text x="1550" y="156" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">legs</text>
+  <text x="1600" y="406" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">departs_from</text>
+  <text x="2100" y="406" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">arrives_at</text>
+  <text x="1200" y="336" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">scheduled</text>
+  <text x="1000" y="726" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">planned_as</text>
+  <text x="1450" y="906" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">on_flight</text>
+  <text x="1150" y="1156" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">contains</text>
+  <text x="550" y="1156" text-anchor="middle" font-size="16" font-weight="bold" fill="#6b4a00">books</text>
+  <text x="421" y="172" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="563" y="172" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="689" y="433" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="744" y="638" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="1496" y="172" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="1646" y="172" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="1662" y="440" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="1696" y="336" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="2072" y="468" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="2036" y="304" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="1188" y="292" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="1163" y="385" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="1009" y="671" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="949" y="767" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="1351" y="922" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="1428" y="980" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="1096" y="1172" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="1246" y="1172" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="492" y="1172" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">1</text>
+  <text x="646" y="1172" text-anchor="middle" font-size="15" font-weight="bold" fill="#b00020">N</text>
+  <text x="1634" y="976" font-size="14" fill="#24303c">图例：矩形=实体集（下划线=主码）；双矩形=弱实体（⌁ 虚线部分键）；</text>
+  <text x="1634" y="1000" font-size="14" fill="#24303c">      菱形=联系集；双菱形=标识联系。</text>
+  <text x="1634" y="1024" font-size="14" fill="#24303c">机票三层：timetable(时刻表：班号+班期+起降时刻+有效期)</text>
+  <text x="1634" y="1048" font-size="14" fill="#24303c">      → flight(具体航班：班号+日期) → booking_segment(座位与状态)。</text>
+  <text x="1634" y="1072" font-size="14" fill="#24303c">航线 route 由弱实体 route_leg(航线号+航段号) 组成，每段起降两个机场；</text>
+  <text x="1634" y="1096" font-size="14" fill="#24303c">订座 booking_segment 同样是弱实体(订单号+航段号)，联程票=一条订单多航段。</text>
+  <text x="1634" y="1120" font-size="14" fill="#24303c">座位分配与乘机状态(已确认/候补/已登机/已取消)落在订座航段上，</text>
+  <text x="1634" y="1144" font-size="14" fill="#24303c">配合“同一航班同一座位只能被一个未取消订座占用”的部分唯一索引。</text>
+  </g>
+</svg></div>
+<p class="cap">图 7.23-1：航空公司 E-R 图（8 个实体集 + 2 个弱实体集；10 个联系集）。</p>
+
+<h3>表 1　实体集与主码</h3>
+<table>
+<tr><th style="width:20%">实体集</th><th style="width:22%">主码</th><th style="width:34%">其他属性</th><th style="width:24%">说明</th></tr>
+<tr><td>customer 客户</td><td>customer_id</td><td>name, phone, email, address</td><td>订票人</td></tr>
+<tr><td>airport 机场</td><td>airport_code</td><td>airport_name, city, country</td><td>三字码，如 PEK</td></tr>
+<tr><td>aircraft_type 机型</td><td>type_code</td><td>manufacturer, model, seat_capacity</td><td>如 B738，162 座</td></tr>
+<tr><td>airplane 飞机</td><td>reg_no</td><td>delivery_date, status</td><td>机尾号，如 B-5678</td></tr>
+<tr><td>route 航线（飞行路线）</td><td>route_no</td><td>route_name</td><td>由若干航段组成</td></tr>
+<tr><td>route_leg 航段<br>（<b>弱实体</b>）</td><td>(route_no, leg_no)</td><td>from_code, to_code, distance_km</td><td>航线的第 k 段，挂两个机场</td></tr>
+<tr><td>timetable 时刻表</td><td>schedule_id</td><td>flight_no, day_of_week, dep_time, arr_time, valid_from, valid_to</td><td>未来航班：班期 + 起降时刻 + 有效期</td></tr>
+<tr><td>flight 航班（具体）</td><td>(flight_no, flight_date)</td><td>dep_time, arr_time, flight_status</td><td>某一班某一天的那次飞行</td></tr>
+<tr><td>booking 预订（订单）</td><td>booking_id</td><td>booking_date, total_amount, booking_status</td><td>一个客户可有多张订单</td></tr>
+<tr><td>booking_segment 订座航段<br>（<b>弱实体</b>）</td><td>(booking_id, seg_no)</td><td>cabin_class, seat_no, segment_status</td><td>某人在某航班上的座位与状态</td></tr>
+</table>
+
+<h3>表 2　联系集、基数与参与度</h3>
+<table>
+<tr><th style="width:20%">联系集</th><th style="width:24%">参与实体</th><th style="width:10%">基数</th><th style="width:46%">语义/参与度</th></tr>
+<tr><td>of_type</td><td>aircraft_type — airplane</td><td>1 : N</td><td>一种机型有多架飞机；每架飞机属于一种机型（airplane 全参与）</td></tr>
+<tr><td>uses</td><td>airplane — flight</td><td>1 : N</td><td>一架飞机执行多个航班；每个航班用一架飞机（flight 全参与）</td></tr>
+<tr><td>legs（<b>标识联系</b>）</td><td>route — route_leg</td><td>1 : N</td><td>航线的航段靠航线标识；一条航线至少 1 段</td></tr>
+<tr><td>departs_from</td><td>airport — route_leg</td><td>1 : N</td><td>航段的出发机场（route_leg 全参与）</td></tr>
+<tr><td>arrives_at</td><td>airport — route_leg</td><td>1 : N</td><td>航段的到达机场（route_leg 全参与）</td></tr>
+<tr><td>scheduled</td><td>route — timetable</td><td>1 : N</td><td>一条航线排多个时刻表（不同班期/有效期）</td></tr>
+<tr><td>planned_as</td><td>timetable — flight</td><td>1 : N</td><td>时刻表生成具体航班（flight 全参与：每个航班都能追到它的计划）</td></tr>
+<tr><td>on_flight</td><td>flight — booking_segment</td><td>1 : N</td><td>一个航班上有多条订座；每条订座恰好对应一个航班（segment 全参与）</td></tr>
+<tr><td>contains（<b>标识联系</b>）</td><td>booking — booking_segment</td><td>1 : N</td><td>订座航段靠订单标识；一张订单至少 1 段、可多段联程</td></tr>
+<tr><td>books</td><td>customer — booking</td><td>1 : N</td><td>一个客户可下多张订单（booking 全参与）</td></tr>
+</table>
+
+<h2>二、关系模式的集合</h2>
+<pre>customer   (customer_id, name, phone, email, address)                 -- PK customer_id；UNIQUE(email)
+airport    (airport_code, airport_name, city, country)               -- PK airport_code
+aircraft_type (type_code, manufacturer, model, seat_capacity)        -- PK type_code；CHECK seat_capacity>0
+airplane   (reg_no, type_code, delivery_date, status)                -- PK reg_no；FK type_code→aircraft_type
+route      (route_no, route_name)                                    -- PK route_no
+route_leg  (route_no, leg_no, from_code, to_code, distance_km)       -- PK(route_no, leg_no)  ← 弱实体
+                                                                     -- FK route_no→route
+                                                                     -- FK from_code / to_code→airport
+timetable  (schedule_id, flight_no, route_no, type_code,             -- PK schedule_id
+            day_of_week, dep_time, arr_time, valid_from, valid_to)   -- UNIQUE(flight_no, day_of_week, valid_from)
+                                                                     -- FK route_no→route, type_code→aircraft_type
+flight     (flight_no, flight_date, schedule_id, reg_no,             -- PK(flight_no, flight_date)
+            dep_time, arr_time, flight_status)                       -- FK schedule_id→timetable, reg_no→airplane
+booking    (booking_id, customer_id, booking_date,                   -- PK booking_id
+            total_amount, booking_status)                            -- FK customer_id→customer
+booking_segment (booking_id, seg_no, flight_no, flight_date,         -- PK(booking_id, seg_no)  ← 弱实体
+                 cabin_class, seat_no, segment_status)               -- FK booking_id→booking
+                                                                     -- FK (flight_no, flight_date)→flight</pre>
+<p>映射规则：1:N 联系把 1 端主码并入 N 端（airplane.type_code、flight.schedule_id/reg_no、timetable.route_no/type_code、
+booking.customer_id、route_leg.route_no/from_code/to_code）；弱实体的主码 = 标识联系另一端的主码 + 部分键
+（route_leg = route_no + leg_no；booking_segment = booking_id + seg_no）；booking_segment 上的复合外码
+<code>(flight_no, flight_date)</code> 就是"订座 ↔ 航班"这个 M:N 联系的落地形式。</p>
+
+<h2>三、约束</h2>
+<h3>表 3　主码与候选码</h3>
+<table>
+<tr><th style="width:32%">关系</th><th style="width:34%">主码</th><th style="width:34%">其它候选码（UNIQUE）</th></tr>
+<tr><td>customer</td><td>customer_id</td><td>email</td></tr>
+<tr><td>airport / aircraft_type / airplane / route / booking</td><td>airport_code / type_code / reg_no / route_no / booking_id</td><td>——</td></tr>
+<tr><td>timetable</td><td>schedule_id</td><td>(flight_no, day_of_week, valid_from)</td></tr>
+<tr><td>flight</td><td>(flight_no, flight_date)</td><td>——</td></tr>
+<tr><td>route_leg（弱实体）</td><td>(route_no, leg_no)</td><td>——</td></tr>
+<tr><td>booking_segment（弱实体）</td><td>(booking_id, seg_no)</td><td>(flight_no, flight_date, seat_no) —— 且只对"未取消"的订座生效（部分唯一索引）</td></tr>
+</table>
+
+<h3>表 4　外码约束</h3>
+<table>
+<tr><th style="width:28%">子关系.属性</th><th style="width:20%">引用</th><th style="width:52%">含义与删除策略</th></tr>
+<tr><td>airplane.type_code</td><td>aircraft_type</td><td>机型，NOT NULL；有飞机的机型不许删（RESTRICT）</td></tr>
+<tr><td>route_leg.route_no</td><td>route</td><td>航段所属航线，NOT NULL</td></tr>
+<tr><td>route_leg.from_code / to_code</td><td>airport</td><td>起降机场，都 NOT NULL；还要 CHECK 两者不同</td></tr>
+<tr><td>timetable.route_no / type_code</td><td>route / aircraft_type</td><td>时刻表排在哪条航线、计划用哪种机型</td></tr>
+<tr><td>flight.schedule_id</td><td>timetable</td><td>具体航班来自哪条时刻表，NOT NULL</td></tr>
+<tr><td>flight.reg_no</td><td>airplane</td><td>实际执飞的飞机，NOT NULL</td></tr>
+<tr><td>booking.customer_id</td><td>customer</td><td>下单客户，NOT NULL（客户有订单时不许删）</td></tr>
+<tr><td>booking_segment.booking_id</td><td>booking</td><td>弱实体的标识外码，NOT NULL</td></tr>
+<tr><td>booking_segment.(flight_no, flight_date)</td><td>flight</td><td>复合外码：订座落在哪个航班上，NOT NULL</td></tr>
+</table>
+
+<h3>表 5　语义约束（CHECK、唯一索引与触发器）</h3>
+<table>
+<tr><th style="width:28%">约束</th><th style="width:72%">内容与实现</th></tr>
+<tr><td>基本量</td><td><code>seat_capacity &gt; 0</code>、<code>distance_km &gt; 0</code>、<code>total_amount &gt;= 0</code></td></tr>
+<tr><td>枚举</td><td>cabin_class ∈ (经济舱, 公务舱, 头等舱)；flight_status ∈ (计划, 延误, 已起飞, 已到达, 取消)；booking_status / segment_status ∈ (已确认, 候补, 已登机, 已取消)</td></tr>
+<tr><td>时刻表</td><td><code>day_of_week BETWEEN 1 AND 7</code>、<code>dep_time &lt; arr_time</code>、<code>valid_from &lt; valid_to</code></td></tr>
+<tr><td>航段</td><td><code>from_code &lt;&gt; to_code</code>（一个航段不能同场起降）</td></tr>
+<tr><td>座位号</td><td><code>seat_no ~ '^[0-9]{1,2}[A-K]$'</code>（如 12A、3C）</td></tr>
+<tr><td><b>座位不被重复占用</b></td><td>部分唯一索引：<code>UNIQUE (flight_no, flight_date, seat_no) WHERE seat_no IS NOT NULL AND segment_status &lt;&gt; '已取消'</code> —— 取消的订座自动让出座位</td></tr>
+<tr><td><b>航班与时刻表对齐</b></td><td>触发器：具体航班的 flight_no 必须与它引用的时刻表一致；<code>flight_date</code> 的星期必须等于时刻表的 <code>day_of_week</code>；且日期落在 <code>valid_from ~ valid_to</code> 内</td></tr>
+<tr><td><b>座位不超出机型容量</b></td><td>触发器：座位排号 × 6 不得超过该航班执飞飞机的机型座位数（跨 booking_segment → flight → airplane → aircraft_type 四张表）</td></tr>
+<tr><td><b>状态与座位自洽</b></td><td>触发器：已确认 / 已登机 必须有座位号；候补可以没有座位号</td></tr>
+<tr><td><b>航线航段首尾相接</b></td><td>可延迟约束触发器：同一条航线内 leg_no 必须从 1 连续编号，且第 k 段的到达机场 = 第 k+1 段的出发机场</td></tr>
+</table>
+
+<div class="note"><b>三个设计要点：</b><br>
+① <b>机票分三层，别混成一张表</b>：<code>timetable</code>（时刻表：班期 + 起降时刻 + 有效期，回答"未来航班怎么排"）→
+<code>flight</code>（具体航班：航班号 + 日期，回答"哪一天飞的那一班"）→ <code>booking_segment</code>（某人某航班的座位与状态）。
+没有中间层就表达不了"同一航班号不同日期"和"时刻表改了不影响已排航班"。<br>
+② <b>座位分配与乘机状态放在订座航段上</b>：一条订座记录 = 一次订票的一段行程，"已确认 / 候补 / 已登机 / 已取消"+座位号都是它的属性；
+联程票就是同一 booking 下多条 segment。<br>
+③ <b>座位冲突交给部分唯一索引</b>：<code>UNIQUE(flight_no, flight_date, seat_no) WHERE segment_status &lt;&gt; '已取消'</code> ——
+既保证"一个座位只卖给一个未取消的订座"，又不会因为存在取消记录而挡住建新单（这是普通唯一约束做不到的；示例数据里 5A 座位被取消后又被别人买走）。</div>
+
+<h2>四、Mermaid 版（可直接粘贴渲染）</h2>
+<pre>erDiagram
+    AIRCRAFT_TYPE ||--o{ AIRPLANE        : "of_type(1:N)"
+    AIRPLANE      ||--o{ FLIGHT          : "uses(1:N)"
+    ROUTE         ||--o{ ROUTE_LEG       : "legs(1:N, 标识联系)"
+    AIRPORT       ||--o{ ROUTE_LEG       : "departs_from(1:N)"
+    AIRPORT       ||--o{ ROUTE_LEG       : "arrives_at(1:N)"
+    ROUTE         ||--o{ TIMETABLE       : "scheduled(1:N)"
+    TIMETABLE     ||--o{ FLIGHT          : "planned_as(1:N)"
+    FLIGHT        ||--o{ BOOKING_SEGMENT : "on_flight(1:N)"
+    BOOKING       ||--o{ BOOKING_SEGMENT : "contains(1:N, 标识联系)"
+    CUSTOMER      ||--o{ BOOKING         : "books(1:N)"</pre>
+
+</div></body></html>
