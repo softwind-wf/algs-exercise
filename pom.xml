@@ -144,6 +144,15 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
+		<!-- JUnit Platform Launcher：FdTestRunner 用 Launcher API 离线跑测试。
+		     spring-boot-starter-test 默认不含此构件，需显式引入（版本由父 POM 管理），
+		     否则 IDE 里 org.junit.platform.launcher.* 符号无法解析。 -->
+		<dependency>
+			<groupId>org.junit.platform</groupId>
+			<artifactId>junit-platform-launcher</artifactId>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>

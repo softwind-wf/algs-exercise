@@ -1,0 +1,62 @@
+# FD 闭包差分测试用例（Java 与 Python 两个独立实现共用同一批输入）
+# 格式：
+#   case <名称>
+#   attrs <属性集，如 ABC>
+#   n <FD 条数>
+#   <左边> <右边>        # 重复 n 次
+#   end
+# 用例设计意图：
+#   1) single-key   —— 单属性候选键，无传递
+#   2) two-keys     —— 两条候选键（代理键/自然键并存那类）
+#   3) chain        —— 长传递链 A→B→C→D
+#   4) composite    —— 复合决定因素（AB→C）
+#   5) textbook     —— 教材 8.4 节原题，图 8-7 暴力法会缺平凡依赖
+#   6) trivial      —— 全部 FD 都平凡/自反，考验平凡依赖处理
+
+case single-key
+attrs ABC
+n 2
+A B
+A C
+end
+
+case two-keys
+attrs ABC
+n 2
+A B
+B A
+end
+
+case chain
+attrs ABCD
+n 3
+A B
+B C
+C D
+end
+
+case composite
+attrs ABCD
+n 3
+AB C
+C D
+D A
+end
+
+case textbook
+attrs ABCGHI
+n 5
+A B
+A C
+CG H
+CG I
+B H
+end
+
+case trivial
+attrs ABC
+n 3
+A A
+AB A
+ABC AB
+end

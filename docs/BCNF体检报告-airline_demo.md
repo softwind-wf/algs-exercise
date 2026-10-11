@@ -29,12 +29,12 @@
 | 无损/保依赖 | 二元分解判据 + FD 集合的**完备投影**（枚举子模式内属性子集求闭包），不用近似投影 |
 | 数据证据 | 在 `airline_demo` 实跑；负测试故意解除 `ON_ERROR_STOP` 后数 ERROR 行；所有写操作包在事务里 `ROLLBACK` |
 
-复现命令：
+复现命令（① 的体检器已随 Python 工具一起移除，见 §10 说明；②③ 仍可直接跑）：
 
 ```powershell
-# ① 理论体检：解析真实 DDL → 属性闭包 → 候选键 → 范式判定 → 分解推演
-python .\tools\bcnf_audit.py --outdir docs
-#    原始报告落到 docs\bcnf-audit-raw.txt
+# ① 理论体检：属性闭包 → 候选键 → 范式判定 → 分解推演
+#    当时的 Python 体检器已删除，输出留档见 docs/bcnf-audit-raw.txt；
+#    等价的算法现在在 src/main/java/com/ds/fd/FdCalculator（Java）
 
 # ② 数据体检：宽表冗余度量 / 无损连接 / 更新异常 / 负测试 / 座位字典对照
 .\psql.bat -d airline_demo -f src\main\resources\sql\bcnf_audit_airline.sql
@@ -290,7 +290,7 @@ decomposed_rows | original_rows | verdict
 
 | # | 检查项 | 具体做法 |
 |---|---|---|
-| 1 | 列是否写全 | 从 DDL 逐列抄，别凭记忆（`tools/bcnf_audit.py` 会自动与 DDL 核对列名差异） |
+| 1 | 列是否写全 | 从 DDL 逐列抄，别凭记忆；抄完与 `airline_company.sql` 对一遍列名 |
 | 2 | FD 是否写全 | 每条 DDL 主码/唯一约束 = 一条 FD；**再补语义 FD**，并单独标注哪些是补的 |
 | 3 | 求闭包 | 对每个候选左边算 `X⁺`，反复扫 FD 直到不动 |
 | 4 | 求候选键 | 枚举属性子集，`X⁺ = 全属性` 且极小的就是候选键；**候选键可能不止一条** |
@@ -314,10 +314,10 @@ decomposed_rows | original_rows | verdict
 
 | 文件 | 作用 |
 |---|---|
-| `tools/bcnf_audit.py` | 体检器：解析真实 DDL → 属性闭包 / 候选键 / 3NF-BCNF 判定 / 完全分解 / 无损与保依赖判定；含例 A、例 B 两个对照推演 |
+| ~~`tools/bcnf_audit.py`~~（已删除） | 当时的体检器：解析真实 DDL → 属性闭包 / 候选键 / 3NF-BCNF 判定 / 完全分解 / 无损与保依赖判定；含例 A、例 B 两个对照推演。**按"仓库统一 Java、不用 Python"的要求已删除**，等价算法在 `src/main/java/com/ds/fd/FdCalculator`（尚未做 DDL 解析那一层） |
 | `src/main/resources/sql/bcnf_audit_airline.sql` | 数据体检：宽表冗余度量 → 无损连接 → 更新异常 → 5 条负测试 → 座位字典对照 → 数据未变复核 |
 | `src/main/resources/sql/bcnf_audit_boundary.sql` | 边界探测：多行 NULL email + 多行 NULL seat_no 导致的 FD 失效（全部回滚） |
-| `docs/bcnf-audit-raw.txt` | 体检器原始输出（逐关系逐 FD 的闭包与判定） |
+| `docs/bcnf-audit-raw.txt` | 体检器原始输出（逐关系逐 FD 的闭包与判定）。**当时的体检器是 Python 写的，已按"仓库统一 Java"删除**，此文件为留档；解析真实 DDL 做同样体检的 Java 版尚未移植（需要时可补）。 |
 | `docs/BCNF体检报告-airline_demo.md` | 本报告 |
 
 **本轮没有改动任何交付表的数据或结构**：两个 SQL 脚本的写操作都在事务内回滚，`bcnf_audit_airline.sql` 结束时复核行数为 `aircraft_type=3 / flight=5 / booking_segment=7 / timetable=5`，与体检开始前的基线一致。
