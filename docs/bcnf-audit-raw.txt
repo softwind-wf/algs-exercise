@@ -1,0 +1,191 @@
+==============================================================================
+BCNF 体检报告 —— 对象:你自己交付的真实表结构
+DDL 来源 : src\main\resources\sql\airline_company.sql
+DDL 表数 : 10  ->  aircraft_type, airplane, airport, booking, booking_segment, customer, flight, route, route_leg, timetable
+FD 来源  : DDL 主码/唯一约束 + 语义追加(在脚本 SCHEMA 里显式标注)
+==============================================================================
+
+【0】体检对象核对(手写关系模式 vs 磁盘上的 DDL)
+  - customer             列与 DDL 一致 (5 列)
+  - route                列与 DDL 一致 (2 列)
+  - route_leg            列与 DDL 一致 (5 列)
+  - timetable            列与 DDL 一致 (9 列)
+  - flight               列与 DDL 一致 (7 列)
+  - booking              列与 DDL 一致 (5 列)
+  - booking_segment      列与 DDL 一致 (7 列)
+  - flight_wide_season  (派生对照,非真实表)                派生对照,跳过核对
+
+【1】逐关系体检(属性闭包 -> 候选键 -> 范式判定)
+
+── customer
+   属性(5): customer_id, name, phone, email, address
+   说明: email 可空 => UNIQUE(email) 只约束非空值, SQL 语义下允许多行 NULL 并存
+   DDL 声明的键: PRIMARY KEY (customer_id) ; UNIQUE (email)
+   候选键(2): {customer_id} | {email}
+   主属性: {customer_id,email}
+   FD 判定:
+      {customer_id} -> {address,email,name,phone}
+      左边闭包 = {address,customer_id,email,name,phone}
+      结论: BCNF-OK(左边是超键)
+      {email} -> {address,customer_id,name,phone}
+      左边闭包 = {address,customer_id,email,name,phone}
+      结论: BCNF-OK(左边是超键)
+   判定: 所有非平凡 FD 的左边都是超键 -> **满足 BCNF**
+
+── route
+   属性(2): route_no, route_name
+   DDL 声明的键: PRIMARY KEY (route_no)
+   候选键(1): {route_no}
+   主属性: {route_no}
+   FD 判定:
+      {route_no} -> {route_name}
+      左边闭包 = {route_name,route_no}
+      结论: BCNF-OK(左边是超键)
+   判定: 所有非平凡 FD 的左边都是超键 -> **满足 BCNF**
+
+── route_leg
+   属性(5): route_no, leg_no, from_code, to_code, distance_km
+   说明: 语义追加一条:同一条航线里到达机场不重复 => 也是候选键(已由可延迟约束触发器 assert_route_legs_continuous 的连续编号 + 首尾相接蕴含, 不是额外约束)
+   DDL 声明的键: PRIMARY KEY (route_no, leg_no)
+   候选键(2): {leg_no,route_no} | {route_no,to_code}
+   主属性: {leg_no,route_no,to_code}
+   FD 判定:
+      {leg_no,route_no} -> {distance_km,from_code,to_code}
+      左边闭包 = {distance_km,from_code,leg_no,route_no,to_code}
+      结论: BCNF-OK(左边是超键)
+      {route_no,to_code} -> {distance_km,from_code,leg_no}
+      左边闭包 = {distance_km,from_code,leg_no,route_no,to_code}
+      结论: BCNF-OK(左边是超键)
+   判定: 所有非平凡 FD 的左边都是超键 -> **满足 BCNF**
+
+── timetable
+   属性(9): schedule_id, flight_no, route_no, type_code, day_of_week, dep_time, arr_time, valid_from, valid_to
+   说明: 代理键 + 自然键并存:两条候选键,非主属性互相不决定,处于 BCNF
+   DDL 声明的键: PRIMARY KEY (schedule_id) ; UNIQUE (flight_no, day_of_week, valid_from)
+   候选键(3): {schedule_id} | {day_of_week,flight_no,route_no} | {day_of_week,flight_no,valid_from}
+   主属性: {day_of_week,flight_no,route_no,schedule_id,valid_from}
+   FD 判定:
+      {schedule_id} -> {arr_time,day_of_week,dep_time,flight_no,route_no,type_code,valid_from,valid_to}
+      左边闭包 = {arr_time,day_of_week,dep_time,flight_no,route_no,schedule_id,type_code,valid_from,valid_to}
+      结论: BCNF-OK(左边是超键)
+      {day_of_week,flight_no,valid_from} -> {arr_time,dep_time,route_no,schedule_id,type_code,valid_to}
+      左边闭包 = {arr_time,day_of_week,dep_time,flight_no,route_no,schedule_id,type_code,valid_from,valid_to}
+      结论: BCNF-OK(左边是超键)
+      {day_of_week,flight_no,route_no} -> {schedule_id}
+      左边闭包 = {arr_time,day_of_week,dep_time,flight_no,route_no,schedule_id,type_code,valid_from,valid_to}
+      结论: BCNF-OK(左边是超键)
+   判定: 所有非平凡 FD 的左边都是超键 -> **满足 BCNF**
+
+── flight
+   属性(7): flight_no, flight_date, schedule_id, reg_no, dep_time, arr_time, flight_status
+   说明: 实际起降时刻 dep_time/arr_time 与时刻表可能不同(延误), 故不派生自 timetable
+   DDL 声明的键: PRIMARY KEY (flight_no, flight_date)
+   候选键(1): {flight_date,flight_no}
+   主属性: {flight_date,flight_no}
+   FD 判定:
+      {flight_date,flight_no} -> {arr_time,dep_time,flight_status,reg_no,schedule_id}
+      左边闭包 = {arr_time,dep_time,flight_date,flight_no,flight_status,reg_no,schedule_id}
+      结论: BCNF-OK(左边是超键)
+   判定: 所有非平凡 FD 的左边都是超键 -> **满足 BCNF**
+
+── booking
+   属性(5): booking_id, customer_id, booking_date, total_amount, booking_status
+   DDL 声明的键: PRIMARY KEY (booking_id)
+   候选键(1): {booking_id}
+   主属性: {booking_id}
+   FD 判定:
+      {booking_id} -> {booking_date,booking_status,customer_id,total_amount}
+      左边闭包 = {booking_date,booking_id,booking_status,customer_id,total_amount}
+      结论: BCNF-OK(左边是超键)
+   判定: 所有非平凡 FD 的左边都是超键 -> **满足 BCNF**
+
+── booking_segment
+   属性(7): booking_id, seg_no, flight_no, flight_date, cabin_class, seat_no, segment_status
+   说明: seat_no 可空, 唯一索引带 WHERE 条件 => FD 只在子集上成立; 语义上 seat_no->cabin_class 会违反 BCNF
+   DDL 声明的键: PRIMARY KEY (booking_id, seg_no)
+   候选键(1): {booking_id,seg_no}
+   主属性: {booking_id,seg_no}
+   FD 判定:
+      {booking_id,seg_no} -> {cabin_class,flight_date,flight_no,seat_no,segment_status}
+      左边闭包 = {booking_id,cabin_class,flight_date,flight_no,seat_no,seg_no,segment_status}
+      结论: BCNF-OK(左边是超键)
+   !! {seat_no} -> {cabin_class}
+      左边闭包 = {cabin_class,seat_no}
+      结论: 违反 3NF(右边含非主属性) => 必然也违反 BCNF
+   BCNF 分解(对 {seat_no} -> {cabin_class}):
+     R1 = {cabin_class,seat_no}
+     R2 = {booking_id,flight_date,flight_no,seat_no,seg_no,segment_status}
+     无损连接: 是  ({seat_no} -> {cabin_class} 成立(被 F 蕴含); 闭包 {seat_no}+ = {cabin_class,seat_no})
+     保持依赖: 是
+   判定: 违反 3NF 的 FD 数 = 1 ; 3NF 放行但违反 BCNF 的 FD 数 = 1
+
+── flight_wide_season  (派生对照,非真实表)
+   属性(8): flight_no, flight_date, route_no, type_code, seat_capacity, dep_time, arr_time, flight_status
+   说明: flight ⋈ timetable ⋈ aircraft_type 拍平; 冗余来自 timetable 的路线/机型/时列表述
+   候选键(1): {flight_date,flight_no}
+   主属性: {flight_date,flight_no}
+   FD 判定:
+   !! {flight_no} -> {arr_time,dep_time,route_no,seat_capacity,type_code}
+      左边闭包 = {arr_time,dep_time,flight_no,route_no,seat_capacity,type_code}
+      结论: 违反 3NF(右边含非主属性) => 必然也违反 BCNF
+      {flight_date,flight_no} -> {arr_time,dep_time,flight_status,route_no,seat_capacity,type_code}
+      左边闭包 = {arr_time,dep_time,flight_date,flight_no,flight_status,route_no,seat_capacity,type_code}
+      结论: BCNF-OK(左边是超键)
+   BCNF 分解(对 {flight_no} -> {arr_time,dep_time,route_no,seat_capacity,type_code}):
+     R1 = {arr_time,dep_time,flight_no,route_no,seat_capacity,type_code}
+     R2 = {flight_date,flight_no,flight_status}
+     无损连接: 是  ({flight_no} -> {arr_time,dep_time,route_no,seat_capacity,type_code} 成立(被 F 蕴含); 闭包 {flight_no}+ = {arr_time,dep_time,flight_no,route_no,seat_capacity,type_code})
+     保持依赖: 是
+   判定: 违反 3NF 的 FD 数 = 1 ; 3NF 放行但违反 BCNF 的 FD 数 = 1
+
+【2】FD 集合闭包演示:候选键之间互相蕴含(Armstrong 公理算给你看)
+
+   [customer] {customer_id}+ = {address,customer_id,email,name,phone}  (= 全属性 -> 是超键)
+   [customer] {email}+ = {address,customer_id,email,name,phone}  (= 全属性 -> 是超键)
+   [route_leg] {leg_no,route_no}+ = {distance_km,from_code,leg_no,route_no,to_code}  (= 全属性 -> 是超键)
+   [route_leg] {route_no,to_code}+ = {distance_km,from_code,leg_no,route_no,to_code}  (= 全属性 -> 是超键)
+   [timetable] {schedule_id}+ = {arr_time,day_of_week,dep_time,flight_no,route_no,schedule_id,type_code,valid_from,valid_to}  (= 全属性 -> 是超键)
+   [timetable] {day_of_week,flight_no,valid_from}+ = {arr_time,day_of_week,dep_time,flight_no,route_no,schedule_id,type_code,valid_from,valid_to}  (= 全属性 -> 是超键)
+   [timetable] {day_of_week,flight_no,route_no}+ = {arr_time,day_of_week,dep_time,flight_no,route_no,schedule_id,type_code,valid_from,valid_to}  (= 全属性 -> 是超键)
+   [booking_segment] {booking_id,seg_no}+ = {booking_id,cabin_class,flight_date,flight_no,seat_no,seg_no,segment_status}  (= 全属性 -> 是超键)
+   [flight_wide_season  (派生对照,非真实表)] {flight_date,flight_no}+ = {arr_time,dep_time,flight_date,flight_no,flight_status,route_no,seat_capacity,type_code}  (= 全属性 -> 是超键)
+
+【3】完全 BCNF 分解推演(3NF 与 BCNF 分歧的两个经典例, 结论由程序算, 不靠背)
+
+   ● 例 A(3NF 放行、BCNF 拆, 且拆完不丢依赖)
+     属性: {C,S,T}
+     F = { {S,T}->{C} , {T}->{C} }
+     候选键: {S,T}     主属性: {S,T}
+     {S,T}->{C} : {S,T}+ = {C,S,T}  =>  左边是超键 -> BCNF 直接放行
+     {T}->{C} : {T}+ = {C,T}  =>  右边含非主属性 -> 3NF 也违反
+     拆 {C,S,T}  依据 {T}->{C}  =>  {C,T}  +  {S,T}
+     分解结果: {C,T}  |  {S,T}
+     无损连接: 是  ({T} -> {C} 成立(被 F 蕴含); 闭包 {T}+ = {C,T})
+     保持依赖: 是
+
+   ● 例 B(教科书反例: BCNF 分解会丢依赖)
+     属性: {C,S,T}
+     F = { {S,T}->{C} , {C}->{T} }
+     候选键: {C,S} | {S,T}     主属性: {C,S,T}
+     {S,T}->{C} : {S,T}+ = {C,S,T}  =>  左边是超键 -> BCNF 直接放行
+     {C}->{T} : {C}+ = {C,T}  =>  右边全是主属性 -> 3NF 放行, BCNF 不放行
+     拆 {C,S,T}  依据 {C}->{T}  =>  {C,T}  +  {C,S}
+     分解结果: {C,T}  |  {C,S}
+     无损连接: 是  ({C} -> {T} 成立(被 F 蕴含); 闭包 {C}+ = {C,T})
+     保持依赖: 否   丢失 {S,T}->{C}
+
+   ★ 判读方法: 例 A 与例 B 的唯一区别是那条非键 FD 的右边是不是主属性。
+     同一个 R(S,T,C), 换一种语义就成了'能无损又保依赖'或'只能二选一'。
+
+【4】汇总表
+   关系                                                候选键数     违反 FD 数
+   customer                                             2           0
+   route                                                1           0
+   route_leg                                            2           0
+   timetable                                            3           0
+   flight                                               1           0
+   booking                                              1           0
+   booking_segment                                      1           1
+   flight_wide_season  (派生对照,非真实表)                      1           1
+
+   结论: 8 个关系, 违反 BCNF 的 FD 共 2 条。
