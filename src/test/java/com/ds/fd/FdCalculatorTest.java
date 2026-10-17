@@ -51,6 +51,50 @@ class FdCalculatorTest {
         assertEquals("CGHI", FdCalculator.join(FdCalculator.attributeClosure(FunctionalDependency.chars("CG"), f)));
     }
 
+    /**
+     * 图 8-8 的逐步过程：初始 AG；第 1 轮 A→B 加 B、A→C 加 C、CG→H 加 H、CG→I 加 I；
+     * 第 2 轮没有任何 FD 能再增大 result ⇒ 终止。教材 193 页下方手算的四条就是这四步。
+     */
+    @Test
+    @DisplayName("图 8-8 追踪：(AG)+ = ABCGHI，第 1 轮 4 步、第 2 轮收敛")
+    void attributeClosureTrace() {
+        FdCalculator.ClosureTrace trace =
+                FdCalculator.attributeClosureTrace(FunctionalDependency.chars("AG"), f);
+
+        assertEquals("AG", FdCalculator.join(trace.initial()));
+        assertEquals("ABCGHI", FdCalculator.join(trace.closure()));
+        assertEquals(2, trace.totalRounds());
+        assertEquals(2, trace.roundResults().size());
+        assertEquals("ABCGHI", FdCalculator.join(trace.roundResults().get(0)));
+        assertEquals("ABCGHI", FdCalculator.join(trace.roundResults().get(1)));
+
+        assertEquals(4, trace.steps().size());
+        String[] applied = {"A -> B", "A -> C", "CG -> H", "CG -> I"};
+        String[] after = {"ABG", "ABCG", "ABCGH", "ABCGHI"};
+        for (int i = 0; i < applied.length; i++) {
+            FdCalculator.ClosureStep step = trace.steps().get(i);
+            assertEquals(1, step.round());
+            assertEquals(applied[i], step.applied().toString());
+            assertEquals(after[i], FdCalculator.join(step.after()));
+            assertTrue(step.before().containsAll(step.applied().determinant()),
+                    "第 " + i + " 步生效时左边必须已包含于 result");
+        }
+        assertEquals("B", FdCalculator.join(trace.steps().get(0).added()));
+        assertEquals("I", FdCalculator.join(trace.steps().get(3).added()));
+    }
+
+    /** 过程视图不能改变结果：每个子集的追踪闭包必须与原 attributeClosure 完全一致。 */
+    @Test
+    @DisplayName("追踪版与结果版闭包逐个子集一致")
+    void traceAgreesWithClosure() {
+        for (Set<String> x : FdCalculator.subsets(attrs)) {
+            Set<String> plain = FdCalculator.attributeClosure(x, f);
+            Set<String> traced = FdCalculator.attributeClosureTrace(x, f).closure();
+            assertEquals(plain, traced, "X = " + FdCalculator.join(x));
+        }
+    }
+
+
     @Test
     @DisplayName("超键判定：AG 是超键，A 与 G 都不是")
     void superkey() {

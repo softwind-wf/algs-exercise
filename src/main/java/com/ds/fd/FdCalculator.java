@@ -13,7 +13,8 @@ import java.util.TreeSet;
  * <p>包含三类算法，全部只依赖 Armstrong 公理与集合运算：
  * <ol>
  *   <li>{@link #subsets} —— 枚举属性集的所有非空子集（闭包计算的输入空间）；</li>
- *   <li>{@link #attributeClosure} —— 属性闭包 X⁺（实践中真正要用的那一个）；</li>
+ *   <li>{@link #attributeClosure} —— 属性闭包 X⁺（教材图 8-8 的算法，实践中真正要用的那一个）；
+ *       需要"过程"而不只是"结果"时用 {@link #attributeClosureTrace}；</li>
  *   <li>{@link #closureNaive} —— 教材图 8-7 的"暴力枚举 F⁺"算法，用于对照教学。</li>
  * </ol>
  *
@@ -77,32 +78,156 @@ public final class FdCalculator {
     }
 
     // =====================================================================
-    // 2. 属性闭包 X⁺ —— 教科书标准算法，O(|F|) 轮扫描
+    // 2. 属性闭包 X⁺ —— 教材图 8-8 算法：每轮扫一遍 F，最多 |R|+1 轮
     // =====================================================================
 
     /**
-     * 求属性集 {@code x} 在 FD 集合 {@code fds} 下的闭包 X⁺。
+     * 求属性集 {@code x} 在 FD 集合 {@code fds} 下的闭包 X⁺（教材图 8-8，第 193 页）。
      *
+     * <p>伪代码逐行对应：
      * <pre>
-     * result = X
+     * result := α;
      * repeat
-     *     对每条 FD (lhs -> rhs): 若 lhs ⊆ result, 则 result |= rhs
-     * until result 不再变化
+     *     for each 函数依赖 β→γ in F do
+     *         if β ⊆ result then result := result ∪ γ;
+     * until (result 不变)
      * </pre>
+     *
+     * <p>正确性要点（教材 8.4.2 的证明）：循环中每次加入的 γ 都由 F 中的 FD 从 result 推出，
+     * 而 result 又是由 α 推出的，按传递律 α → γ 成立，所以加入的属性必然属于 α⁺；
+     * 反过来，若某属性在 α⁺ 中却不在 result 中，则它必由某条 β→γ（β ⊆ result）引入，
+     * 而算法结束前所有 FD 都扫过，矛盾 —— 故结束时 result 恰为 α⁺。
+     *
+     * <p>复杂度：每轮至少多推出一个属性（否则终止），最多 |R|+1 轮，每轮扫 |F| 条 FD，
+     * 上界 O(|R| · |F|) 次子集判断；与 |F⁺| 无关 —— 这正是它比图 8-7 实用的原因。
+     *
+     * <p>本方法只返回结果；要看"哪一轮用了哪条 FD"用 {@link #attributeClosureTrace}。
      */
     public static Set<String> attributeClosure(Set<String> x, List<FunctionalDependency> fds) {
+        return attributeClosureTrace(x, fds).closure();
+    }
+
+    /**
+     * 图 8-8 算法的带过程版本：除了闭包本身，还记录每轮结束后 result 的快照，
+     * 以及"真正改变了 result"的那些 (轮次, FD, 变化前, 变化后)。
+     *
+     * <p>教材下方对 (AG)⁺ 的手算过程就是这份记录：第 1 轮依次 A→B、A→C、CG→H、CG→I 生效，
+     * 第 2 轮所有 FD 的右边都已在 result 中 ⇒ result 不变 ⇒ 终止，得到 ABCGHI。
+     *
+     * <p>注意 "β ⊆ result 成立" 与 "result 真的变大" 是两件事：β 包含于 result 但 γ 已被
+     * result 包含时（例如 B→H 在 (ABCGHI) 上），算法什么也不做，这种"空转"不记为一步。
+     */
+    public static ClosureTrace attributeClosureTrace(Set<String> x, List<FunctionalDependency> fds) {
         Set<String> result = new TreeSet<String>(x);
+        List<ClosureStep> steps = new ArrayList<ClosureStep>();
+        List<Set<String>> roundResults = new ArrayList<Set<String>>();
+
+        int round = 0;
         boolean changed = true;
         while (changed) {
+            round++;
             changed = false;
             for (FunctionalDependency fd : fds) {
-                if (result.containsAll(fd.determinant()) && !result.containsAll(fd.dependent())) {
-                    result.addAll(fd.dependent());
-                    changed = true;
+                if (!result.containsAll(fd.determinant())) {
+                    continue;                       // β ⊄ result，这条 FD 本轮用不上
                 }
+                if (result.containsAll(fd.dependent())) {
+                    continue;                       // γ ⊆ result，推不出新属性（空转，不记一步）
+                }
+                Set<String> before = new TreeSet<String>(result);
+                result.addAll(fd.dependent());
+                changed = true;
+                steps.add(new ClosureStep(round, fd, before, new TreeSet<String>(result)));
             }
+            roundResults.add(new TreeSet<String>(result));
         }
-        return result;
+        return new ClosureTrace(new TreeSet<String>(x), new TreeSet<String>(result),
+                steps, roundResults, round);
+    }
+
+    /** 图 8-8 算法中的一步：第 {@code round} 轮，FD {@code applied} 让 result 从 {@code before} 变成 {@code after}。 */
+    public static final class ClosureStep {
+        private final int round;
+        private final FunctionalDependency applied;
+        private final Set<String> before;
+        private final Set<String> after;
+
+        ClosureStep(int round, FunctionalDependency applied, Set<String> before, Set<String> after) {
+            this.round = round;
+            this.applied = applied;
+            this.before = Collections.unmodifiableSet(before);
+            this.after = Collections.unmodifiableSet(after);
+        }
+
+        public int round() {
+            return round;
+        }
+
+        public FunctionalDependency applied() {
+            return applied;
+        }
+
+        public Set<String> before() {
+            return before;
+        }
+
+        public Set<String> after() {
+            return after;
+        }
+
+        /** 本步新加入的属性（γ − 变化前的 result）。 */
+        public Set<String> added() {
+            Set<String> added = new TreeSet<String>(after);
+            added.removeAll(before);
+            return added;
+        }
+
+        @Override
+        public String toString() {
+            return "第 " + round + " 轮 " + applied + ": "
+                    + join(before) + " -> " + join(after);
+        }
+    }
+
+    /** 图 8-8 算法的完整执行记录：初始 α、结果 α⁺、每轮快照、逐步明细、轮数。 */
+    public static final class ClosureTrace {
+        private final Set<String> initial;
+        private final Set<String> closure;
+        private final List<ClosureStep> steps;
+        private final List<Set<String>> roundResults;
+        private final int totalRounds;
+
+        ClosureTrace(Set<String> initial, Set<String> closure,
+                     List<ClosureStep> steps, List<Set<String>> roundResults, int totalRounds) {
+            this.initial = Collections.unmodifiableSet(initial);
+            this.closure = Collections.unmodifiableSet(closure);
+            this.steps = Collections.unmodifiableList(steps);
+            this.roundResults = Collections.unmodifiableList(roundResults);
+            this.totalRounds = totalRounds;
+        }
+
+        public Set<String> initial() {
+            return initial;
+        }
+
+        public Set<String> closure() {
+            return closure;
+        }
+
+        /** 真正改变过 result 的步骤，按发生顺序。 */
+        public List<ClosureStep> steps() {
+            return steps;
+        }
+
+        /** 每轮 repeat 结束时的 result 快照（含最后一轮"无变化"的快照）。 */
+        public List<Set<String>> roundResults() {
+            return roundResults;
+        }
+
+        /** repeat 循环的执行轮数；最后一轮必为"无变化"轮，因此恒 ≥ 1。 */
+        public int totalRounds() {
+            return totalRounds;
+        }
     }
 
     /** X 是不是超键：X⁺ 是否包含全部属性。 */

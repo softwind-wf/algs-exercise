@@ -44,6 +44,29 @@ public final class FdClosureDemo {
                 + (subsetCount * subsetCount) + " 条(含平凡依赖)");
         System.out.println("========================================================================");
 
+        // ---------- 零、图 8-8 的算法：逐步计算 (AG)+ ----------
+        System.out.println();
+        System.out.println("【零】按图 8-8 的算法逐步计算 (AG)+  (教材第 193 页)");
+        FdCalculator.ClosureTrace agPlus = FdCalculator.attributeClosureTrace(
+                FunctionalDependency.chars("AG"), f);
+        System.out.println("  result := " + FdCalculator.join(agPlus.initial()));
+        int printedRound = 0;
+        for (FdCalculator.ClosureStep step : agPlus.steps()) {
+            if (step.round() != printedRound) {
+                printedRound = step.round();
+                System.out.println("  第 " + printedRound + " 轮 repeat:");
+            }
+            System.out.printf("    %-8s (左边 ⊆ %s) => result := %s%n",
+                    step.applied(),
+                    FdCalculator.join(step.before()),
+                    FdCalculator.join(step.after()));
+        }
+        System.out.println("  第 " + agPlus.totalRounds() + " 轮 repeat:");
+        System.out.println("    没有 FD 能让 result 再变大 => result 不变, 算法终止");
+        System.out.println("  => (AG)+ = " + FdCalculator.join(agPlus.closure())
+                + "  (共 " + agPlus.steps().size() + " 条 FD 真正生效, "
+                + agPlus.totalRounds() + " 轮)");
+
         // ---------- 一、图 8-7 的暴力算法 ----------
         System.out.println();
         System.out.println("【一】按图 8-7 的算法暴力迭代");
