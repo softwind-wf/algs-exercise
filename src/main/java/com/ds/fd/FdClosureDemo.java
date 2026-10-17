@@ -303,6 +303,49 @@ public final class FdClosureDemo {
         System.out.println("  例 4: 拆成 (A,B)+(C,D) (没有公共键, 连接成笛卡尔积)");
         LosslessJoin.ChaseResult c4 = LosslessJoin.checkChase(rel4, parts2, f4);
         System.out.println("    => " + (c4.lossless() ? "无损" : "有损"));
+
+        // ---------- 九、保持依赖判定（8.4.5 节） ----------
+        System.out.println();
+        System.out.println("【九】保持依赖判定 (教材 8.4.5 / 图 8-10 与修改闭包法)");
+
+        // 例 1：inst_dept 的同构单字母版（I,N,S,D,B -> A,B,C,D,E）
+        Set<String> r9 = FunctionalDependency.chars("ABCDE");
+        List<FunctionalDependency> f9 = new java.util.ArrayList<FunctionalDependency>();
+        f9.add(FunctionalDependency.of("A", "BC"));
+        f9.add(FunctionalDependency.of("C", "DE"));
+        List<Set<String>> d9 = new java.util.ArrayList<Set<String>>();
+        d9.add(FunctionalDependency.chars("ABC"));
+        d9.add(FunctionalDependency.chars("CDE"));
+        System.out.println("  例 1: R=(A,B,C,D,E), F={A->BC, C->DE}, 拆成 (A,B,C)+(C,D,E)");
+        DependencyPreservation.FPlusCheck m1a = DependencyPreservation.checkByFPlus(r9, d9, f9);
+        System.out.println("    方法一(图 8-10): |F+| = " + m1a.fplus().size()
+                + ", |F'| = " + m1a.fprime().size()
+                + ", F'+ = F+ ? " + (m1a.preserves() ? "是 => 保持依赖" : "否"));
+        DependencyPreservation.ClosureCheck m2a = DependencyPreservation.checkByModifiedClosure(r9, d9, f9);
+        for (DependencyPreservation.Verdict verdict : m2a.verdicts()) {
+            System.out.println("    方法二: " + verdict);
+        }
+
+        // 例 2：无损但不保持依赖（教材例 2 的形状：ENO->PNO 跨两张表）
+        Set<String> r9b = FunctionalDependency.chars("ABC");
+        List<FunctionalDependency> f9b = new java.util.ArrayList<FunctionalDependency>();
+        f9b.add(FunctionalDependency.of("AB", "C"));
+        f9b.add(FunctionalDependency.of("C", "A"));
+        List<Set<String>> d9b = new java.util.ArrayList<Set<String>>();
+        d9b.add(FunctionalDependency.chars("AC"));
+        d9b.add(FunctionalDependency.chars("BC"));
+        System.out.println("  例 2: R=(A,B,C), F={AB->C, C->A}, 拆成 (A,C)+(B,C)");
+        DependencyPreservation.FPlusCheck m1b = DependencyPreservation.checkByFPlus(r9b, d9b, f9b);
+        DependencyPreservation.ClosureCheck m2b = DependencyPreservation.checkByModifiedClosure(r9b, d9b, f9b);
+        System.out.println("    方法一: F'+ = F+ ? " + (m1b.preserves() ? "是" : "否")
+                + ", 丢失: " + m1b.lost());
+        for (DependencyPreservation.Verdict verdict : m2b.verdicts()) {
+            System.out.println("    方法二: " + verdict);
+        }
+        LosslessJoin.BinaryResult lossless9 = LosslessJoin.checkBinary(
+                r9b, FunctionalDependency.chars("AC"), FunctionalDependency.chars("BC"), f9b);
+        System.out.println("    注: 该分解是否无损? " + (lossless9.lossless() ? "无损" : "有损")
+                + " —— 无损与保持依赖是两个独立要求");
     }
 
     /** 把 "AB->C" 这样的简写解析成依赖列表，方便演示。 */

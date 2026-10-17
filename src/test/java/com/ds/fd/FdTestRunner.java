@@ -27,6 +27,7 @@ public final class FdTestRunner {
             CanonicalCoverTest.class,
             CanonicalCoverPropertyTest.class,
             LosslessJoinTest.class,
+            DependencyPreservationTest.class,
             FdInvariantTest.class,
     };
 
