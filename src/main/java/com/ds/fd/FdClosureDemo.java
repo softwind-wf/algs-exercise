@@ -155,21 +155,27 @@ public final class FdClosureDemo {
             System.out.printf("   %-8s %-16s %s%n", FdCalculator.join(x), FdCalculator.join(plus), note);
         }
 
-        // ---------- 五、用 X+ 判定一条 FD 是否在 F+ 里 ----------
+        // ---------- 五、用 X+ 判定一条 FD 是否成立 ----------
         System.out.println();
-        System.out.println("【五】可传递捷径: 用 X+ 直接判定一条 FD 是否属于 F+");
+        System.out.println("【五】用 X+ 判定一条 FD 是否成立: X -> Y 成立 <=> Y ⊆ X+");
         String[][] checks = {
-                {"A", "H"}, {"CG", "H"}, {"G", "H"}, {"AG", "HI"}, {"BG", "C"}, {"C", "I"},
+                {"A", "H"}, {"CG", "H"}, {"G", "H"}, {"AG", "HI"},
+                {"BG", "C"}, {"C", "I"}, {"A", "HI"}, {"AB", "A"},
         };
-        System.out.printf("   %-12s %-18s %s%n", "待判 FD", "X+ 是否含右边", "结论");
+        System.out.printf("   %-10s %-9s %-10s %s%n", "待判 FD", "X+", "Y 里缺什么", "结论");
         for (String[] c : checks) {
-            Set<String> plus = FdCalculator.attributeClosure(FunctionalDependency.chars(c[0]), f);
-            boolean in = plus.containsAll(FunctionalDependency.chars(c[1]));
-            System.out.printf("   %-12s %-18s %s%n",
+            FdCalculator.FdCheck check = FdCalculator.checkFd(
+                    FunctionalDependency.chars(c[0]), FunctionalDependency.chars(c[1]), f);
+            String verdict = check.holds()
+                    ? (check.trivial() ? "成立(平凡, 与 F 无关)" : "成立")
+                    : "不成立";
+            System.out.printf("   %-10s %-9s %-10s %s%n",
                     c[0] + " -> " + c[1],
-                    in ? "是" : "否",
-                    in ? "在 F+ 中" : "不在 F+ 中");
+                    FdCalculator.join(check.closure()),
+                    check.missing().isEmpty() ? "(无)" : FdCalculator.join(check.missing()),
+                    verdict);
         }
+        System.out.println("   (判据只看左边闭包; X -> Y 成立 <=> Y ⊆ X+, 不必枚举逐条 F+)");
 
         // ---------- 六、用 X+ 判断超键，再由极小性得到候选键 ----------
         System.out.println();

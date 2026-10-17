@@ -221,6 +221,55 @@ class FdCalculatorTest {
         assertFalse(inFplus("C", "I"));
     }
 
+    /**
+     * 判定口径：X → Y 成立 ⟺ Y ⊆ X⁺。缺口 Y − X⁺ 非空就说明"Y 里有属性推不出来"。
+     * A → HI 是"右边部分推不出"的例子：A⁺ = ABCH，H 能推、I 推不出。
+     */
+    @Test
+    @DisplayName("FD 判定：A→H 成立；G→H 缺 H；A→HI 缺 I；AB→A 平凡成立")
+    void fdCheck() {
+        assertFd("A", "H", true, "ABCH", "", false);
+        assertFd("CG", "H", true, "CGHI", "", false);
+        assertFd("AG", "HI", true, "ABCGHI", "", false);
+        assertFd("G", "H", false, "G", "H", false);
+        assertFd("BG", "C", false, "BGH", "C", false);
+        assertFd("C", "I", false, "C", "I", false);
+        assertFd("A", "HI", false, "ABCH", "I", false);
+        assertFd("AB", "A", true, "ABCH", "", true);   // 平凡依赖与 F 无关
+    }
+
+    /** 与"枚举 F⁺ 再查表"逐条对账：全部 (X, Y) 组合结论一致。 */
+    @Test
+    @DisplayName("FD 判定与 F+ 枚举逐对吻合")
+    void fdCheckMatchesFplus() {
+        Set<FunctionalDependency> fplus = FdCalculator.closureByAttributeClosures(attrs, f);
+        for (Set<String> x : FdCalculator.subsets(attrs)) {
+            Set<String> closure = FdCalculator.attributeClosure(x, f);
+            for (Set<String> y : FdCalculator.subsets(attrs)) {
+                FunctionalDependency fd = new FunctionalDependency(x, y);
+                FdCalculator.FdCheck check = FdCalculator.checkFd(x, y, f);
+                assertEquals(fplus.contains(fd), check.holds(), fd.toString());
+                assertEquals(closure, check.closure(), "闭包 " + fd);
+                assertEquals(x.containsAll(y), check.trivial(), "平凡性 " + fd);
+                Set<String> expectedMissing = new java.util.TreeSet<String>(y);
+                expectedMissing.removeAll(closure);
+                assertEquals(expectedMissing, check.missing(), "缺口 " + fd);
+                assertEquals(check.holds(), FdCalculator.holds(fd, f), "简写入口 " + fd);
+            }
+        }
+    }
+
+    private void assertFd(String lhs, String rhs, boolean holds,
+                          String closure, String missing, boolean trivial) {
+        FdCalculator.FdCheck check = FdCalculator.checkFd(
+                FunctionalDependency.chars(lhs), FunctionalDependency.chars(rhs), f);
+        assertEquals(holds, check.holds(), "holds " + lhs + "->" + rhs);
+        assertEquals(closure, FdCalculator.join(check.closure()), "closure " + lhs);
+        assertEquals(missing, FdCalculator.join(check.missing()), "missing " + lhs);
+        assertEquals(trivial, check.trivial(), "trivial " + lhs + "->" + rhs);
+        assertEquals(holds, FdCalculator.holds(check.lhs(), check.rhs(), f), "简写入口");
+    }
+
     private boolean inFplus(String lhs, String rhs) {
         Set<String> plus = FdCalculator.attributeClosure(FunctionalDependency.chars(lhs), f);
         return plus.containsAll(FunctionalDependency.chars(rhs));

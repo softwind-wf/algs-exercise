@@ -292,6 +292,97 @@ public final class FdCalculator {
         return checkSuperkey(x, allAttrs, fds).isSuperkey();
     }
 
+    /**
+     * 用属性闭包判定一条函数依赖 {@code X → Y} 是否成立（即是否属于 F⁺）：
+     * <b>{@code X → Y ∈ F⁺ ⟺ Y ⊆ X⁺}</b>。
+     *
+     * <p>直觉：X⁺ 是"知道 X 就能确定"的全部属性；Y 若都在里面，X 当然决定 Y。
+     * 这比图 8-7 先枚举 F⁺ 再查表便宜得多 —— 一次闭包（O(|R|·|F|)）就够。
+     *
+     * <p>平凡依赖（Y ⊆ X）由自反律必然成立，闭包判定同样返回 true；
+     * 结果对象另给 {@link FdCheck#trivial()}，用来区分"靠 F 推出来"与"本来就是废话"。
+     *
+     * <p>典型用途：BCNF 判定就是对本表每条非平凡 FD 做一次 {@code checkFd}，
+     * 看左边 X⁺ 是否盖住 R（即 {@link #checkSuperkey}）。
+     */
+    public static FdCheck checkFd(Set<String> lhs, Set<String> rhs, List<FunctionalDependency> fds) {
+        Set<String> closure = attributeClosure(lhs, fds);
+        Set<String> missing = new TreeSet<String>(rhs);
+        missing.removeAll(closure);
+        return new FdCheck(new TreeSet<String>(lhs), new TreeSet<String>(rhs), closure, missing);
+    }
+
+    /** 便捷：一条具体依赖是否成立。 */
+    public static boolean holds(FunctionalDependency fd, List<FunctionalDependency> fds) {
+        return checkFd(fd.determinant(), fd.dependent(), fds).holds();
+    }
+
+    /** 便捷：X → Y 是否成立。 */
+    public static boolean holds(Set<String> lhs, Set<String> rhs, List<FunctionalDependency> fds) {
+        return checkFd(lhs, rhs, fds).holds();
+    }
+
+    /** FD 判定的完整结论：X、Y、X⁺、缺口 Y−X⁺、是否平凡。 */
+    public static final class FdCheck {
+        private final Set<String> lhs;
+        private final Set<String> rhs;
+        private final Set<String> closure;
+        private final Set<String> missing;
+
+        FdCheck(Set<String> lhs, Set<String> rhs, Set<String> closure, Set<String> missing) {
+            this.lhs = Collections.unmodifiableSet(lhs);
+            this.rhs = Collections.unmodifiableSet(rhs);
+            this.closure = Collections.unmodifiableSet(closure);
+            this.missing = Collections.unmodifiableSet(missing);
+        }
+
+        /** 决定因素 X。 */
+        public Set<String> lhs() {
+            return lhs;
+        }
+
+        /** 被决定因素 Y。 */
+        public Set<String> rhs() {
+            return rhs;
+        }
+
+        /** X⁺。 */
+        public Set<String> closure() {
+            return closure;
+        }
+
+        /** Y − X⁺：右边有哪些属性推不出来；空集说明依赖成立。 */
+        public Set<String> missing() {
+            return missing;
+        }
+
+        /** X → Y 是否成立，等价于 {@code missing().isEmpty()}。 */
+        public boolean holds() {
+            return missing.isEmpty();
+        }
+
+        /** 是否平凡依赖（Y ⊆ X）：成立与否和 F 无关。 */
+        public boolean trivial() {
+            return lhs.containsAll(rhs);
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append(join(lhs)).append(" -> ").append(join(rhs)).append(": ");
+            if (holds()) {
+                sb.append("成立");
+                if (trivial()) {
+                    sb.append("(平凡, 由自反律)");
+                }
+            } else {
+                sb.append("不成立(缺 ").append(join(missing)).append(")");
+            }
+            sb.append("  [").append(join(lhs)).append("+ = ").append(join(closure)).append("]");
+            return sb.toString();
+        }
+    }
+
     /** 求全部候选键（极小超键），结果按"先按元素个数、再按字典序"排序。 */
     public static List<Set<String>> candidateKeys(Set<String> allAttrs, List<FunctionalDependency> fds) {
         List<Set<String>> keys = new ArrayList<Set<String>>();
