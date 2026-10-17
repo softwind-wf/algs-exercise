@@ -260,6 +260,49 @@ public final class FdClosureDemo {
                     + " -> " + FdCalculator.joinWithComma(fd.dependent()));
         }
         System.out.println("    正则覆盖条数: " + cover5.size() + "  (应为 2, 不能被误合并)");
+
+        // ---------- 八、无损分解判定（8.5 节） ----------
+        System.out.println();
+        System.out.println("【八】无损分解判定");
+        Set<String> rel = FunctionalDependency.chars("ABC");
+        List<FunctionalDependency> fA = new java.util.ArrayList<FunctionalDependency>();
+        fA.add(FunctionalDependency.of("A", "B"));
+
+        System.out.println("  例 1: R=(A,B,C), F={A->B}, 拆成 (A,B)+(A,C)");
+        LosslessJoin.BinaryResult b1 = LosslessJoin.checkBinary(
+                rel, FunctionalDependency.chars("AB"), FunctionalDependency.chars("AC"), fA);
+        System.out.println("    " + b1);
+
+        System.out.println("  例 2: 同样的 F, 拆成 (A,B)+(B,C)");
+        LosslessJoin.BinaryResult b2 = LosslessJoin.checkBinary(
+                rel, FunctionalDependency.chars("AB"), FunctionalDependency.chars("BC"), fA);
+        System.out.println("    " + b2);
+
+        Set<String> rel4 = FunctionalDependency.chars("ABCD");
+        List<FunctionalDependency> f4 = new java.util.ArrayList<FunctionalDependency>();
+        f4.add(FunctionalDependency.of("A", "B"));
+        f4.add(FunctionalDependency.of("C", "D"));
+
+        List<Set<String>> parts3 = new java.util.ArrayList<Set<String>>();
+        parts3.add(FunctionalDependency.chars("AB"));
+        parts3.add(FunctionalDependency.chars("CD"));
+        parts3.add(FunctionalDependency.chars("AC"));
+        System.out.println("  例 3: R=(A,B,C,D), F={A->B, C->D}, 拆成 (A,B)+(C,D)+(A,C)");
+        LosslessJoin.ChaseResult c3 = LosslessJoin.checkChase(rel4, parts3, f4);
+        for (String step : c3.steps()) {
+            System.out.println("    " + step);
+        }
+        for (int i = 0; i < c3.table().size(); i++) {
+            System.out.println("    第 " + (i + 1) + " 行: " + c3.table().get(i));
+        }
+        System.out.println("    => " + (c3.lossless() ? "无损" : "有损"));
+
+        List<Set<String>> parts2 = new java.util.ArrayList<Set<String>>();
+        parts2.add(FunctionalDependency.chars("AB"));
+        parts2.add(FunctionalDependency.chars("CD"));
+        System.out.println("  例 4: 拆成 (A,B)+(C,D) (没有公共键, 连接成笛卡尔积)");
+        LosslessJoin.ChaseResult c4 = LosslessJoin.checkChase(rel4, parts2, f4);
+        System.out.println("    => " + (c4.lossless() ? "无损" : "有损"));
     }
 
     /** 把 "AB->C" 这样的简写解析成依赖列表，方便演示。 */
