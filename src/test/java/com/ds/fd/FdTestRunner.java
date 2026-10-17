@@ -24,6 +24,8 @@ public final class FdTestRunner {
     /** 需要执行的测试类（新增测试类时在这里加一行）。 */
     private static final Class<?>[] TEST_CLASSES = {
             FdCalculatorTest.class,
+            CanonicalCoverTest.class,
+            CanonicalCoverPropertyTest.class,
             FdInvariantTest.class,
     };
 

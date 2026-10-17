@@ -203,5 +203,74 @@ public final class FdClosureDemo {
         }
         System.out.println("   候选键(极小超键): " + sb);
         System.out.println("   (AG 能推出全部属性; 单独 A 或 G 都不能 => 唯一极小超键)");
+
+        // ---------- 七、无关属性与正则覆盖（图 8-9） ----------
+        System.out.println();
+        System.out.println("【七】无关属性与正则覆盖 (教材 8.4.3 / 图 8-9)");
+
+        // 例 1：左部无关 —— B 在 AB->C 中多余
+        List<FunctionalDependency> ex1 = fds("AB->C", "A->C");
+        System.out.println("  例 1: F = " + ex1);
+        CanonicalCover.ExtraneousCheck check1 = CanonicalCover.check(ex1.get(0), ex1);
+        System.out.println("    AB->C: " + check1);
+        System.out.println("    (A+ = " + FdCalculator.join(
+                FdCalculator.attributeClosure(FunctionalDependency.chars("A"), ex1))
+                + " 已含 C => B 在左部无关; 两边都无关时先删哪边都合法)");
+        System.out.println("    正则覆盖: " + CanonicalCover.cover(ex1));
+
+        // 例 2：右部无关 —— C 在 AB->CD 中多余（教材原例）
+        List<FunctionalDependency> ex2 = fds("AB->CD", "A->E", "E->C");
+        System.out.println("  例 2: F = " + ex2);
+        List<FunctionalDependency> f2prime = new java.util.ArrayList<FunctionalDependency>();
+        f2prime.add(FunctionalDependency.of("AB", "D"));
+        f2prime.add(FunctionalDependency.of("A", "E"));
+        f2prime.add(FunctionalDependency.of("E", "C"));
+        System.out.println("    F' = " + f2prime + ", AB+ = "
+                + FdCalculator.join(FdCalculator.attributeClosure(
+                        FunctionalDependency.chars("AB"), f2prime))
+                + " 已含 C => C 在右部无关");
+        CanonicalCover.Result cover2 = CanonicalCover.compute(ex2);
+        System.out.println("    正则覆盖: " + cover2.fds());
+
+        // 例 3：合并律 —— 相同左部合并
+        List<FunctionalDependency> ex3 = fds("A->B", "A->C");
+        System.out.println("  例 3: F = " + ex3 + " => 正则覆盖: " + CanonicalCover.cover(ex3));
+
+        // 例 4：把教材 8.4 的 F 整体化简
+        CanonicalCover.Result cover4 = CanonicalCover.compute(f);
+        System.out.println("  例 4: 教材 8.4 的 F (" + f.size() + " 条)");
+        for (String step : cover4.steps()) {
+            System.out.println("    " + step);
+        }
+        System.out.println("    正则覆盖: " + cover4.fds()
+                + "  (" + f.size() + " 条 -> " + cover4.size() + " 条)");
+
+        // 例 5：多字符属性名 —— 左部 {A,BC} 与 {AB,C} 拼接后都是 "ABC", 不能被误合并
+        List<FunctionalDependency> ex5 = new java.util.ArrayList<FunctionalDependency>();
+        ex5.add(new FunctionalDependency(
+                new java.util.TreeSet<String>(java.util.Arrays.asList("A", "BC")),
+                new java.util.TreeSet<String>(java.util.Arrays.asList("X"))));
+        ex5.add(new FunctionalDependency(
+                new java.util.TreeSet<String>(java.util.Arrays.asList("AB", "C")),
+                new java.util.TreeSet<String>(java.util.Arrays.asList("Y"))));
+        CanonicalCover.Result cover5 = CanonicalCover.compute(ex5);
+        System.out.println("  例 5: 多字符属性名, 左部 {A,BC} 与 {AB,C} (拼成字符串都是 ABC)");
+        for (FunctionalDependency fd : cover5.fds()) {
+            System.out.println("    " + FdCalculator.joinWithComma(fd.determinant())
+                    + " -> " + FdCalculator.joinWithComma(fd.dependent()));
+        }
+        System.out.println("    正则覆盖条数: " + cover5.size() + "  (应为 2, 不能被误合并)");
+    }
+
+    /** 把 "AB->C" 这样的简写解析成依赖列表，方便演示。 */
+    private static List<FunctionalDependency> fds(String... specs) {
+        List<FunctionalDependency> out = new java.util.ArrayList<FunctionalDependency>();
+        for (String spec : specs) {
+            int arrow = spec.indexOf("->");
+            out.add(FunctionalDependency.of(
+                    spec.substring(0, arrow).trim(),
+                    spec.substring(arrow + 2).trim()));
+        }
+        return out;
     }
 }

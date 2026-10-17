@@ -11,10 +11,19 @@
 
 .EXAMPLE
     .\scripts\run-fd-tests.ps1
+
+.EXAMPLE
+    # Temporarily enlarge the randomized differential rounds of the canonical-cover
+    # property test (default 300 rounds per attribute pool).
+    .\scripts\run-fd-tests.ps1 -CoverRounds 2000
 #>
 [CmdletBinding()]
 param(
-    [string]$AltRepo = "D:\maven-repo"
+    [string]$AltRepo = "D:\maven-repo",
+
+    # Rounds for the canonical-cover random differential; 0 = use the test class default
+    # (which reads -Dfd.cover.rounds). Passed to java as -Dfd.cover.rounds=<n>.
+    [int]$CoverRounds = 0
 )
 
 $ErrorActionPreference = 'Stop'
@@ -63,7 +72,9 @@ $runnerFile = Join-Path $testClasses 'com\ds\fd\FdTestRunner.class'
 if (-not (Test-Path $runnerFile)) {
     Write-Host "  (未编译出 $runner, 跳过测试执行 —— 请检查 src\test\java\com\ds\fd\FdTestRunner.java)"
 } else {
-    & java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' `
+    $extra = @()
+    if ($CoverRounds -gt 0) { $extra += "-Dfd.cover.rounds=$CoverRounds" }
+    & java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' @extra `
         -cp "$cp;$mainClasses;$testClasses" $runner | Out-Host
     $testExit = $LASTEXITCODE
     Write-Host "JUNIT_EXIT=$testExit"
