@@ -171,9 +171,22 @@ public final class FdClosureDemo {
                     in ? "在 F+ 中" : "不在 F+ 中");
         }
 
-        // ---------- 六、候选键 ----------
+        // ---------- 六、用 X+ 判断超键，再由极小性得到候选键 ----------
         System.out.println();
-        System.out.println("【六】为什么'闭包'能一眼看出候选键");
+        System.out.println("【六】用 X+ 判断超键: α 是超键 <=> α+ ⊇ R = " + FdCalculator.join(attrs));
+        String[] candidates = {"A", "G", "CG", "AG", "ABC", "ABG", "ABCGHI"};
+        System.out.printf("   %-8s %-14s %-12s %s%n", "α", "α+", "缺哪些属性", "结论");
+        for (String c : candidates) {
+            FdCalculator.SuperkeyCheck check = FdCalculator.checkSuperkey(
+                    FunctionalDependency.chars(c), attrs, f);
+            System.out.printf("   %-8s %-14s %-12s %s%n",
+                    c,
+                    FdCalculator.join(check.closure()),
+                    check.missing().isEmpty() ? "(无)" : FdCalculator.join(check.missing()),
+                    check.isSuperkey() ? "超键" : "不是超键");
+        }
+        System.out.println("   (超键不要求极小: AG / ABG / ABCGHI 都算; 极小性由下一步筛)");
+
         List<Set<String>> keys = FdCalculator.candidateKeys(attrs, f);
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < keys.size(); i++) {
@@ -182,7 +195,7 @@ public final class FdClosureDemo {
                 sb.append("  |  ");
             }
         }
-        System.out.println("   候选键: " + sb);
+        System.out.println("   候选键(极小超键): " + sb);
         System.out.println("   (AG 能推出全部属性; 单独 A 或 G 都不能 => 唯一极小超键)");
     }
 }

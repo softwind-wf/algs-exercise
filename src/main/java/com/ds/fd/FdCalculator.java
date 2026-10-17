@@ -230,9 +230,66 @@ public final class FdCalculator {
         }
     }
 
-    /** X 是不是超键：X⁺ 是否包含全部属性。 */
+    /**
+     * 超键判定（教材 8.4.2）：{@code α 是 R 的超键 ⟺ α⁺ ⊇ R}。
+     *
+     * <p>只要闭包装下了全部属性，α 就能函数决定整行，即"知道 α 就知道整条元组"。
+     * 超键**不要求极小**：AG 是超键，ABG、ACG、ABCGHI 也都是；极小性由
+     * {@link #candidateKeys} 另外保证。所以本方法只回答"是不是超键"，不回答"是不是候选键"。
+     *
+     * <p>返回闭包与"缺哪些属性"，是为了让"不是超键"这个结论可解释：
+     * 缺口非空就说明这些属性推不出来，α 不能唯一确定元组。
+     */
+    public static SuperkeyCheck checkSuperkey(Set<String> x, Set<String> allAttrs,
+                                              List<FunctionalDependency> fds) {
+        Set<String> closure = attributeClosure(x, fds);
+        Set<String> missing = new TreeSet<String>(allAttrs);
+        missing.removeAll(closure);
+        return new SuperkeyCheck(new TreeSet<String>(x), closure, missing);
+    }
+
+    /** 超键判定的完整结论：α、α⁺、缺哪些属性、是否超键。 */
+    public static final class SuperkeyCheck {
+        private final Set<String> attrs;
+        private final Set<String> closure;
+        private final Set<String> missing;
+
+        SuperkeyCheck(Set<String> attrs, Set<String> closure, Set<String> missing) {
+            this.attrs = Collections.unmodifiableSet(attrs);
+            this.closure = Collections.unmodifiableSet(closure);
+            this.missing = Collections.unmodifiableSet(missing);
+        }
+
+        /** 被判断的属性集 α。 */
+        public Set<String> attrs() {
+            return attrs;
+        }
+
+        /** α⁺，即 α 在 F 下能函数决定的全部属性。 */
+        public Set<String> closure() {
+            return closure;
+        }
+
+        /** R − α⁺：闭包里还缺哪些属性；空集就说明是超键。 */
+        public Set<String> missing() {
+            return missing;
+        }
+
+        /** α 是否为超键：等价于 {@code missing().isEmpty()}。 */
+        public boolean isSuperkey() {
+            return missing.isEmpty();
+        }
+
+        @Override
+        public String toString() {
+            return join(attrs) + "+ = " + join(closure)
+                    + (isSuperkey() ? " (全属性齐 => 超键)" : " (缺 " + join(missing) + " => 不是超键)");
+        }
+    }
+
+    /** X 是不是超键：X⁺ 是否包含全部属性（{@link #checkSuperkey} 的简写）。 */
     public static boolean isSuperkey(Set<String> x, Set<String> allAttrs, List<FunctionalDependency> fds) {
-        return attributeClosure(x, fds).containsAll(allAttrs);
+        return checkSuperkey(x, allAttrs, fds).isSuperkey();
     }
 
     /** 求全部候选键（极小超键），结果按"先按元素个数、再按字典序"排序。 */

@@ -103,6 +103,50 @@ class FdCalculatorTest {
         assertFalse(FdCalculator.isSuperkey(FunctionalDependency.chars("G"), attrs, f));
     }
 
+    /**
+     * 判定口径：α 是超键 ⟺ α⁺ ⊇ R。缺口 = R − α⁺，非空就说明"推不出这几列"。
+     * A⁺ = ABCH 缺 G、I（G 只能从 AG 或 CG 组合里得到，I 只能由 CG→I 得到）。
+     */
+    @Test
+    @DisplayName("超键判定含解释：A 缺 GI、G 缺 ABCHI、CG 缺 AB、AG 不缺")
+    void superkeyCheck() {
+        assertCheck("AG", true, "ABCGHI", "");
+        assertCheck("A", false, "ABCH", "GI");
+        assertCheck("G", false, "G", "ABCHI");
+        assertCheck("CG", false, "CGHI", "AB");
+        assertCheck("ABC", false, "ABCH", "GI");
+        assertCheck("ABCGHI", true, "ABCGHI", "");
+    }
+
+    /** 对全部子集交叉印证：缺口恰为 R − X⁺，且两个入口结论一致。 */
+    @Test
+    @DisplayName("超键判定不变量：缺口 = R − X⁺，isSuperkey ⟺ 缺口为空")
+    void superkeyCheckInvariant() {
+        for (Set<String> x : FdCalculator.subsets(attrs)) {
+            FdCalculator.SuperkeyCheck check = FdCalculator.checkSuperkey(x, attrs, f);
+
+            Set<String> expectedMissing = new java.util.TreeSet<String>(attrs);
+            expectedMissing.removeAll(check.closure());
+            assertEquals(expectedMissing, check.missing(), "缺口 " + FdCalculator.join(x));
+            assertEquals(check.missing().isEmpty(), check.isSuperkey(),
+                    "结论应与缺口一致 " + FdCalculator.join(x));
+            assertEquals(FdCalculator.attributeClosure(x, f), check.closure(),
+                    "闭包应与 attributeClosure 一致 " + FdCalculator.join(x));
+            assertEquals(check.isSuperkey(), FdCalculator.isSuperkey(x, attrs, f),
+                    "两个入口结论不一致 " + FdCalculator.join(x));
+        }
+    }
+
+    private void assertCheck(String x, boolean superkey, String closure, String missing) {
+        FdCalculator.SuperkeyCheck check =
+                FdCalculator.checkSuperkey(FunctionalDependency.chars(x), attrs, f);
+        assertEquals(superkey, check.isSuperkey(), "isSuperkey " + x);
+        assertEquals(closure, FdCalculator.join(check.closure()), "closure " + x);
+        assertEquals(missing, FdCalculator.join(check.missing()), "missing " + x);
+        assertEquals(superkey, FdCalculator.isSuperkey(FunctionalDependency.chars(x), attrs, f),
+                "简写入口 " + x);
+    }
+
     /** 极小性检查：AG 是唯一候选键，不允许出现 {A,G} 之外的更大的"键"。 */
     @Test
     @DisplayName("候选键唯一为 {A,G}")
