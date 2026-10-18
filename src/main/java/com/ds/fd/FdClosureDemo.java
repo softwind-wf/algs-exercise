@@ -416,6 +416,17 @@ public final class FdClosureDemo {
         System.out.println("        F = { course_id -> {title,dept_name,credits},");
         System.out.println("              {building,room_number} -> {capacity},");
         System.out.println("              {course_id,sec_id,semester,year} -> {building,room_number,time_slot_id} }");
+        BcnfCheck.CheckResult table11 = BcnfCheck.checkRelation(r11, f11);
+        System.out.println("    先判 BCNF: " + (table11.bcnf() ? "属于 BCNF" : "不属于 BCNF"));
+        for (BcnfCheck.Violation violation : table11.violations()) {
+            System.out.println("      " + violation);
+        }
+        System.out.print("    候选键: ");
+        List<Set<String>> keys11 = FdCalculator.candidateKeys(r11, f11);
+        for (int i = 0; i < keys11.size(); i++) {
+            System.out.print((i == 0 ? "" : ", ") + FdCalculator.joinWithComma(keys11.get(i)));
+        }
+        System.out.println();
         BcnfDecomposition.Result dec11 = BcnfDecomposition.decompose(r11, f11);
         System.out.println("    拆成 " + dec11.decomposition().size() + " 张表（" + dec11.stepCount() + " 步）:");
         for (BcnfDecomposition.Step step : dec11.steps()) {

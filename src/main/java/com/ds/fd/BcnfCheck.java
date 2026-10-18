@@ -325,10 +325,12 @@ public final class BcnfCheck {
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder();
-            sb.append(fd).append(" 违反 BCNF (")
-                    .append(FdCalculator.join(fd.determinant())).append("+ = ")
-                    .append(FdCalculator.join(closure))
-                    .append(", 还缺 ").append(FdCalculator.join(missing)).append(")");
+            sb.append(FdCalculator.joinWithComma(fd.determinant())).append(" -> ")
+                    .append(FdCalculator.joinWithComma(fd.dependent()))
+                    .append(" 违反 BCNF (")
+                    .append(FdCalculator.joinWithComma(fd.determinant())).append("+ = ")
+                    .append(FdCalculator.joinWithComma(closure))
+                    .append(", 还缺 ").append(FdCalculator.joinWithComma(missing)).append(")");
             if (!inGivenSet) {
                 sb.append(" [不在 F 中, 只出现在 F+ 里]");
             }

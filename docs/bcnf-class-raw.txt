@@ -1,0 +1,244 @@
+SET
+Pager usage is off.
+                     phase                     
+-----------------------------------------------
+ === BCNF 实战：bcnf_class_demo.class_wide ===
+(1 row)
+
+【第 0 步】建宽表 class_wide（课程 × 开课班 × 教室 混在一起）
+DROP VIEW
+DROP TABLE
+DROP TABLE
+CREATE TABLE
+COMMENT
+COMMENT
+COMMENT
+INSERT 0 11
+【第 0 步】表结构（11 个属性；主键 = course_id + sec_id + semester + year）
+                       Table "public.class_wide"
+    Column    |         Type          | Collation | Nullable | Default 
+--------------+-----------------------+-----------+----------+---------
+ course_id    | character varying(8)  |           | not null | 
+ title        | character varying(64) |           | not null | 
+ dept_name    | character varying(32) |           | not null | 
+ credits      | numeric(3,1)          |           | not null | 
+ sec_id       | character varying(8)  |           | not null | 
+ semester     | character varying(16) |           | not null | 
+ year         | integer               |           | not null | 
+ building     | character varying(32) |           | not null | 
+ room_number  | character varying(16) |           | not null | 
+ capacity     | integer               |           | not null | 
+ time_slot_id | character varying(8)  |           | not null | 
+Indexes:
+    "pk_class_wide" PRIMARY KEY, btree (course_id, sec_id, semester, year)
+Check constraints:
+    "ck_class_wide_capacity" CHECK (capacity > 0)
+    "ck_class_wide_credits" CHECK (credits > 0::numeric)
+
+【第 0 步】全部数据（11 行；同一门课 / 同一间教室的信息在重复出现）
+ course_id |        title        | dept_name  | credits | sec_id | semester | year | building | room_number | capacity | time_slot_id 
+-----------+---------------------+------------+---------+--------+----------+------+----------+-------------+----------+--------------
+ BIO-101   | Intro to Biology    | Biology    |     4.0 | 1      | Fall     | 2017 | Painter  | 514         |      100 | E
+ BIO-101   | Intro to Biology    | Biology    |     4.0 | 2      | Fall     | 2017 | Painter  | 514         |      100 | F
+ BIO-301   | Genetics            | Biology    |     4.0 | 1      | Spring   | 2018 | Painter  | 514         |      100 | G
+ CS-101    | Intro to Comp. Sci. | Comp. Sci. |     4.0 | 1      | Fall     | 2017 | Packard  | 101         |      500 | A
+ CS-101    | Intro to Comp. Sci. | Comp. Sci. |     4.0 | 2      | Fall     | 2017 | Packard  | 101         |      500 | B
+ CS-101    | Intro to Comp. Sci. | Comp. Sci. |     4.0 | 1      | Spring   | 2018 | Packard  | 101         |      500 | A
+ CS-190    | Game Design         | Comp. Sci. |     4.0 | 1      | Spring   | 2018 | Watson   | 120         |       30 | H
+ CS-190    | Game Design         | Comp. Sci. |     4.0 | 2      | Spring   | 2018 | Watson   | 120         |       30 | I
+ CS-315    | Robotics            | Comp. Sci. |     3.0 | 1      | Fall     | 2017 | Taylor   | 3128        |       70 | C
+ CS-315    | Robotics            | Comp. Sci. |     3.0 | 2      | Fall     | 2017 | Taylor   | 3128        |       70 | D
+ CS-319    | Image Processing    | Comp. Sci. |     3.0 | 1      | Spring   | 2018 | Taylor   | 3128        |       70 | B
+(11 rows)
+
+【第 1 步】冗余现场：同一门课存几行？同一间教室存几行？
+ course_id |        title        | dept_name  | credits | 重复行数 
+-----------+---------------------+------------+---------+----------
+ BIO-101   | Intro to Biology    | Biology    |     4.0 |        2
+ BIO-301   | Genetics            | Biology    |     4.0 |        1
+ CS-101    | Intro to Comp. Sci. | Comp. Sci. |     4.0 |        3
+ CS-190    | Game Design         | Comp. Sci. |     4.0 |        2
+ CS-315    | Robotics            | Comp. Sci. |     3.0 |        2
+ CS-319    | Image Processing    | Comp. Sci. |     3.0 |        1
+(6 rows)
+
+ building | room_number | capacity | 重复行数 
+----------+-------------+----------+----------
+ Packard  | 101         |      500 |        3
+ Painter  | 514         |      100 |        3
+ Taylor   | 3128        |       70 |        3
+ Watson   | 120         |       30 |        2
+(4 rows)
+
+ 总行数 | 课程数 | 教室数 
+--------+--------+--------
+     11 |      6 |      4
+(1 row)
+
+【第 2 步】数据侧验证：三条 FD 在现有数据上没有反例（0 行）
+  注意：FD 是业务规则，不是数据统计结论；数据只能"证伪"，不能"证明"。
+  F1: course_id -> {title, dept_name, credits}
+ course_id | 不同组合数 
+-----------+------------
+(0 rows)
+
+  F2: {building, room_number} -> capacity
+ building | room_number | 不同容量数 
+----------+-------------+------------
+(0 rows)
+
+  F3: {course_id, sec_id, semester, year} -> {building, room_number, time_slot_id}
+ course_id | sec_id | semester | year | 不同教室时段组合数 
+-----------+--------+----------+------+--------------------
+(0 rows)
+
+【第 3 步】候选键与"不是超键"的证据
+  3.1 主键 (course_id, sec_id, semester, year) 唯一标识一行 => 是候选键
+ 总行数 | 主键唯一组合数 
+--------+----------------
+     11 |             11
+(1 row)
+
+  3.2 course_id 不是超键：同一门课有多个开课班（决定不了 sec_id）
+ course_id | 行数 | 不同开课班 
+-----------+------+------------
+ BIO-101   |    2 |          2
+ CS-101    |    3 |          2
+ CS-190    |    2 |          2
+ CS-315    |    2 |          2
+(4 rows)
+
+  3.3 (building, room_number) 不是超键：同一间教室开了多门课
+ building | room_number | 不同课程数 
+----------+-------------+------------
+ Painter  | 514         |          2
+ Taylor   | 3128        |          2
+(2 rows)
+
+【第 4 步】BCNF 判定：F 中每条非平凡 FD 的左部都必须是超键
+                                非平凡函数依赖                                |                左部                 |     左部是超键吗     |   判定    
+------------------------------------------------------------------------------+-------------------------------------+----------------------+-----------
+ course_id -> {title, dept_name, credits}                                     | course_id                           | 否（有多个 sec_id）  | 违反 BCNF
+ {building, room_number} -> {capacity}                                        | {building, room_number}             | 否（同一教室多门课） | 违反 BCNF
+ {course_id, sec_id, semester, year} -> {building, room_number, time_slot_id} | {course_id, sec_id, semester, year} | 是（候选键 / 超键）  | 不违反
+(3 rows)
+
+【第 5 步】宽表的异常现场（事务内演示，结束后 ROLLBACK）
+BEGIN
+  5.1 更新异常：改一门课的名字，要改 3 行；漏改一行就自相矛盾
+UPDATE 3
+ROLLBACK
+BEGIN
+  5.2 删除异常：删掉 CS-319 唯一的开课班，课程本身的信息也跟着消失
+DELETE 1
+ 删后剩余行数 
+--------------
+           10
+(1 row)
+
+ROLLBACK
+【第 6 步】建分解后的三张表（分解结果 = Java 工具 BcnfDecomposition 的输出）
+CREATE TABLE
+COMMENT
+CREATE TABLE
+COMMENT
+CREATE TABLE
+COMMENT
+  迁移：同一门课只留一行（DISTINCT），同一间教室只留一行
+INSERT 0 6
+INSERT 0 4
+INSERT 0 11
+  迁移后行数：course / classroom 去重，section 与宽表一一对应
+     表     | 行数 
+------------+------
+ class_wide |   11
+ classroom  |    4
+ course     |    6
+ section    |   11
+(4 rows)
+
+【第 7 步】无损验证：自然连接回来 = 原来的 11 行（双向 EXCEPT 都为空）
+ 连接后行数 
+------------
+         11
+(1 row)
+
+  7.1 原宽表 − 连接结果（应为 0 行）
+ course_id | title | dept_name | credits | sec_id | semester | year | building | room_number | capacity | time_slot_id 
+-----------+-------+-----------+---------+--------+----------+------+----------+-------------+----------+--------------
+(0 rows)
+
+  7.2 连接结果 − 原宽表（应为 0 行）
+ course_id | title | dept_name | credits | sec_id | semester | year | building | room_number | capacity | time_slot_id 
+-----------+-------+-----------+---------+--------+----------+------+----------+-------------+----------+--------------
+(0 rows)
+
+  7.3 展开看一眼：连接结果与原宽表逐行一致
+ course_id |        title        | sec_id | semester | year | building | room_number | capacity | time_slot_id 
+-----------+---------------------+--------+----------+------+----------+-------------+----------+--------------
+ BIO-101   | Intro to Biology    | 1      | Fall     | 2017 | Painter  | 514         |      100 | E
+ BIO-101   | Intro to Biology    | 2      | Fall     | 2017 | Painter  | 514         |      100 | F
+ BIO-301   | Genetics            | 1      | Spring   | 2018 | Painter  | 514         |      100 | G
+ CS-101    | Intro to Comp. Sci. | 1      | Fall     | 2017 | Packard  | 101         |      500 | A
+ CS-101    | Intro to Comp. Sci. | 2      | Fall     | 2017 | Packard  | 101         |      500 | B
+ CS-101    | Intro to Comp. Sci. | 1      | Spring   | 2018 | Packard  | 101         |      500 | A
+ CS-190    | Game Design         | 1      | Spring   | 2018 | Watson   | 120         |       30 | H
+ CS-190    | Game Design         | 2      | Spring   | 2018 | Watson   | 120         |       30 | I
+ CS-315    | Robotics            | 1      | Fall     | 2017 | Taylor   | 3128        |       70 | C
+ CS-315    | Robotics            | 2      | Fall     | 2017 | Taylor   | 3128        |       70 | D
+ CS-319    | Image Processing    | 1      | Spring   | 2018 | Taylor   | 3128        |       70 | B
+(11 rows)
+
+【第 8 步】三张表的 BCNF 证据：非平凡 FD 的左部都是该表的键
+    表     |                                非平凡函数依赖                                |                 左部是键吗                 | 结论 
+-----------+------------------------------------------------------------------------------+--------------------------------------------+------
+ course    | course_id -> {title, dept_name, credits}                                     | course_id = 主键                           | BCNF
+ classroom | {building, room_number} -> {capacity}                                        | (building, room_number) = 主键             | BCNF
+ section   | {course_id, sec_id, semester, year} -> {building, room_number, time_slot_id} | {course_id, sec_id, semester, year} = 主键 | BCNF
+(3 rows)
+
+  8.1 数据库层面已经把三条 FD 变成约束：三个主键 + 两个外键
+    表     |         约束          |                                      定义                                       
+-----------+-----------------------+---------------------------------------------------------------------------------
+ course    | ck_course_credits     | CHECK ((credits > (0)::numeric))
+ course    | pk_course             | PRIMARY KEY (course_id)
+ classroom | ck_classroom_capacity | CHECK ((capacity > 0))
+ classroom | pk_classroom          | PRIMARY KEY (building, room_number)
+ section   | fk_section_classroom  | FOREIGN KEY (building, room_number) REFERENCES classroom(building, room_number)
+ section   | fk_section_course     | FOREIGN KEY (course_id) REFERENCES course(course_id)
+ section   | pk_section            | PRIMARY KEY (course_id, sec_id, semester, year)
+(7 rows)
+
+【第 9 步】更新异常消失：改课程名只动 1 行（事务内演示后 ROLLBACK）
+BEGIN
+UPDATE 1
+ course_id |           title           
+-----------+---------------------------
+ CS-101    | Intro to Computer Science
+(1 row)
+
+ROLLBACK
+【第 10 步】建兼容视图 class_wide_v：应用查询不必改写
+CREATE VIEW
+ course_id |        title        | dept_name  | credits | sec_id | semester | year | building | room_number | capacity | time_slot_id 
+-----------+---------------------+------------+---------+--------+----------+------+----------+-------------+----------+--------------
+ BIO-101   | Intro to Biology    | Biology    |     4.0 | 1      | Fall     | 2017 | Painter  | 514         |      100 | E
+ BIO-101   | Intro to Biology    | Biology    |     4.0 | 2      | Fall     | 2017 | Painter  | 514         |      100 | F
+ BIO-301   | Genetics            | Biology    |     4.0 | 1      | Spring   | 2018 | Painter  | 514         |      100 | G
+ CS-101    | Intro to Comp. Sci. | Comp. Sci. |     4.0 | 1      | Fall     | 2017 | Packard  | 101         |      500 | A
+ CS-101    | Intro to Comp. Sci. | Comp. Sci. |     4.0 | 2      | Fall     | 2017 | Packard  | 101         |      500 | B
+ CS-101    | Intro to Comp. Sci. | Comp. Sci. |     4.0 | 1      | Spring   | 2018 | Packard  | 101         |      500 | A
+ CS-190    | Game Design         | Comp. Sci. |     4.0 | 1      | Spring   | 2018 | Watson   | 120         |       30 | H
+ CS-190    | Game Design         | Comp. Sci. |     4.0 | 2      | Spring   | 2018 | Watson   | 120         |       30 | I
+ CS-315    | Robotics            | Comp. Sci. |     3.0 | 1      | Fall     | 2017 | Taylor   | 3128        |       70 | C
+ CS-315    | Robotics            | Comp. Sci. |     3.0 | 2      | Fall     | 2017 | Taylor   | 3128        |       70 | D
+ CS-319    | Image Processing    | Comp. Sci. |     3.0 | 1      | Spring   | 2018 | Taylor   | 3128        |       70 | B
+(11 rows)
+
+【结论】
+  1) class_wide 不满足 BCNF：F1 左部 course_id、F2 左部 (building, room_number) 都不是超键。
+  2) 按图 8-11 分解为 course / section / classroom 三张表，每张都是 BCNF。
+  3) 分解无损：连接回来仍是 11 行，双向 EXCEPT 为空。
+  4) 分解保持依赖：F1 在 course、F2 在 classroom、F3 在 section，都由主键直接约束。
+  5) 冗余消失：课程信息 6 行、教室信息 4 行，更新课程名从 3 行变 1 行。
+=== 演示结束：对象保留在 bcnf_class_demo 中，可直接查询复查 ===

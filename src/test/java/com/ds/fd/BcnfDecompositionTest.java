@@ -60,6 +60,17 @@ class BcnfDecompositionTest {
         assertTrue(result.lossless());
         assertTrue(result.preservesDependencies(f), "这三张表把 F 的每条依赖都保住了");
 
+        // 判定面：这张宽表为什么不满足 BCNF —— 两条违反项 + 唯一候选键
+        BcnfCheck.CheckResult tableCheck = BcnfCheck.checkRelation(r, f);
+        assertFalse(tableCheck.bcnf());
+        assertEquals(2, tableCheck.violations().size());
+        assertEquals(fd("course_id", "title,dept_name,credits"), tableCheck.violations().get(0).fd());
+        assertEquals(fd("building,room_number", "capacity"), tableCheck.violations().get(1).fd());
+
+        List<Set<String>> keys = FdCalculator.candidateKeys(r, f);
+        assertEquals(1, keys.size(), "class 宽表只有一个候选键");
+        assertEquals(attrs("course_id,sec_id,semester,year"), keys.get(0));
+
         // 第 1 步：class 上 course_id -> title,dept_name,credits
         BcnfDecomposition.Step first = result.steps().get(0);
         assertEquals(fd("course_id", "title,dept_name,credits"), first.fd());
