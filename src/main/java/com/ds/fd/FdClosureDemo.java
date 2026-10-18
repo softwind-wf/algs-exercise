@@ -346,6 +346,96 @@ public final class FdClosureDemo {
                 r9b, FunctionalDependency.chars("AC"), FunctionalDependency.chars("BC"), f9b);
         System.out.println("    注: 该分解是否无损? " + (lossless9.lossless() ? "无损" : "有损")
                 + " —— 无损与保持依赖是两个独立要求");
+
+        // ---------- 十、BCNF 判定（教材 8.5 节 / 第 198 页） ----------
+        System.out.println();
+        System.out.println("【十】BCNF 判定 (教材 198 页: 未分解只看 F; 分解后必须看 F+ 投影)");
+
+        Set<String> r10 = FunctionalDependency.chars("ABCDE");
+        List<FunctionalDependency> f10 = fds("A->B", "BC->D");
+        System.out.println("  例 1: R=(A,B,C,D,E), F={A->B, BC->D}");
+        BcnfCheck.CheckResult whole10 = BcnfCheck.checkRelation(r10, f10);
+        System.out.println("    未分解, 只看 F: " + (whole10.bcnf() ? "属于 BCNF" : "不属于 BCNF"));
+        for (BcnfCheck.Violation violation : whole10.violations()) {
+            System.out.println("      " + violation);
+        }
+        BcnfCheck.CheckResult whole10b = BcnfCheck.checkRelationByFPlus(r10, f10);
+        System.out.println("    对照(先物化 F+): " + (whole10b.bcnf() ? "属于 BCNF" : "不属于 BCNF")
+                + ", 违反项 " + whole10b.violations().size() + " 条 > " + whole10.violations().size()
+                + " 条 —— 结论一致, F+ 里更多");
+
+        List<Set<String>> d10 = new java.util.ArrayList<Set<String>>();
+        d10.add(FunctionalDependency.chars("AB"));
+        d10.add(FunctionalDependency.chars("ACDE"));
+        System.out.println("    拆成 R1=(A,B) + R2=(A,C,D,E)");
+        System.out.println("      R1: " + BcnfCheck.checkProjected(FunctionalDependency.chars("AB"), r10, f10));
+        System.out.println("      R2: " + BcnfCheck.checkProjected(FunctionalDependency.chars("ACDE"), r10, f10));
+        System.out.println("      只看 F 会误判: F 里没有一条依赖的左右部都落在 R2 内,"
+                + " 但 F+ 里的 AC->D 违反 BCNF (AC+ = ABCD, 缺 E)");
+        BcnfCheck.CheckResult r2b = BcnfCheck.checkProjectedByFPlus(
+                FunctionalDependency.chars("ACDE"), r10, f10);
+        StringBuilder badLeft = new StringBuilder();
+        for (Set<String> det : r2b.violatingDeterminants()) {
+            badLeft.append(badLeft.length() == 0 ? "" : ", ").append(FdCalculator.join(det));
+        }
+        System.out.println("      Π_R2(F+) 里左部不是 R2 超键的: " + badLeft
+                + "（其中含 AC->D? "
+                + r2b.projected().contains(FunctionalDependency.of("AC", "D")) + "）");
+        BcnfCheck.DecompositionResult dec10 = BcnfCheck.checkDecomposition(r10, d10, f10);
+        System.out.println("      整个分解 => " + (dec10.bcnf() ? "BCNF 分解" : "不是 BCNF 分解")
+                + ", 要再拆的子模式 " + dec10.violatingParts().size() + " 个");
+
+        Set<String> r10c = FunctionalDependency.chars("ABC");
+        List<FunctionalDependency> f10c = fds("AB->C", "C->B");
+        System.out.println("  例 2: R=(A,B,C), F={AB->C, C->B} (3NF 但非 BCNF 的经典形状)");
+        for (BcnfCheck.Violation violation : BcnfCheck.checkRelation(r10c, f10c).violations()) {
+            System.out.println("      " + violation + " —— C 是主属性, 3NF 放行, BCNF 不放行");
+        }
+        List<Set<String>> d10c = new java.util.ArrayList<Set<String>>();
+        d10c.add(FunctionalDependency.chars("BC"));
+        d10c.add(FunctionalDependency.chars("AC"));
+        BcnfCheck.DecompositionResult dec10c = BcnfCheck.checkDecomposition(r10c, d10c, f10c);
+        for (BcnfCheck.CheckResult part : dec10c.parts()) {
+            System.out.println("      " + part);
+        }
+        System.out.println("      => (B,C)+(A,C) 是 BCNF 分解; 但它丢 AB->C, 见【九】的结论");
+
+        // ---------- 十一、BCNF 分解算法（8.5.1.2 节 / 图 8-11） ----------
+        System.out.println();
+        System.out.println("【十一】BCNF 分解算法 (教材 8.5.1.2 / 图 8-11)");
+
+        Set<String> r11 = attrs("course_id,title,dept_name,credits,sec_id,semester,year,"
+                + "building,room_number,capacity,time_slot_id");
+        List<FunctionalDependency> f11 = new java.util.ArrayList<FunctionalDependency>();
+        f11.add(new FunctionalDependency(attrs("course_id"), attrs("title,dept_name,credits")));
+        f11.add(new FunctionalDependency(attrs("building,room_number"), attrs("capacity")));
+        f11.add(new FunctionalDependency(attrs("course_id,sec_id,semester,year"),
+                attrs("building,room_number,time_slot_id")));
+        System.out.println("  例 1: class(course_id, title, dept_name, credits, sec_id, semester, year,");
+        System.out.println("                building, room_number, capacity, time_slot_id)");
+        System.out.println("        F = { course_id -> {title,dept_name,credits},");
+        System.out.println("              {building,room_number} -> {capacity},");
+        System.out.println("              {course_id,sec_id,semester,year} -> {building,room_number,time_slot_id} }");
+        BcnfDecomposition.Result dec11 = BcnfDecomposition.decompose(r11, f11);
+        System.out.println("    拆成 " + dec11.decomposition().size() + " 张表（" + dec11.stepCount() + " 步）:");
+        for (BcnfDecomposition.Step step : dec11.steps()) {
+            System.out.println("      " + step);
+        }
+        System.out.println("    最终: " + dec11);
+        System.out.println("    复核: BCNF? " + dec11.bcnf() + ", 无损? " + dec11.lossless()
+                + ", 保持依赖? " + dec11.preservesDependencies(f11));
+
+        Set<String> r11b = FunctionalDependency.chars("ABC");
+        List<FunctionalDependency> f11b = fds("AB->C", "C->A");
+        System.out.println("  例 2: R=(A,B,C), F={AB->C, C->A}");
+        BcnfDecomposition.Result dec11b = BcnfDecomposition.decompose(r11b, f11b);
+        for (BcnfDecomposition.Step step : dec11b.steps()) {
+            System.out.println("      " + step);
+        }
+        DependencyPreservation.ClosureCheck lost11b =
+                DependencyPreservation.checkByModifiedClosure(r11b, dec11b.decomposition(), f11b);
+        System.out.println("    最终: " + dec11b + " —— 无损, 但丢依赖 " + lost11b.lost()
+                + " (BCNF 分解不保证保持依赖)");
     }
 
     /** 把 "AB->C" 这样的简写解析成依赖列表，方便演示。 */
@@ -356,6 +446,18 @@ public final class FdClosureDemo {
             out.add(FunctionalDependency.of(
                     spec.substring(0, arrow).trim(),
                     spec.substring(arrow + 2).trim()));
+        }
+        return out;
+    }
+
+    /** 逗号分隔的属性名，用于多字符属性（如 "course_id,title"）的演示。 */
+    private static Set<String> attrs(String commaSeparated) {
+        Set<String> out = new java.util.LinkedHashSet<String>();
+        for (String token : commaSeparated.split(",")) {
+            String trimmed = token.trim();
+            if (!trimmed.isEmpty()) {
+                out.add(trimmed);
+            }
         }
         return out;
     }

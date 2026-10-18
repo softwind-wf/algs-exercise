@@ -28,6 +28,8 @@ public final class FdTestRunner {
             CanonicalCoverPropertyTest.class,
             LosslessJoinTest.class,
             DependencyPreservationTest.class,
+            BcnfCheckTest.class,
+            BcnfDecompositionTest.class,
             FdInvariantTest.class,
     };
 
