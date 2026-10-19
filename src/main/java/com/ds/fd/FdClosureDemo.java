@@ -447,6 +447,64 @@ public final class FdClosureDemo {
                 DependencyPreservation.checkByModifiedClosure(r11b, dec11b.decomposition(), f11b);
         System.out.println("    最终: " + dec11b + " —— 无损, 但丢依赖 " + lost11b.lost()
                 + " (BCNF 分解不保证保持依赖)");
+
+        // ---------- 十二、3NF 合成（8.5.2 节 / 图 8-12） ----------
+        System.out.println();
+        System.out.println("【十二】3NF 合成算法 (教材 8.5.2 / 图 8-12: 正则覆盖 + 补候选键 + 删冗余)");
+
+        Set<String> r12 = attrs("s_ID,i_ID,dept_name");
+        List<FunctionalDependency> f12 = new java.util.ArrayList<FunctionalDependency>();
+        f12.add(new FunctionalDependency(attrs("i_ID"), attrs("dept_name")));
+        f12.add(new FunctionalDependency(attrs("s_ID,dept_name"), attrs("i_ID")));
+        System.out.println("  例 1: dept_advisor(s_ID, i_ID, dept_name),");
+        System.out.println("        F={ i_ID->dept_name, {s_ID,dept_name}->i_ID }");
+        System.out.println("    候选键: " + joinSets(FdCalculator.candidateKeys(r12, f12)));
+        BcnfCheck.CheckResult bcnf12 = BcnfCheck.checkRelation(r12, f12);
+        System.out.println("    BCNF 判定: " + (bcnf12.bcnf() ? "属于 BCNF" : "不属于 BCNF")
+                + (bcnf12.violations().isEmpty() ? "" : " —— " + bcnf12.violations()));
+        ThreeNfDecomposition.ThirdNfCheck nf12 = ThreeNfDecomposition.checkThirdNormalForm(r12, r12, f12);
+        System.out.println("    3NF 判定: " + (nf12.thirdNormalForm() ? "属于 3NF" : "不属于 3NF")
+                + " (主属性 " + FdCalculator.joinWithComma(nf12.primeAttributes()) + ")");
+        ThreeNfDecomposition.Result dec12 = ThreeNfDecomposition.decompose(r12, f12);
+        System.out.println("    正则覆盖: " + fdsToString(dec12.canonicalCover()));
+        for (ThreeNfDecomposition.Step step : dec12.steps()) {
+            System.out.println("      " + step);
+        }
+        System.out.println("    最终: " + dec12);
+        System.out.println("    复核: 3NF? " + dec12.thirdNormalForm() + ", BCNF? " + dec12.bcnf()
+                + ", 无损? " + dec12.lossless() + ", 保持依赖? " + dec12.preservesDependencies(f12));
+
+        System.out.println("  例 2: class 模式 (8.5.1.2 的 F 恰好是正则覆盖)");
+        ThreeNfDecomposition.Result dec12b = ThreeNfDecomposition.decompose(r11, f11);
+        System.out.println("    合成 " + dec12b.synthesized().size() + " 张表, 最终 "
+                + dec12b.decomposition().size() + " 张 (section 含候选键, 无需补键; 无冗余可删)");
+        System.out.println("    最终: " + dec12b);
+        boolean sameAsBcnf = new java.util.LinkedHashSet<Set<String>>(dec12b.decomposition())
+                .equals(new java.util.LinkedHashSet<Set<String>>(
+                        BcnfDecomposition.decompositionOf(r11, f11)));
+        System.out.println("    与 BCNF 分解结果相同? " + sameAsBcnf
+                + " —— 3NF 合成有时也恰好得到 BCNF");
+
+        Set<String> r12c = FunctionalDependency.chars("ABCD");
+        List<FunctionalDependency> f12c = fds("A->B", "B->C");
+        System.out.println("  例 3: R=(A,B,C,D), F={A->B, B->C} (合成的 AB、BC 都不含候选键 AD)");
+        ThreeNfDecomposition.Result dec12c = ThreeNfDecomposition.decompose(r12c, f12c);
+        for (ThreeNfDecomposition.Step step : dec12c.steps()) {
+            System.out.println("      " + step);
+        }
+        System.out.println("    最终: " + dec12c);
+        System.out.println("    复核: 3NF? " + dec12c.thirdNormalForm() + ", 无损? " + dec12c.lossless()
+                + ", 保持依赖? " + dec12c.preservesDependencies(f12c));
+
+        Set<String> r12d = FunctionalDependency.chars("ABC");
+        List<FunctionalDependency> f12d = fds("AB->C", "C->A");
+        System.out.println("  例 4: R=(A,B,C), F={AB->C, C->A} (3NF 但非 BCNF) —— 两种分解的取舍");
+        BcnfDecomposition.Result bcnf12d = BcnfDecomposition.decompose(r12d, f12d);
+        ThreeNfDecomposition.Result three12d = ThreeNfDecomposition.decompose(r12d, f12d);
+        System.out.println("    BCNF 分解: " + bcnf12d + ", 保持依赖? "
+                + bcnf12d.preservesDependencies(f12d) + " —— 丢了 AB->C");
+        System.out.println("    3NF 合成:  " + three12d + ", 保持依赖? "
+                + three12d.preservesDependencies(f12d) + " —— 保住依赖, 但仍是 3NF 非 BCNF");
     }
 
     /** 把 "AB->C" 这样的简写解析成依赖列表，方便演示。 */
@@ -471,5 +529,26 @@ public final class FdClosureDemo {
             }
         }
         return out;
+    }
+
+    /** 把一组属性集合打印成 { { … }, { … } } 形式。 */
+    private static String joinSets(List<Set<String>> sets) {
+        StringBuilder sb = new StringBuilder("{ ");
+        for (int i = 0; i < sets.size(); i++) {
+            sb.append(i == 0 ? "" : ", ").append(FdCalculator.joinWithComma(sets.get(i)));
+        }
+        return sb.append(" }").toString();
+    }
+
+    /** 打印依赖列表（带逗号，避免多字符属性名粘连）。 */
+    private static String fdsToString(List<FunctionalDependency> fds) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < fds.size(); i++) {
+            FunctionalDependency fd = fds.get(i);
+            sb.append(i == 0 ? "" : ", ")
+                    .append(FdCalculator.joinWithComma(fd.determinant()))
+                    .append(" -> ").append(FdCalculator.joinWithComma(fd.dependent()));
+        }
+        return sb.append("]").toString();
     }
 }
