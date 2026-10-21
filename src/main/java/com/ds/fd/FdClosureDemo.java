@@ -505,6 +505,47 @@ public final class FdClosureDemo {
                 + bcnf12d.preservesDependencies(f12d) + " —— 丢了 AB->C");
         System.out.println("    3NF 合成:  " + three12d + ", 保持依赖? "
                 + three12d.preservesDependencies(f12d) + " —— 保住依赖, 但仍是 3NF 非 BCNF");
+
+        // ---------- 十三、4NF 分解（8.6.3 节 / 图 8-16） ----------
+        System.out.println();
+        System.out.println("【十三】4NF 分解算法 (教材 8.6.3 / 图 8-16: 把图 8-11 的 FD 换成多值依赖)");
+
+        Set<String> r13 = attrs("ID,dept_name,street,city");
+        List<FunctionalDependency> f13 = new java.util.ArrayList<FunctionalDependency>();
+        List<MultivaluedDependency> m13 = new java.util.ArrayList<MultivaluedDependency>();
+        m13.add(new MultivaluedDependency(attrs("ID"), attrs("dept_name")));
+        m13.add(new MultivaluedDependency(attrs("ID"), attrs("street,city")));
+        System.out.println("  例 1: r(ID, dept_name, street, city),");
+        System.out.println("        MVD: ID->->dept_name, ID->->street,city (8.6 节的教师地址例子)");
+        FourNFDecomposition.CheckResult c13 = FourNFDecomposition.check(r13, f13, m13);
+        System.out.println("    4NF 判定: " + (c13.fourNF() ? "属于 4NF" : "不属于 4NF")
+                + " —— 违反项 " + c13.violations());
+        FourNFDecomposition.Result dec13 = FourNFDecomposition.decompose(r13, f13, m13);
+        for (FourNFDecomposition.Step step : dec13.steps()) {
+            System.out.println("      " + step);
+        }
+        System.out.println("    最终: " + dec13 + " (即 r21(ID,dept_name) + r22(ID,street,city), 教材的答案)");
+        System.out.println("    复核: 4NF? " + dec13.fourNF() + ", 无损? " + dec13.lossless()
+                + ", 覆盖 R? " + dec13.coversAll());
+
+        System.out.println("  例 2: R=(A,B,C), F={A->BC} —— A 是超键, 复制律给出的 A->->BC 不构成违反");
+        Set<String> r13b = FunctionalDependency.chars("ABC");
+        List<FunctionalDependency> f13b = fds("A->BC");
+        FourNFDecomposition.Result dec13b = FourNFDecomposition.decompose(r13b, f13b,
+                new java.util.ArrayList<MultivaluedDependency>());
+        System.out.println("    最终: " + dec13b);
+
+        System.out.println("  例 3: R=(A,B,C,D), F={A->C}, MVD: A->->B —— 拆两轮, 4NF 分解会过度规范化");
+        Set<String> r13c = FunctionalDependency.chars("ABCD");
+        List<FunctionalDependency> f13c = fds("A->C");
+        List<MultivaluedDependency> m13c = new java.util.ArrayList<MultivaluedDependency>();
+        m13c.add(new MultivaluedDependency(FunctionalDependency.chars("A"), FunctionalDependency.chars("B")));
+        FourNFDecomposition.Result dec13c = FourNFDecomposition.decompose(r13c, f13c, m13c);
+        for (FourNFDecomposition.Step step : dec13c.steps()) {
+            System.out.println("      " + step);
+        }
+        System.out.println("    最终: " + dec13c);
+        System.out.println("    复核: 4NF? " + dec13c.fourNF() + ", 无损? " + dec13c.lossless());
     }
 
     /** 把 "AB->C" 这样的简写解析成依赖列表，方便演示。 */

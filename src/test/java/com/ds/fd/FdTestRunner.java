@@ -31,6 +31,7 @@ public final class FdTestRunner {
             BcnfCheckTest.class,
             BcnfDecompositionTest.class,
             ThreeNfDecompositionTest.class,
+            FourNFDecompositionTest.class,
             FdInvariantTest.class,
     };
 
