@@ -6,7 +6,7 @@
     <title th:text="${title}">大学教务信息网站</title>
     <meta name="_csrf" th:content="${csrfToken}"/>
     <link rel="stylesheet" th:href="@{/vendor/bootstrap/bootstrap.min.css}">
-    <link rel="stylesheet" th:href="@{/css/style.css(v=3)}">
+    <link rel="stylesheet" th:href="@{/css/style.css(v=4)}">
     <!-- Bootstrap JS 必须在 head 片段内加载（defer 不阻塞解析）：
          之前放在 footer 元素外导致 th:replace 片段不包含它，全站 JS 组件从未生效 -->
     <script th:src="@{/vendor/bootstrap/bootstrap.bundle.min.js}" defer></script>
@@ -27,7 +27,11 @@
                 <a th:href="@{/login}" th:if="${session.loginUser == null}">登录</a>
                 <a th:href="@{/account/password}" th:if="${session.loginUser != null}">修改密码</a>
                 <a th:href="@{/account/avatar}" th:if="${session.loginUser != null}">设置头像</a>
-                <a th:href="@{/logout}" th:if="${session.loginUser != null}">退出登录</a>
+                <!-- 退出登录必须 POST + CSRF token：GET 登出可被跨站顶层导航触发（CSRF 登出），故改为表单提交 -->
+                <form th:action="@{/logout}" method="post" class="d-inline m-0" th:if="${session.loginUser != null}">
+                    <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
+                    <button type="submit" class="topbar-linklike">退出登录</button>
+                </form>
             </span>
         </div>
     </div>
@@ -83,7 +87,12 @@
                             <span th:text="'欢迎：' + ${session.loginUser.userId}">欢迎</span>
                         </a>
                     </li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/logout}">退出</a></li>
+                    <li class="nav-item">
+                        <form th:action="@{/logout}" method="post" class="m-0">
+                            <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
+                            <button type="submit" class="nav-link navbar-logout-btn">退出</button>
+                        </form>
+                    </li>
                 </ul>
                 <ul class="navbar-nav" th:unless="${session.loginUser != null}">
                     <li class="nav-item"><a class="nav-link" th:href="@{/login}">登录</a></li>

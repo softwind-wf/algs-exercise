@@ -422,6 +422,30 @@ code {
     text-decoration: underline;
 }
 
+/* 退出登录按钮（POST + CSRF 表单提交）：视觉上与顶部信息条的链接保持一致 */
+.topbar-linklike {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: #cfe0f0;
+    font: inherit;
+    line-height: inherit;
+    cursor: pointer;
+}
+
+.topbar-linklike:hover,
+.topbar-linklike:focus {
+    color: #fff;
+    text-decoration: underline;
+}
+
+/* 主导航里的退出按钮：沿用 .nav-link 的外观，去掉按钮默认边框与背景 */
+.navbar-logout-btn {
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+}
+
 /* ===== 首页：顶部主视觉 ===== */
 .home-hero {
     position: relative;

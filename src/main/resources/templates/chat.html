@@ -80,16 +80,27 @@
     </div>
 </div>
 
+<!-- 安全说明（勿改回内联 JSON）：
+     会话/联系人数据通过 data-* 属性下发，Thymeleaf 会按 HTML 属性规则转义，
+     再由下方脚本 JSON.parse 读取。
+     不要改回用 Thymeleaf 非转义表达式把 JSON 内联进 script —— 聊天消息内容里的
+     脚本结束标签序列会提前闭合脚本块，形成存储型 XSS
+     （2026-10 修复，回归测试见 XssCsrfRegressionTest#chatPageNeutralizesScriptBreakoutPayload）。 -->
+<div id="chatBootData" hidden
+     th:attr="data-conversations=${conversationsJson},
+              data-groups=${groupsJson},
+              data-depts=${deptsJson}"></div>
 <script th:inline="javascript">
-    var chatData = {
-        me: [[${myUserId}]],
-        myName: [[${myName}]],
-        // 以下两个为服务端 ObjectMapper 预序列化的 JSON，用非转义 JS 内联（小括号形式）
-        // 直接作为数组字面量（已按 JSON 规范转义，安全）
-        conversations: [(${conversationsJson})],
-        groups: [(${groupsJson})],
-        depts: [(${deptsJson})]
-    };
+    (function () {
+        var boot = document.getElementById('chatBootData');
+        window.chatData = {
+            me: [[${myUserId}]],
+            myName: [[${myName}]],
+            conversations: JSON.parse(boot.getAttribute('data-conversations') || '[]'),
+            groups: JSON.parse(boot.getAttribute('data-groups') || '[]'),
+            depts: JSON.parse(boot.getAttribute('data-depts') || '[]')
+        };
+    })();
 </script>
 <script th:src="@{/js/chat.js(v=6)}"></script>
 

@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 /** 登录 / 登出 */
@@ -73,7 +74,22 @@ public class AuthController {
         }
     }
 
+    /**
+     * 兼容旧书签/历史链接：GET /logout 不再执行登出（旧实现可被跨站顶层导航触发 CSRF 登出）。
+     * 这里显式返回 405，而不是落到 GlobalExceptionHandler 的兜底分支（那会把状态码改成 200）。
+     * 真正的退出走 POST /logout（必须携带 CSRF token）。
+     */
     @GetMapping("/logout")
+    public String logoutViaGet(HttpServletResponse response, Model model) {
+        response.setStatus(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+        model.addAttribute("message", "退出登录请使用页面上的「退出」按钮（POST 请求并携带 CSRF token）。");
+        return "error";
+    }
+
+    /**
+     * 退出登录：必须走 POST 且携带 CSRF token（由 CsrfInterceptor 统一校验）。
+     */
+    @PostMapping("/logout")
     public String logout(HttpSession session) {
         session.invalidate();
         return "redirect:/login";
