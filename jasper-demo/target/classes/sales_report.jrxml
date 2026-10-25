@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- JasperReports 模板：university 库 sales 表（教材图 5-16 的 OLAP 事实表）。
+     明细按 item_name 分组，组尾用 Sum 变量输出该服装的尺码交叉汇总与小计；
+     汇总区输出三个尺码合计、总计与柱状图（柱状图数据来自子数据集 itemTotals）。
+     language="java"：表达式由 ecj 编译（本工程未引 groovy）。
+     中文 PDF：每个 <font> 显式给 pdfFontName（系统黑体）+ Identity-H + 嵌入；
+     注意 default.pdf.font.name 那类全局属性对本模板不生效，故不采用。 -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="sales_report" language="java" pageWidth="595" pageHeight="842" columnWidth="515" leftMargin="40" rightMargin="40" topMargin="40" bottomMargin="40" whenNoDataType="AllSectionsNoDetail">
+  <property name="net.sf.jasperreports.compiler.xml.validation" value="true"/>
+
+  <subDataset name="itemTotals">
+    <queryString><![CDATA[SELECT item_name, sum(quantity) AS total FROM sales GROUP BY item_name ORDER BY total DESC]]></queryString>
+    <field name="item_name" class="java.lang.String"/>
+    <field name="total" class="java.lang.Long"/>
+  </subDataset>
+
+  <parameter name="JDBC_URL" class="java.lang.String"/>
+
+  <queryString><![CDATA[SELECT item_name, color, clothes_size, quantity FROM sales ORDER BY item_name, color, clothes_size]]></queryString>
+
+  <field name="item_name" class="java.lang.String"/>
+  <field name="color" class="java.lang.String"/>
+  <field name="clothes_size" class="java.lang.String"/>
+  <field name="quantity" class="java.lang.Integer"/>
+
+  <variable name="item_total" class="java.lang.Integer" calculation="Sum" resetType="Group" resetGroup="byItem">
+    <variableExpression><![CDATA[$F{quantity}]]></variableExpression>
+  </variable>
+  <variable name="g_small" class="java.lang.Integer" calculation="Sum" resetType="Group" resetGroup="byItem">
+    <variableExpression><![CDATA["small".equals($F{clothes_size}) ? $F{quantity} : 0]]></variableExpression>
+  </variable>
+  <variable name="g_medium" class="java.lang.Integer" calculation="Sum" resetType="Group" resetGroup="byItem">
+    <variableExpression><![CDATA["medium".equals($F{clothes_size}) ? $F{quantity} : 0]]></variableExpression>
+  </variable>
+  <variable name="g_large" class="java.lang.Integer" calculation="Sum" resetType="Group" resetGroup="byItem">
+    <variableExpression><![CDATA["large".equals($F{clothes_size}) ? $F{quantity} : 0]]></variableExpression>
+  </variable>
+  <variable name="grand_total" class="java.lang.Integer" calculation="Sum" resetType="Report">
+    <variableExpression><![CDATA[$F{quantity}]]></variableExpression>
+  </variable>
+  <variable name="t_small" class="java.lang.Integer" calculation="Sum" resetType="Report">
+    <variableExpression><![CDATA["small".equals($F{clothes_size}) ? $F{quantity} : 0]]></variableExpression>
+  </variable>
+  <variable name="t_medium" class="java.lang.Integer" calculation="Sum" resetType="Report">
+    <variableExpression><![CDATA["medium".equals($F{clothes_size}) ? $F{quantity} : 0]]></variableExpression>
+  </variable>
+  <variable name="t_large" class="java.lang.Integer" calculation="Sum" resetType="Report">
+    <variableExpression><![CDATA["large".equals($F{clothes_size}) ? $F{quantity} : 0]]></variableExpression>
+  </variable>
+  <variable name="row_count" class="java.lang.Integer" calculation="Count" resetType="Report">
+    <variableExpression><![CDATA[$F{item_name}]]></variableExpression>
+  </variable>
+
+  <group name="byItem">
+    <groupExpression><![CDATA[$F{item_name}]]></groupExpression>
+    <groupFooter>
+      <band height="22">
+        <staticText><reportElement x="10" y="3" width="100" height="14"/><textElement><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="9" isBold="true"/></textElement><text><![CDATA[小计（按尺码）]]></text></staticText>
+        <textField pattern="#,##0"><reportElement x="190" y="3" width="60" height="14"/><textElement textAlignment="Right"><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="9" isBold="true"/></textElement><textFieldExpression><![CDATA[$V{g_small}]]></textFieldExpression></textField>
+        <textField pattern="#,##0"><reportElement x="255" y="3" width="70" height="14"/><textElement textAlignment="Right"><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="9" isBold="true"/></textElement><textFieldExpression><![CDATA[$V{g_medium}]]></textFieldExpression></textField>
+        <textField pattern="#,##0"><reportElement x="330" y="3" width="60" height="14"/><textElement textAlignment="Right"><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="9" isBold="true"/></textElement><textFieldExpression><![CDATA[$V{g_large}]]></textFieldExpression></textField>
+        <textField pattern="#,##0"><reportElement x="420" y="3" width="80" height="14"/><textElement textAlignment="Right"><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="9" isBold="true"/></textElement><textFieldExpression><![CDATA[$V{item_total}]]></textFieldExpression></textField>
+        <line><reportElement x="0" y="21" width="515" height="1"/></line>
+      </band>
+    </groupFooter>
+  </group>
+
+  <title>
+    <band height="62">
+      <staticText><reportElement x="0" y="0" width="515" height="24"/><textElement><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="17" isBold="true"/></textElement><text><![CDATA[university.sales 销售报表]]></text></staticText>
+      <textField><reportElement x="0" y="28" width="515" height="14"/><textElement><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="9"/></textElement><textFieldExpression><![CDATA["数据源 " + $P{JDBC_URL} + " · 生成时间 " + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date())]]></textFieldExpression></textField>
+      <textField><reportElement x="0" y="44" width="515" height="14"/><textElement><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="9"/></textElement><textFieldExpression><![CDATA["维属性 item_name / color / clothes_size ｜ 度量 quantity ｜ 模板 sales_report.jrxml + JasperReports 引擎"]]></textFieldExpression></textField>
+    </band>
+  </title>
+
+  <columnHeader>
+    <band height="36">
+      <staticText><reportElement mode="Opaque" x="0" y="0" width="515" height="36" backcolor="#EEEEEE"/><text><![CDATA[ ]]></text></staticText>
+      <staticText><reportElement x="10" y="4" width="100" height="14"/><textElement><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="9" isBold="true"/></textElement><text><![CDATA[服装 item_name]]></text></staticText>
+      <staticText><reportElement x="120" y="4" width="90" height="14"/><textElement><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="9" isBold="true"/></textElement><text><![CDATA[颜色 color]]></text></staticText>
+      <staticText><reportElement x="220" y="4" width="90" height="14"/><textElement><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="9" isBold="true"/></textElement><text><![CDATA[尺码 clothes_size]]></text></staticText>
+      <staticText><reportElement x="420" y="4" width="80" height="14"/><textElement textAlignment="Right"><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="9" isBold="true"/></textElement><text><![CDATA[销量 quantity]]></text></staticText>
+      <staticText><reportElement x="190" y="20" width="60" height="12"/><textElement textAlignment="Right"><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="8"/></textElement><text><![CDATA[small]]></text></staticText>
+      <staticText><reportElement x="255" y="20" width="70" height="12"/><textElement textAlignment="Right"><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="8"/></textElement><text><![CDATA[medium]]></text></staticText>
+      <staticText><reportElement x="330" y="20" width="60" height="12"/><textElement textAlignment="Right"><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="8"/></textElement><text><![CDATA[large]]></text></staticText>
+      <staticText><reportElement x="420" y="20" width="80" height="12"/><textElement textAlignment="Right"><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="8"/></textElement><text><![CDATA[组小计]]></text></staticText>
+    </band>
+  </columnHeader>
+
+  <detail>
+    <band height="16">
+      <textField><reportElement x="10" y="2" width="100" height="12"/><textElement><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="9"/></textElement><textFieldExpression><![CDATA[$F{item_name}]]></textFieldExpression></textField>
+      <textField><reportElement x="120" y="2" width="90" height="12"/><textElement><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="9"/></textElement><textFieldExpression><![CDATA[$F{color}]]></textFieldExpression></textField>
+      <textField><reportElement x="220" y="2" width="90" height="12"/><textElement><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="9"/></textElement><textFieldExpression><![CDATA[$F{clothes_size}]]></textFieldExpression></textField>
+      <textField pattern="#,##0"><reportElement x="420" y="2" width="80" height="12"/><textElement textAlignment="Right"><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="9"/></textElement><textFieldExpression><![CDATA[$F{quantity}]]></textFieldExpression></textField>
+    </band>
+  </detail>
+
+  <pageFooter>
+    <band height="18">
+      <staticText><reportElement x="0" y="4" width="300" height="12"/><textElement><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="8"/></textElement><text><![CDATA[JasperReports 生成 · PostgreSQL university 库 sales 表]]></text></staticText>
+      <textField pattern="####"><reportElement x="425" y="4" width="28" height="12"/><textElement textAlignment="Right"><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="8"/></textElement><textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression></textField>
+      <textField pattern="####" evaluationTime="Report"><reportElement x="462" y="4" width="28" height="12"/><textElement textAlignment="Right"><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="8"/></textElement><textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression></textField>
+    </band>
+  </pageFooter>
+
+  <summary>
+    <band height="250">
+      <staticText><reportElement x="10" y="6" width="170" height="16"/><textElement textAlignment="Right"><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="11" isBold="true"/></textElement><text><![CDATA[全部合计]]></text></staticText>
+      <textField pattern="#,##0"><reportElement x="190" y="6" width="60" height="16"/><textElement textAlignment="Right"><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="11" isBold="true"/></textElement><textFieldExpression><![CDATA[$V{t_small}]]></textFieldExpression></textField>
+      <textField pattern="#,##0"><reportElement x="255" y="6" width="70" height="16"/><textElement textAlignment="Right"><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="11" isBold="true"/></textElement><textFieldExpression><![CDATA[$V{t_medium}]]></textFieldExpression></textField>
+      <textField pattern="#,##0"><reportElement x="330" y="6" width="60" height="16"/><textElement textAlignment="Right"><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="11" isBold="true"/></textElement><textFieldExpression><![CDATA[$V{t_large}]]></textFieldExpression></textField>
+      <textField pattern="#,##0"><reportElement x="420" y="6" width="80" height="16"/><textElement textAlignment="Right"><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="11" isBold="true"/></textElement><textFieldExpression><![CDATA[$V{grand_total}]]></textFieldExpression></textField>
+      <textField><reportElement x="10" y="24" width="400" height="14"/><textElement><font fontName="SansSerif" pdfFontName="C:/Windows/Fonts/simhei.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true" size="9"/></textElement><textFieldExpression><![CDATA["明细行数 = " + $V{row_count} + "（应与 sum(quantity) = " + $V{grand_total} + " 一同用于录入校验）"]]></textFieldExpression></textField>
+
+      <barChart>
+        <chart evaluationTime="Report">
+          <reportElement x="20" y="56" width="470" height="188"/>
+          <chartTitle position="Top"><titleExpression><![CDATA["按服装汇总的销量（子数据集 itemTotals）"]]></titleExpression></chartTitle>
+        </chart>
+        <categoryDataset>
+          <dataset>
+            <datasetRun subDataset="itemTotals">
+              <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+            </datasetRun>
+          </dataset>
+          <categorySeries>
+            <seriesExpression><![CDATA["销量"]]></seriesExpression>
+            <categoryExpression><![CDATA[$F{item_name}]]></categoryExpression>
+            <valueExpression><![CDATA[$F{total}]]></valueExpression>
+            <labelExpression><![CDATA[$F{item_name} + "=" + $F{total}]]></labelExpression>
+          </categorySeries>
+        </categoryDataset>
+        <barPlot isShowLabels="true">
+          <plot/>
+          <categoryAxisLabelExpression><![CDATA["服装"]]></categoryAxisLabelExpression>
+          <valueAxisLabelExpression><![CDATA["件数"]]></valueAxisLabelExpression>
+        </barPlot>
+      </barChart>
+    </band>
+  </summary>
+</jasperReport>
