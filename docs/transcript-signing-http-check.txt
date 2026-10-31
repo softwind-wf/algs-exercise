@@ -1,0 +1,10 @@
+=== 成绩单签名 HTTP 集成冒烟（应用 :18080，dev profile，MySQL 8.0.44 + Redis）===
+
+GET  /verify                                  -> 200，页面含"成绩单签名验证"，CSRF token 长度 43
+POST /verify（有效 payload + 签名）            -> 验签通过
+POST /verify（payload 里 GPA 3.5 改成 4.0）    -> 验签不通过
+GET  /student/transcript/signed（未登录）      -> 302 跳转 /login（登录拦截生效）
+Flyway                                        -> 14 个迁移校验通过，schema 版本 13（V13 已应用）
+签名初始化日志                                 -> 算法=RSASSA-PSS，证书指纹=3c917d62f2ae5abe510260f2c7b8047b
+
+结论：成绩单签名 + 公开验证链路（下载 -> 粘贴 -> 验签）在真实 Spring Boot 上下文中跑通。

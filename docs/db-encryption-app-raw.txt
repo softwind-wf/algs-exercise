@@ -1,0 +1,66 @@
+
+===== ① 建表：数据库只保存密文/随机数/标签/盲索引/包好的 DEK =====
+  表结构: sid | name_ct name_nonce name_tag | phone_ct phone_nonce phone_tag | phone_bidx | wrapped_dek
+
+===== ② 应用侧密钥（演示：每次运行随机生成，真实系统放 KMS/KeyStore） =====
+  KEK            SHA-256 指纹: FA5BE1A82F536594
+  blindIndexKey  SHA-256 指纹: 58B45633C198AD29
+  每条记录另有独立 DEK（随机 256 位），数据库只存 AESWrap(KEK, DEK)
+
+===== ③ 应用加密后入库：随机 DEK + 随机 nonce + GCM tag + 盲索引 =====
+
+===== ④ DBA 视角：SELECT 出来全是字节；没有 KEK 拼不回明文 =====
+  S001
+    name_ct   = 5D724E5E65CF
+    phone_ct  = FC46FB398B1C6904240CB3   (nonce=EE9C3E5A438CB110B2AC02E9, tag=77A902A5799C8CDC4CE3958B57967F4C)
+    phone_bidx= 13FE417BDF7549FE1298ADBACE3446261D6B438F756DF794FF77BD58C745601A
+    wrapped_dek=C63ADDE8AED6A24177EC98872742523C79AAB3B52CE479959CEBDE59CB78FBA4D41DC2CED223C6BE
+  S002
+    name_ct   = 3E3428C45350
+    phone_ct  = 13483919FC5033E545D9BC   (nonce=3F49698980F37BFD601E5ED0, tag=7318ADD79850A19867B2E8180E2B7022)
+    phone_bidx= 6847534771AB60399253F4A49D0D1F0030E13F9B9B5AEC6686EAE871459741AE
+    wrapped_dek=23545ABFBFFC726E400A9E5D51E1548D571786EBE3A27AB7C42DB6776DEBBC67CDB9D638B4B0A558
+  S003
+    name_ct   = 5BAB8DFAF665
+    phone_ct  = 28F8BB2AB366AFC7E11152   (nonce=A7DE4CE657762AA0C34E7F0F, tag=EEA9B749C573357A23230D2F7DC2DDA8)
+    phone_bidx= 13FE417BDF7549FE1298ADBACE3446261D6B438F756DF794FF77BD58C745601A
+    wrapped_dek=3394EB6336BC4869E86AA46C3DF11619562936910F39634E2DE3B4616CBF05C8BF0280838E6DBC87
+  S004
+    name_ct   = DF24D683B641
+    phone_ct  = C45F9D3E9568D081676063   (nonce=9EFC509C23F2D296E644300A, tag=1C9D8FBEC2B0962A3848F412A6C6F1DC)
+    phone_bidx= 1369538813E276650D1E11EBED5455D7FCDEC88B002F240A0D7C7BE69165BCC9
+    wrapped_dek=A124702ED6505B2606E88E53F44BA53E8F9FF7BA958B521CD3AB78EBE5C7D59A6A18B20D11959A42
+  S005
+    name_ct   = BDDE5C2A189C
+    phone_ct  = DCDFC86C5BA5C9D695B913   (nonce=9E62EB5DA436C2C15C33A1AB, tag=83FFFA16CC1CE41B220BE722BE08A3BA)
+    phone_bidx= B997D0135C84A36A7AA2AD64A0C7729E31A6B9F9A8E869E4884FD95479E74BFC
+    wrapped_dek=43E91CB01089E09B4C95C3B2B5F712FC12DA552837D26F0966D1AA8396BEA98E06671718F144D3EF
+  —— 库里没有 name/phone 明文列，也没有 DEK 明文。
+
+===== ⑤ 应用视角：用 KEK 解出 DEK，再解字段（GCM 校验 tag） =====
+  S001  张伟  13900001111
+  S002  李娜  13800138000
+  S003  王强  13900001111
+  S004  刘洋  13700137000
+  S005  陈静  13600136000
+
+===== ⑥ 盲索引：不存明文也能等值查询，而且走索引 =====
+  HMAC(13900001111) = 13fe417bdf7549fe1298adbace3446261d6b438f756df794ff77bd58c745601a
+  EXPLAIN: type=ref key=idx_phone_bidx rows=2 Extra=Using where; Using index
+  命中: [S001, S003]（S001 与 S003 同号）
+  对照：逐行解密 5 行才能过滤，命中 [S001, S003]；数据量越大差距越大。
+  WHERE phone_ct LIKE '%138%' → 0 行（密文里搜不到明文）。
+
+===== ⑦ 篡改密文：GCM 认证失败，应用拿不到「垃圾明文」 =====
+  解密失败: AEADBadTagException（tag 校验不通过，密文被视为损坏）
+
+===== ⑧ 信封加密的好处：轮换 KEK 只重写 wrapped_dek，不动一行业务密文 =====
+  S001 wrapped_dek 前: c63adde8aed6a24177ec98872742523c79aab3b52ce479959cebde59cb78fba4d41dc2ced223c6be
+  S001 wrapped_dek 后: 709783fbcc45554c9f31b39cb2633c791b04744cccc354466c97b452d5aa43c11d1acd3307f4acc1
+  S001 phone_ct 是否变化: false（应为 false）
+  用新 KEK 解 S001: 13900001111（旧密文直接复用）
+  旧 KEK 解新 wrapped_dek: 失败（AESWrap 完整性校验拒绝）
+
+===== 完成 =====
+  结论：数据库只拿到密文 + 随机数 + 标签 + 盲索引 + 包好的 DEK；
+        明文、DEK、KEK 都不在库里。代价是应用要自己做加解密与密钥管理。

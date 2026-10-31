@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="'成绩单 - ' + ${transcript.studentId}">成绩单</title>
+    <style>
+        /* 下载文件是"自包含"的：不依赖服务器 CSS，双击就能看、能打印、能另存 PDF */
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; padding: 24px;
+            font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", SimSun, sans-serif;
+            color: #1f2933; background: #eef1f5; line-height: 1.6;
+        }
+        .sheet {
+            width: 210mm; min-height: 297mm; margin: 0 auto; padding: 18mm 16mm;
+            background: #ffffff; box-shadow: 0 2px 12px rgba(16, 24, 40, .12);
+        }
+        header { border-bottom: 2px solid #1f4e79; padding-bottom: 10px; margin-bottom: 18px; }
+        .school { font-size: 20px; font-weight: 700; letter-spacing: 2px; color: #1f4e79; }
+        .doc-title { margin-top: 6px; font-size: 26px; font-weight: 700; letter-spacing: 6px; text-align: center; }
+        .doc-sub { margin-top: 4px; text-align: center; font-size: 12px; color: #6b7785; letter-spacing: 1px; }
+        .meta { margin: 18px 0 10px; font-size: 13px; }
+        .meta span { margin-right: 28px; }
+        .meta b { color: #1f4e79; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead th {
+            background: #f2f5f9; border: 1px solid #cbd5e1; padding: 7px 6px;
+            font-weight: 600; text-align: center; white-space: nowrap;
+        }
+        tbody td { border: 1px solid #cbd5e1; padding: 6px; text-align: center; }
+        tbody td.name { text-align: left; }
+        tbody tr:nth-child(even) { background: #fafbfd; }
+        .summary { display: flex; gap: 12px; margin: 16px 0 4px; }
+        .summary div {
+            flex: 1; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 10px;
+            text-align: center; background: #f8fafc;
+        }
+        .summary .label { font-size: 12px; color: #6b7785; }
+        .summary .value { font-size: 18px; font-weight: 700; color: #1f4e79; }
+        .sign {
+            margin-top: 22px; padding-top: 12px; border-top: 1px dashed #94a3b8; font-size: 12px; color: #475569;
+        }
+        .sign table { font-size: 12px; }
+        .sign td { border: none; text-align: left; padding: 2px 0; }
+        .sign .k { width: 110px; color: #6b7785; }
+        .hint {
+            margin-top: 14px; padding: 10px 12px; font-size: 12px; color: #334e68;
+            background: #eef6ff; border: 1px solid #b9d4ef; border-radius: 6px;
+        }
+        details { margin-top: 14px; font-size: 12px; }
+        summary { cursor: pointer; color: #1f4e79; }
+        pre {
+            margin: 8px 0 0; padding: 10px; background: #f8fafc; border: 1px solid #cbd5e1;
+            border-radius: 6px; font-size: 11px; line-height: 1.45; white-space: pre-wrap;
+            word-break: break-all; font-family: Consolas, "Courier New", monospace;
+        }
+        .foot { margin-top: 18px; text-align: center; font-size: 11px; color: #94a3b8; }
+        @media print {
+            body { padding: 0; background: #fff; }
+            .sheet { width: auto; min-height: auto; margin: 0; padding: 10mm; box-shadow: none; }
+            details { display: none; }
+            .hint { display: none; }
+        }
+    </style>
+</head>
+<body>
+<div class="sheet">
+
+    <header>
+        <div class="school">大学教务信息网站</div>
+        <div class="doc-title">成 绩 单</div>
+        <div class="doc-sub">电子签名版 · 可离线验证 · 可打印 / 另存为 PDF</div>
+    </header>
+
+    <div class="meta">
+        <span>学号：<b th:text="${transcript.studentId}">00128</b></span>
+        <span>姓名：<b th:text="${transcript.studentName}">张伟</b></span>
+        <span>主修系：<b th:text="${transcript.deptName}">计算机科学与技术</b></span>
+    </div>
+
+    <table>
+        <thead>
+        <tr>
+            <th style="width:70px">学期</th>
+            <th style="width:60px">学年</th>
+            <th style="width:90px">课程号</th>
+            <th>课程名</th>
+            <th style="width:60px">学分</th>
+            <th style="width:60px">成绩</th>
+            <th style="width:60px">绩点</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="r : ${transcript.rows}">
+            <td th:text="${r.semester}">Fall</td>
+            <td th:text="${r.year}">2026</td>
+            <td th:text="${r.courseId}">CS301</td>
+            <td class="name" th:text="${r.title}">数据库系统</td>
+            <td th:text="${r.credits}">4</td>
+            <td th:text="${r.grade != null and r.grade != '' ? r.grade : '在读'}">B+</td>
+            <td th:text="${r.gradePoint != null ? r.gradePoint : '-'}">3.3</td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(transcript.rows)}">
+            <td colspan="7" style="color:#6b7785">暂无成绩记录</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div class="summary">
+        <div>
+            <div class="label">修读课程数</div>
+            <div class="value" th:text="${transcript.courseCount}">0</div>
+        </div>
+        <div>
+            <div class="label">已获学分</div>
+            <div class="value" th:text="${transcript.earnedCredits}">0</div>
+        </div>
+        <div>
+            <div class="label">平均绩点 GPA</div>
+            <div class="value" th:text="${transcript.gpa != null ? transcript.gpa : '-'}">-</div>
+        </div>
+    </div>
+
+    <div class="sign">
+        <table>
+            <tr><td class="k">签发时间</td><td th:text="${signed.issuedAt}">-</td></tr>
+            <tr><td class="k">签名流水号</td><td th:text="${signed.serialNo}">-</td></tr>
+            <tr><td class="k">签名算法</td><td th:text="${signed.algorithm}">RSASSA-PSS</td></tr>
+            <tr><td class="k">证书指纹</td><td th:text="${signed.certificateFingerprint}">-</td></tr>
+        </table>
+    </div>
+
+    <div class="hint">
+        <strong>如何验证这份成绩单：</strong>
+        打开本站首页 → 「成绩单验签」（地址 <code>/verify</code>），把下方「签名数据」整段复制粘贴进去即可。
+        签名只证明“由本校签发、内容未被修改”，成绩单本身是明文，不提供机密性。
+    </div>
+
+    <details>
+        <summary>查看签名数据（整段粘贴到 /verify 即可）</summary>
+        <pre th:text="${signedJson}">{"payload":"...","signature":"..."}</pre>
+    </details>
+
+    <div class="foot">本成绩单由教务系统自动生成，电子签名数据见上方折叠区；如需纸质版可直接打印本页。</div>
+</div>
+</body>
+</html>

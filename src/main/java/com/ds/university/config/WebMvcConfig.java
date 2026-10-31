@@ -31,7 +31,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        // CSRF 校验优先于登录鉴权执行
+        // CSRF 校验优先于登录鉴权执行。
+        // /verify 保留 CSRF 校验：GET 会下发 token，表单带 _csrf 提交；这样公开页也不需要豁免。
         registry.addInterceptor(csrfInterceptor)
                 .addPathPatterns("/**")
                 .order(0);
@@ -39,7 +40,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addPathPatterns("/**")
                 .excludePathPatterns(
                         "/login", "/css/**", "/js/**", "/images/**", "/uploads/**",
-                        "/favicon.ico", "/error")
+                        "/favicon.ico", "/error",
+                        // 成绩单签名验证页：用人单位/其他学校无需登录即可验签
+                        "/verify")
                 .order(1);
     }
 

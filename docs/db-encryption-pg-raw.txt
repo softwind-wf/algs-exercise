@@ -1,0 +1,147 @@
+Pager usage is off.
+CREATE EXTENSION
+psql:src/main/resources/sql/db_encryption_pg.sql:19: 注意:  扩展 "pgcrypto" 已经存在,跳过
+DROP TABLE
+DROP TABLE
+DROP TABLE
+                         section                         
+---------------------------------------------------------
+ ===== ① 明文入库：psql 一条 SELECT 就能看到手机号 =====
+(1 row)
+
+CREATE TABLE
+CREATE INDEX
+INSERT 0 5
+ sid  | name |    phone    
+------+------+-------------
+ S001 | 张伟 | 13900001111
+ S002 | 李娜 | 13800138000
+ S003 | 王强 | 13900001111
+ S004 | 刘洋 | 13700137000
+ S005 | 陈静 | 13600136000
+(5 rows)
+
+                        QUERY PLAN                         
+-----------------------------------------------------------
+ Bitmap Heap Scan on student_plain
+   Recheck Cond: ((phone)::text = '13900001111'::text)
+   ->  Bitmap Index Scan on idx_student_plain_phone
+         Index Cond: ((phone)::text = '13900001111'::text)
+(4 rows)
+
+                           section                           
+-------------------------------------------------------------
+ ===== ② pgp_sym_encrypt：同值不同密文（随机 salt/IV） =====
+(1 row)
+
+CREATE TABLE
+INSERT 0 5
+ sid  | name | ct_bytes |                                                                           ct_hex                                                                           |                             bidx_hex                             
+------+------+----------+------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------
+ S001 | 张伟 |       77 | c30d040703023ab23402fc9d63ba76d23c01039397041f92d677c7f2c375a6c037d44bbe44ef31da6caeccc3aa95c7c343c83437a206309e0dfa6c7bbd7dd5e5d8acf4e228092817c7b9f40f38 | ef77724282b9008ee84b4eb4a999050b9a10a22d9db4e4adc502f93aa8f93f45
+ S002 | 李娜 |       77 | c30d0407030263153939386806b878d23c01584eb3b1d4dde95e7a2531aa129c872bb9ecad37d682641fbd539cd599a8bcf5d0a2cd86afe6ab140f42aca99ff6cbe0d27f83c96be0372ad6d3f4 | 81d54ddfd5d0b8cfd1a822a341591aeade9bde1b4e8115a66b826ecd77ec1d33
+ S003 | 王强 |       77 | c30d040703029939f840887d27807dd23c014e8c07457846e333059a67bd4067bfe6692827d8a9a58b21eac087d651d5e8037926aee958b6f5d78ff0b424706be32ae4e03fe7099e7d229124ed | ef77724282b9008ee84b4eb4a999050b9a10a22d9db4e4adc502f93aa8f93f45
+ S004 | 刘洋 |       77 | c30d04070302514f282790ea35556fd23c01fcbfd916fd9b080b828b5ede85879911a97923aa333201c691f9a44761dfed51134f1042a5625768a7ea1bf54bf10a9cbd22f25dabf5fc195ae73c | 07f5b95f8c912c4d601861a0ba144099b60929ec57b0791611ac01f3a6cc1ac3
+ S005 | 陈静 |       77 | c30d04070302a1d15f862aa9f1657dd23c010952b4be81a6a0d481945955a2021deeb1ce41caee3c6bda7636f9b3a8447699a477e0752b711e9855f919d9b44f75b9ebd2d20bd33b60c0446fc4 | fc8d4a62471f9eee356fced53f31a5e6abc42f5024762a288b1b99ec8ab292ca
+(5 rows)
+
+ same_ciphertext | ct_bytes 
+-----------------+----------
+ f               |       77
+(1 row)
+
+ sid  | name |    phone    
+------+------+-------------
+ S001 | 张伟 | 13900001111
+ S002 | 李娜 | 13800138000
+ S003 | 王强 | 13900001111
+ S004 | 刘洋 | 13700137000
+ S005 | 陈静 | 13600136000
+(5 rows)
+
+                            section                             
+----------------------------------------------------------------
+ ===== ③ 错误口令 / 篡改密文：pgcrypto 报错而不是返回垃圾 =====
+(1 row)
+
+DO
+psql:src/main/resources/sql/db_encryption_pg.sql:105: 注意:  错误口令 -> Wrong key or corrupt data
+DO
+psql:src/main/resources/sql/db_encryption_pg.sql:116: 注意:  密文被篡改 -> Wrong key or corrupt data
+                          section                          
+-----------------------------------------------------------
+ ===== ④ 盲索引：WHERE phone_bidx = hmac(...) 走索引 =====
+(1 row)
+
+CREATE INDEX
+SET
+                                                QUERY PLAN                                                
+----------------------------------------------------------------------------------------------------------
+ Index Scan using idx_student_enc_bidx on student_enc
+   Index Cond: (phone_bidx = '\xef77724282b9008ee84b4eb4a999050b9a10a22d9db4e4adc502f93aa8f93f45'::bytea)
+(2 rows)
+
+ sid  
+------
+ S001
+ S003
+(2 rows)
+
+SET
+                                      QUERY PLAN                                       
+---------------------------------------------------------------------------------------
+ Seq Scan on student_enc
+   Filter: (pgp_sym_decrypt(phone_enc, 'demo-passphrase'::text) = '13900001111'::text)
+(2 rows)
+
+ sid  
+------
+ S001
+ S003
+(2 rows)
+
+                               bidx                               | rows_cnt |   sids    
+------------------------------------------------------------------+----------+-----------
+ ef77724282b9008ee84b4eb4a999050b9a10a22d9db4e4adc502f93aa8f93f45 |        2 | S001,S003
+(1 row)
+
+                        section                         
+--------------------------------------------------------
+ ===== ⑤ 口令哈希：bcrypt(crypt + gen_salt('bf')) =====
+(1 row)
+
+CREATE TABLE
+INSERT 0 2
+ username |                           pwd_hash                           
+----------+--------------------------------------------------------------
+ alice    | $2a$10$huV8OPKJ6TCJEWUDt1SMT.Z9dw4nXqH7oACvl2wQusB83fDx7/Az2
+ bob      | $2a$10$sMBuYhn0nVSoXTbpB9B9s.32PNRCfj.K9DxYuxWWrculbxl/iptCG
+(2 rows)
+
+ username | password_ok 
+----------+-------------
+ alice    | t
+ bob      | t
+(2 rows)
+
+ username | wrong_password_ok 
+----------+-------------------
+ alice    | f
+ bob      | f
+(2 rows)
+
+                  section                   
+--------------------------------------------
+ ===== ⑥ 传输层：本机这条连接是否 SSL =====
+(1 row)
+
+ ssl 
+-----
+ off
+(1 row)
+
+ ssl | version | cipher 
+-----+---------+--------
+ f   |         | 
+(1 row)
+

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('成绩单签名验证')"></head>
+<body>
+
+<nav class="navbar navbar-dark university-navbar">
+    <div class="container d-flex justify-content-between align-items-center">
+        <a class="navbar-brand fw-bold" th:href="@{/}">大学教务信息网站 · 成绩单验签</a>
+        <a class="text-white" th:href="@{/}">返回首页</a>
+    </div>
+</nav>
+
+<main class="container py-4">
+    <h1 class="page-title mb-2">成绩单签名验证</h1>
+    <p class="text-secondary mb-2">
+        最省事的用法：把学生发来的 <code>transcript-*-signed.json</code> <strong>整个文件</strong>用记事本打开，
+        全文复制粘贴到下面的「完整 JSON」框，直接提交即可。
+    </p>
+    <p class="text-secondary mb-0">
+        验证页只判断“是否为本校签发、内容有没有被改”，不显示成绩内容。
+        签名只证明来源与完整性，不提供机密性（成绩单本身是明文）。
+    </p>
+
+    <div class="card shadow-sm mt-3">
+        <div class="card-body">
+            <form method="post" th:action="@{/verify}">
+                <input type="hidden" name="_csrf" th:value="${csrfToken}"/>
+
+                <div class="mb-3">
+                    <label class="form-label" for="document">
+                        ① 完整 JSON（推荐）：粘贴 <code>transcript-*-signed.json</code> 的全部内容
+                    </label>
+                    <textarea class="form-control font-monospace" id="document" name="document" rows="7"
+                              placeholder='{"studentId":"00128","payload":"{...}","signature":"..."}'
+                              th:text="${document}"></textarea>
+                    <div class="form-text">整段粘贴时会自动取出 payload 与 signature，不需要手工拆字段。</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="payload">② 或者只贴 payload（以 <code>{</code> 开头的 JSON）</label>
+                    <textarea class="form-control font-monospace" id="payload" name="payload" rows="6"
+                              placeholder='{"type":"TRANSCRIPT","version":"v1",...}'
+                              th:text="${payload}"></textarea>
+                    <div class="form-text">
+                        只贴 payload 时，请务必贴“不带反斜杠”的原文：从 JSON 文件里直接复制会带 <code>\"</code>，
+                        那是 JSON 转义，页面会尝试自动纠正，但会可靠得多的是直接用上面的完整 JSON。
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="signature">③ 签名（signature 字段，Base64）</label>
+                    <textarea class="form-control font-monospace" id="signature" name="signature" rows="3"
+                              th:text="${signature}"></textarea>
+                </div>
+
+                <button class="btn btn-primary" type="submit">验证签名</button>
+            </form>
+        </div>
+    </div>
+
+    <div th:if="${result != null}" class="alert mt-3"
+         th:classappend="${result} ? 'alert-success' : 'alert-danger'"
+         th:text="${message}">验证结果</div>
+
+    <p class="text-secondary mt-3 mb-0">
+        签名算法：<span th:text="${algorithm}">RSASSA-PSS</span>
+        · 证书指纹（SHA-256 前 16 字节）：<span th:text="${fingerprint}">-</span>
+    </p>
+
+    <div class="card mt-3">
+        <div class="card-body">
+            <h2 class="h6">验签不通过？按这个顺序排查</h2>
+            <ol class="mb-0 text-secondary">
+                <li>是不是只复制了 <code>payload</code> 字段、却带着 <code>\"</code> 转义？
+                    改用上面的「完整 JSON」整段粘贴。</li>
+                <li>下载文件里的 <code>certificateFingerprint</code> 与页面底部显示的指纹是否一致？
+                    不一致说明学校换过签名密钥（开发环境重启时若没有 keystore 会生成临时密钥）。</li>
+                <li>内容是否被改过（哪怕一个空格、一个数字、一个换行）？签名对字节敏感。</li>
+                <li>签名是否完整（Base64 一般 344 字符，别漏掉结尾的 <code>=</code>）。</li>
+            </ol>
+        </div>
+    </div>
+</main>
+
+</body>
+</html>

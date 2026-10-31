@@ -1,0 +1,8 @@
+=== 成绩单签名下载（HTML 表格）与首页验签入口 验证 ===
+GET /student/transcript/signed -> 200, Content-Type=text/html; charset=UTF-8
+Content-Disposition -> attachment; filename="transcript-00128-signed.html"
+HTML 含表格=True，含签名数据区=True，含绩点列=True，含学号=True
+GET /student/transcript/signed?format=json -> 200，payload 含 gradePoint=True
+首页首页含「成绩单验签」快捷卡=True，导航链接 /verify=True
+GET /verify -> 200
+把 ?format=json 的整段 JSON 粘贴验签 -> 通过=True

@@ -1,0 +1,93 @@
+
+==================================================================
+1) keytool -genkeypair：RSA 2048 + 自签 X.509 证书（PKCS12）
+==================================================================
+Generating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) with a validity of 365 days
+	for: CN=Demo Signer, OU=Alg4 Demo, O=Local Only, L=Shanghai, ST=Shanghai, C=CN
+
+==================================================================
+2) jar 打包 + jarsigner -sign
+==================================================================
+jar signed.
+
+Warning: 
+The signer's certificate is self-signed.
+jar 大小: 26929 字节
+
+==================================================================
+3) jarsigner -verify：签名通过
+==================================================================
+
+jar verified.
+
+Warning: 
+This jar contains entries whose certificate chain is invalid. Reason: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target
+This jar contains entries whose signer certificate is self-signed.
+This jar contains signatures that do not include a timestamp. Without a timestamp, users may not be able to validate this jar after any of the signer certificates expire (as early as 2027-10-29).
+
+Re-run with the -verbose and -certs options for more details.
+jarsigner -verify 退出码: 0
+
+==================================================================
+4) keytool -printcert -jarfile：签名者证书与指纹
+==================================================================
+Signer #1:
+
+Certificate #1:
+Owner: CN=Demo Signer, OU=Alg4 Demo, O=Local Only, L=Shanghai, ST=Shanghai, C=CN
+Issuer: CN=Demo Signer, OU=Alg4 Demo, O=Local Only, L=Shanghai, ST=Shanghai, C=CN
+Serial number: ef5f2dd13bbffff3
+Valid from: Thu Oct 29 12:49:55 CST 2026 until: Fri Oct 29 12:49:55 CST 2027
+Certificate fingerprints:
+	 SHA1: D5:7D:8B:BE:EE:C0:61:99:DE:FE:2D:7E:A0:5C:D8:54:31:01:EA:9F
+	 SHA256: 98:B1:FA:DD:56:F4:7F:87:51:6C:D7:4D:11:54:C5:CC:F2:C1:3B:96:75:EC:8B:6B:B8:7C:16:A2:2D:7C:63:E8
+Signature algorithm name: SHA256withRSA
+Subject Public Key Algorithm: 2048-bit RSA key
+Version: 3
+
+Extensions: 
+
+#1: ObjectId: 2.5.29.14 Criticality=false
+SubjectKeyIdentifier [
+KeyIdentifier [
+0000: A5 B9 9F DC F6 5E 24 AC   4A BC 18 80 8D E9 B2 EB  .....^$.J.......
+0010: BE 0A 69 E2                                        ..i.
+]
+]
+
+
+
+==================================================================
+5) 签名后的 jar 内部结构：MANIFEST 的逐条摘要 + .SF 的总摘要
+==================================================================
+META-INF/MANIFEST.MF：每个 entry 一行 SHA-256 摘要
+Manifest-Version: 1.0
+Created-By: 17.0.12 (Oracle Corporation)
+
+Name: com/ds/crypto/DigitalSignatureDemo$Signer.class
+SHA-256-Digest: rV4iqpT7I8xfcJdzG10LumW9DxGtPv1HeBhb+67SkYo=
+
+Name: com/ds/crypto/DigitalSignatureDemo.class
+SHA-256-Digest: ynoblM/GJvojm/okitnfGqRi+jvbBLhcMDcvYrb8wNg=
+
+Name: com/ds/crypto/TextbookSignatureDemo.class
+SHA-256-Digest: 473pXFHSBgA2x33KxHmZphPiN9gc6PhtlxAu2slTdTY=
+
+Name: com/ds/crypto/DigitalSignatureDemo$Verifier.class
+SHA-256-Digest: xFl54aJFlP9D1DG0ZyMpjkT/R3KsSlApG1ue5iCafCU=
+
+META-INF/DEMO-SIG.SF：对 MANIFEST 的总摘要，随后被 demo-signer 的私钥签名成 .RSA
+Signature-Version: 1.0
+Created-By: 17.0.12 (Oracle Corporation)
+SHA-256-Digest-Manifest: mqhNPH+KhZL4SHopdb6EN73McLkoo/OYd8g/w7MsUC8=
+SHA-256-Digest-Manifest-Main-Attributes: q+HEV8m1IwUYwNQHQGsfJAc4lW7q5RD
+ I/twsXkQQyTA=
+
+Name: com/ds/crypto/DigitalSignatureDemo$Signer.class
+SHA-256-Digest: WeGqewiUF1I67w1D1ZnesQkOgwbJkUP9PpsN4TdmU+g=
+
+==================================================================
+6) 篡改 jar 里的 com/ds/crypto/Hex.class 一个字节后重新验签
+==================================================================
+jarsigner: java.lang.SecurityException: SHA-256 digest error for com/ds/crypto/Hex.class
+jarsigner -verify（篡改后）退出码: 1

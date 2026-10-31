@@ -93,3 +93,16 @@ app:
     # 多实例模式：true（默认）时在线统计 / 登录限流 / 聊天路由走 Redis（跨实例共享，
     # 需先启动 Redis）；false 时退回单机内存实现（单实例部署用）。
     enabled: ${MULTI_INSTANCE_ENABLED:true}
+
+  # ============================================================
+  # 成绩单签名（数字签名，见 docs/数字签名-在university项目里怎么用.md）
+  #   签名私钥与 HTTPS 证书必须分开（专钥专用）；生产用环境变量注入口令或改用 KMS/HSM。
+  #   keystore 不存在且 generate-if-missing=true 时生成临时密钥（仅开发环境，重启后历史签名失效）。
+  # ============================================================
+  transcript-signing:
+    enabled: ${TRANSCRIPT_SIGNING_ENABLED:true}
+    keystore: ${TRANSCRIPT_SIGNING_KEYSTORE:./keystore/transcript-signing.p12}
+    store-password: ${TRANSCRIPT_SIGNING_STORE_PASSWORD:changeit}
+    alias: ${TRANSCRIPT_SIGNING_ALIAS:transcript-signer}
+    generate-if-missing: ${TRANSCRIPT_SIGNING_GENERATE_IF_MISSING:true}
+    key-size: 2048

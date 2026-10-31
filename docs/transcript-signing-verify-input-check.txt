@@ -1,0 +1,6 @@
+=== 验签输入容错验证（应用 :18080）===
+verify 页含「完整 JSON」输入框: True
+① 整段粘贴 signed JSON -> 验签通过=True
+② 从 JSON 文件复制带 \\" 转义的 payload -> 自动反转义后通过=True
+③ 篡改 studentId -> 验签不通过=True
+④ 只贴 payload 不贴签名 -> 友好提示=True

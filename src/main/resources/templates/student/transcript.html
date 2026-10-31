@@ -12,8 +12,16 @@
             <a class="btn btn-outline-primary" th:href="@{/student/courses}">选课 / 退课</a>
             <a class="btn btn-outline-primary" th:href="@{/student/schedule}">课程表</a>
             <a class="btn btn-primary" th:href="@{/student/transcript}">成绩单</a>
+            <a class="btn btn-outline-success" th:href="@{/student/transcript/signed}"
+               title="下载带签名的成绩单（HTML 表格，可打印/另存 PDF，文末附签名数据）">下载签名版</a>
             <a class="btn btn-outline-primary" th:href="@{/student/advisor}">导师</a>
         </div>
+    </div>
+
+    <div class="alert alert-light border mt-3 py-2 small text-secondary">
+        需要对外证明成绩？点「下载签名版」得到一份可打印的成绩单（表格 + 签名信息），
+        发给用人单位后，对方打开首页的
+        <a th:href="@{/verify}" target="_blank" rel="noopener">成绩单验签</a> 页即可验证真伪。
     </div>
 
     <div class="card shadow-sm mt-3">

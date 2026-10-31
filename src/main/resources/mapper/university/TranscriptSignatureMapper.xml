@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ds.university.mapper.TranscriptSignatureMapper">
+
+    <sql id="baseColumns">
+        id, student_id, term, serial_no, payload_hash, signature, cert_serial, issued_at
+    </sql>
+
+    <insert id="insert" parameterType="com.ds.university.entity.TranscriptSignature"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO transcript_signature
+            (student_id, term, serial_no, payload_hash, signature, cert_serial, issued_at)
+        VALUES
+            (#{studentId}, #{term}, #{serialNo}, #{payloadHash}, #{signature}, #{certSerial}, #{issuedAt})
+    </insert>
+
+    <select id="selectBySerialNo" resultType="com.ds.university.entity.TranscriptSignature">
+        SELECT <include refid="baseColumns"/>
+        FROM transcript_signature
+        WHERE serial_no = #{serialNo}
+    </select>
+
+</mapper>

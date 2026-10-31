@@ -1,0 +1,78 @@
+=== 数字签名在 university 项目中的 PoC ===
+说明：不依赖 Spring，只演示「签什么、用什么钥、怎么验、怎么防篡改」。
+
+
+==================================================================
+【1】签名密钥：专钥专用，不能复用 TLS 证书
+==================================================================
+证书主题: CN=University Demo Transcript Signer,OU=Academic Affairs,O=University Demo,L=Chengdu,ST=Sichuan,C=CN
+证书有效期: Sun Nov 01 00:00:58 CST 2026 ~ Mon Nov 01 00:00:58 CST 2027
+公钥算法: RSA 2048 位
+用途扩展 KeyUsage: [true, true, false, false, false, false, false, false, false]（第 1 位 digitalSignature 应为 true）
+指纹(SHA-256): 3010efb7cb1a51b71dcbc194580f1dea...
+
+要点：项目里 keystore/university.p12 是 HTTPS 用的（CN=localhost），
+      签名成绩单必须另发一张「数字签名用途」的证书，不能共用同一把私钥。
+
+==================================================================
+【2】被签的内容：成绩单 + 用途 + 流水号
+==================================================================
+长度: 528 字节
+{"type":"TRANSCRIPT","version":"v1","studentId":"2021001","studentName":"张伟","deptName":"计算机科学与技术","term":"2026-FALL","rows":[{"courseNo":"CS301","courseName":"数据库系统","credits":4.0,"grade":"B+","point":3.3},{"courseNo":"CS302","courseName":"操作系统","credits":4.0,"grade":"A-","point":3.7},{"courseNo":"MA201","courseName":"线性代数","credits":3.0,"grade":"B","point":3.0}],"courseCount":3,"earnedCredits":11,"gpa":3.37,"issuedAt":"2026-10-31T21:00:00+08:00","serialNo":"TR-20261031-0001"}
+
+SHA-256: 4a7f6408ce05b5f740ff22e9ec103f998fb942ccfcfac395a3e9f8beacef7576
+被签内容里必须带：type（防跨用途）、studentId/term（防张冠李戴）、
+serialNo 与 issuedAt（防重放、可追溯）。
+
+==================================================================
+【3】学校用私钥签名
+==================================================================
+算法: RSASSA-PSS + SHA-256（JDK 17 上优先 RSA-PSS，JDK 8 回退 SHA256withRSA）
+签名长度: 256 字节
+签名(Base64): g+LBU95oRGKslSD03Ci8OzyZVO74fIZOgkTBllJceVjFKOXiQtzggiMXtskskmPSSiGhm5ncx5keIHtX6dSQcODPxQhF84Vjua8+32nwqMzbGqMTyJEuf7PsYNL0MfQOXdHO/7fY3xapD/rG8ejKPFlLbbHHo1KJG+omPkLCPxlvwOLxER10d2wlGPTrFp2HQ1wfvYdZpUjlFkLumLc7WmqwjReIp3D832ZibA7XOGxWOT1bENT8Xad3Qw/Oa6P5W6yxp8zzYEAScc5cj86/zt7eJM/M3tksMBd1zE3b1s4AqksHbLMRTKkHHzQAiVk+CT2FU3eDdg4dCfgn1AF8KA==
+
+==================================================================
+【4】谁都能验：文件 + 签名 + 学校公钥
+==================================================================
+  [通过] 原始成绩单 + 签名 -> 通过
+  [通过] 把 GPA 3.37 改成 4.00 -> 拒绝
+  [通过] 把姓名换成别人 -> 拒绝
+  [通过] 改签名中的 1 个 bit -> 拒绝
+
+==================================================================
+【5】换成 HTTPS 证书的公钥：验不过
+==================================================================
+拿到的 TLS 证书主题: CN=localhost,OU=University Demo,O=University,L=Chengdu,ST=Sichuan,C=CN
+  [通过] 用 TLS 证书的公钥验证成绩单签名 -> 拒绝（不是同一把密钥；生产还应校验 KeyUsage 与证书链）
+
+==================================================================
+【6】审计日志防篡改：链式哈希 + 链尾签名
+==================================================================
+每条记录: hash = SHA256(prevHash || 记录内容)
+  #1 GRADE_UPDATE: 2021001 CS301 B+ -> A-
+      prev=GENESIS  hash=c396c185914ac2d1...
+  #2 ACCOUNT_CREATE: teacher_li
+      prev=c396c185914ac2d1...  hash=a644c278dafcfe1a...
+  #3 DELETE: section 2026-FALL-CS301-01
+      prev=a644c278dafcfe1a...  hash=4f0af14bc40ac865...
+  链尾签名（每天/每次批量后签一次，作为「锚点」）: MvmivHctH8ijENXi......
+  [通过] 原链的锚点验签通过
+  [通过] 从头重算哈希链，与锚点一致
+  篡改第 2 条后重算: 90846f727b6f5d64...（与原锚点不一致）
+  [通过] 改任意一条历史记录 -> 重算哈希链对不上锚点
+  [通过] 篡改后的链过不了锚点验签
+
+==================================================================
+【7】对应到 university 项目的落点
+==================================================================
+1) 成绩单签名：TranscriptVO / StudentService / 前端成绩单页
+   新增表 transcript_signature(student_id, term, serial_no, payload_hash,
+                        signature, cert_serial, issued_at)
+   新增接口 GET /student/transcript/signed（返回 JSON + 签名 + 证书链）
+   新增公开验证页 /verify（无需登录，上传文件或粘贴 JSON，只返回 通过/不通过）
+2) 审计链：AuditLog 增 prev_hash / entry_hash 两列，AuditService 写入时计算；
+   每日定时把链尾签名存到单独的 audit_anchor 表。
+3) 不该用签名的地方：登录会话（用 session/JWT）、服务间调用（HMAC 更合适）、
+   学生提交的作业（学生没有可信密钥，用「上传 + 服务端归档校验」）。
+
+自检：通过 9 项，失败 0 项

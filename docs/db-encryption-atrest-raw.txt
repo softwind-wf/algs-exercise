@@ -1,0 +1,7 @@
+=== PostgreSQL 堆文件（data_directory 下）===
+student_plain 文件: C:\Program Files\PostgreSQL\17\data\base\23118\23198
+student_enc   文件: C:\Program Files\PostgreSQL\17\data\base\23118\23204
+在 student_plain 堆文件中搜索明文手机号 '13900001111'：offset=8085
+在 student_enc   堆文件中搜索明文手机号 '13900001111'：offset=-1
+在 student_enc 堆文件中搜索 S001 的密文字节（77 字节）：offset=8077
+结论：没有 TDE 时，明文列在磁盘文件里就是明文；字段加密后同一列在文件里找不到明文。
