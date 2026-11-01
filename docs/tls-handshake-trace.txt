@@ -1,0 +1,18 @@
+# 一次 TLS 1.3 握手在线上实际传的消息（从 javax.net.debug=ssl:handshake 日志抽出，只保留每个报文出现的第一处）
+
+
+>> Produced ClientHello handshake message
+     type=host_name (0), value=a.example.com
+
+>> Produced ServerHello handshake message
+     "cipher suite"        : "TLS_AES_256_GCM_SHA384(0x1302)",
+
+>> Consuming EncryptedExtensions handshake message
+
+>> Consuming server Certificate handshake message
+
+>> Produced server CertificateVerify handshake message
+
+>> Produced server Finished handshake message
+
+>> Produced client Finished handshake message

@@ -1,0 +1,38 @@
+# ============================================================
+# 在 docker-compose.yml 之上叠加：Caddy 终结 TLS（自动申请/续期证书）
+#
+# 用法：
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.tls.yml up -d --build
+#   只暴露 443 时（让 8080 只对宿主机可见）：
+#     APP_PORT=127.0.0.1:8080 docker compose -f docker-compose.yml -f deploy/docker-compose.tls.yml up -d
+#   解释：基础文件的端口映射是 "${APP_PORT:-8080}:8080"，把 APP_PORT 设成
+#         127.0.0.1:8080 就拼成 "127.0.0.1:8080:8080"，公网只能从 443 进来。
+#
+# 前提：
+#   1) deploy/Caddyfile 里的域名 A/AAAA 记录已指向本机；
+#   2) 服务器 80 与 443 对公网开放（安全组/防火墙）；
+#   3) 中国内地机房：域名已完成 ICP 备案，否则 80/443 会被拦截。
+#      此时证书申请会一直失败，日志里能看到 ACME challenge 无法完成。
+#
+# Caddy 第一次启动就会申请证书，证书与私钥存在 caddy-data 卷里；
+# 到期前自动续期，不需要 cron、不需要 reload。
+# ============================================================
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: university-caddy
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"     # HTTP/3，可选；不需要可删
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data        # 证书、私钥、ACME 账户
+      - caddy-config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy-data:
+  caddy-config:

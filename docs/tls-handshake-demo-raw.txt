@@ -1,0 +1,79 @@
+JDK 版本: 17.0.12
+证书目录: D:\downloads\algs4-master\algs4-master\target\tls-demo
+
+
+==================================================================
+【1】一次完整握手：证书只在握手里出现一次，却决定了后面所有数据发给谁
+==================================================================
+服务端看到的：
+  协议 / 套件 : TLSv1.3 / TLS_AES_256_GCM_SHA384
+客户端看到的：
+  协议 / 套件 : TLSv1.3 / TLS_AES_256_GCM_SHA384
+  服务端证书  : CN=a.example.com,O=Alg4 Demo,C=CN
+  证书 SAN    : DNS:a.example.com, IP:127.0.0.1
+  JDK 实际校验过的链：
+    共 3 张：
+      CN=a.example.com,O=Alg4 Demo,C=CN（由 TLS Demo Intermediate CA 签发）
+      CN=TLS Demo Intermediate CA,O=Alg4 Demo,C=CN（由 TLS Demo Root CA 签发）
+      CN=TLS Demo Root CA,O=Alg4 Demo,C=CN（由 TLS Demo Root CA 签发）
+      -> PKIX 校验通过：签名、有效期、CA 资格、链到信任锚
+  [通过] 握手成功：证书链能验到预置的根
+  [通过] 实际协商的是 TLS 1.3
+  [通过] 客户端拿到的是 a.example.com 的证书
+  [通过] 服务端这一侧也完成了握手
+
+客户端信任的是另一家根时：
+  SSLHandshakeException: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target…
+  [通过] 拒绝连接：找不到通往信任锚的路径（PKIX path building failed）
+
+握手过程在线上长这样（TLS 1.3，简化）：
+  1 ClientHello        客户端：支持的版本/套件/签名算法，我要访问 a.example.com（SNI）
+  2 ServerHello        服务端：选定的套件、密钥交换参数
+  3 {EncryptedExtensions} 从这里开始握手消息全部加密
+  4 Certificate        服务端发证书链（叶子 + 中间，不含根）
+  5 CertificateVerify  服务端用证书私钥签一段握手摘要 —— 证明私钥在手
+  6 Finished           双方确认握手内容没被改过
+之后才是 HTTP 请求，由握手协商出来的对称密钥保护。
+
+==================================================================
+【2】双向认证 mTLS：不只客户端验服务器，服务器也验客户端
+==================================================================
+场景：服务端在握手时要求客户端出示证书（setNeedClientAuth）。
+服务间调用、Kubernetes mTLS、数据库"强制客户端证书"用的都是这一套。
+
+客户端带证书：服务端看到客户端证书：CN=alice,OU=Student,O=Alg4 Demo,C=CN
+  [通过] 服务端拿到了客户端证书 CN=alice，握手完成
+客户端不带证书：SSLHandshakeException: Empty client certificate chain
+  [通过] 服务端拒绝对不带证书的客户端完成握手
+
+要点：mTLS 里双方各有一张证书，各自验对方的链。它回答"谁能连进来"；
+      普通 HTTPS 只回答"我连的是不是真的你"。
+
+==================================================================
+【3】SNI：一个 IP、一个端口，按域名选不同的证书
+==================================================================
+场景：服务器只有一个 IP:端口，但托管 a.example.com 和 b.example.com 两个站点，各有一张证书。
+客户端在 ClientHello 里带 SNI 主机名，服务端据此选证书——Nginx/Caddy 的虚拟主机就是这么做的。
+
+客户端说访问 a.example.com -> 服务端出示的证书是 a.example.com（SAN DNS:a.example.com, IP:127.0.0.1）
+  [通过] SNI=a.example.com 时拿到的是 a.example.com 的证书
+客户端说访问 b.example.com -> 服务端出示的证书是 b.example.com（SAN DNS:b.example.com）
+  [通过] SNI=b.example.com 时拿到的是 b.example.com 的证书
+
+一个 IP 只能配一个默认证书；能不能"按域名给不同证书"，取决于客户端有没有带 SNI。
+老客户端不带 SNI，服务器只能返回默认证书——这就是早年"一张证书只能配一个站"的原因。
+
+==================================================================
+【4】小结：证书在项目运行时出现的三个位置
+==================================================================
+1) 握手时：服务端出示证书链，客户端逐张验到信任锚，再用证书里的公钥验证
+   CertificateVerify 签名。这一步同时证明了"公钥属于这个域名"和"对方有私钥"。
+2) 连接建立后：证书不再参与。业务数据全部用握手协商出的对称密钥加密，
+   证书的开销只在握手（TLS 1.3 一个往返；会话复用可以更少）。
+3) 业务层：证书还能干别的——代码签名（jarsigner）、成绩单/文档签名、
+   JWT 签名、mTLS 的客户端身份。同一个 PKCS12 文件，用途由 KeyUsage / EKU 决定。
+
+运维上真正会出事的，几乎都不是密码学：证书过期、链没发全、
+域名不在 SAN 里、私钥泄露、轮换时忘了 reload。
+
+自检：通过 9 项，失败 0 项

@@ -1,0 +1,114 @@
+证书目录: D:\downloads\algs4-master\algs4-master\target\cert-demo
+JDK 版本: 17.0.12
+
+==================================================================
+【1】证书链：三层，一层比一层短命
+==================================================================
+keytool 生成了 3 张证书，私钥分别放在各自的 PKCS12 里。
+
+  根证书 root
+    subject   : CN=Alg4 Demo Root CA,O=Alg4 Demo,C=CN
+    issuer    : CN=Alg4 Demo Root CA,O=Alg4 Demo,C=CN
+    serial    : 0x6f36345abf312b03
+    有效期    : 2026-11-01 07:33:41 UTC ~ 2036-10-29 07:33:41 UTC
+    签名算法  : SHA256withRSA
+    CA        : true（pathLen=无限制）
+    keyUsage  : keyCertSign+cRLSign
+    SAN       : (无 SAN，只有 CN)
+    SHA-256   : FE:59:76:15:81:E1:BE:FE:BE:52:CD:5D:FE:89:E1:9B:81:FC:B9:E1:29:64:06:D2:52:45:31:3E:88:8F:4A:0E
+
+  中间 CA  intermediate
+    subject   : CN=Alg4 Demo Intermediate CA,O=Alg4 Demo,C=CN
+    issuer    : CN=Alg4 Demo Root CA,O=Alg4 Demo,C=CN
+    serial    : 0x9aa75a605eea50e0
+    有效期    : 2026-11-01 07:33:43 UTC ~ 2031-10-31 07:33:43 UTC
+    签名算法  : SHA256withRSA
+    CA        : true（pathLen=0）
+    keyUsage  : keyCertSign+cRLSign
+    SAN       : (无 SAN，只有 CN)
+    SHA-256   : FC:7B:3D:53:A4:1A:9D:17:2A:3A:9D:8C:23:AC:AF:0D:9E:F6:E4:00:88:8C:5F:3D:69:8B:9A:F9:34:F6:A7:32
+
+  服务器证书 server
+    subject   : CN=localhost,O=Alg4 Demo,OU=Web,C=CN
+    issuer    : CN=Alg4 Demo Intermediate CA,O=Alg4 Demo,C=CN
+    serial    : 0xbb0a0d033019f313
+    有效期    : 2026-11-01 07:33:47 UTC ~ 2029-02-03 07:33:47 UTC
+    签名算法  : SHA256withRSA
+    CA        : false（终端证书）
+    keyUsage  : digitalSignature+keyEncipherment
+    SAN       : DNS:localhost, IP:127.0.0.1
+    SHA-256   : 09:D1:C7:07:AD:13:DF:2A:52:80:9A:F7:6C:7E:A2:DF:A2:8F:5C:76:D7:9A:41:53:98:A7:8F:66:07:27:7A:DD
+
+
+链：localhost（服务器证书）  <-中间 CA 签发-  Alg4 Demo Intermediate CA  <-根签发-  Alg4 Demo Root CA（自签）
+   第一层的"签发者"= 第二层的"主体"，这就是它能拼成链的原因。
+   根的私钥对应信任锚；中间 CA 的存在是为了根私钥能离线——
+   日常签发用中间 CA 的私钥，它泄露了可以吊销换新，根不动。
+  [通过] server 的 issuer == intermediate 的 subject
+  [通过] intermediate 的 issuer == root 的 subject
+  [通过] root 自签：issuer == subject
+  [通过] intermediate 是 CA (=true)，且 pathLen=0（只能签终端证书，不能再签 CA）
+  [通过] server 是终端证书（CA:false）
+  [通过] 根的到期时间不早于中间 CA（根活得最久）
+
+==================================================================
+【2】逐级验签：每一环都用上一环的公钥验
+==================================================================
+  [通过] server 证书 -> 用 intermediate 公钥验签通过
+  [通过] intermediate 证书 -> 用 root 公钥验签通过
+  [通过] root 证书 -> 用自己的公钥验签通过（自签，自己给自己背书）
+  [通过] server 证书 -> 直接用 root 公钥验，拒绝（中间的签名对不上根的公钥）
+
+注意最后一行的含义：签名验证不做"信任判断"，它只回答"是不是这把私钥签的"。
+"要不要信"是链拼接 + 信任锚 + 各项策略检查（有效期/用途/主机名）合起来决定的。
+
+==================================================================
+【3】PKIX 校验：把"信任锚"换掉，结论就变
+==================================================================
+  [通过] 信任锚 = 我们的 root -> 校验通过
+  校验路径：server -> intermediate -> root(锚)
+  [通过] 信任锚换个不相干的根 -> 校验失败
+  失败原因：CertPathValidatorException: Path does not chain with any of the trust anchors
+
+同一条链、同样的签名，信任锚不同结论就相反：所谓"可信"，
+从来不是证书自身的属性，而是"它能不能连到我已经信任的那张根证书上"。
+
+==================================================================
+【4】真 TLS 握手：让 JDK 的默认校验器来判卷
+==================================================================
+做法：本地起一个 SSLServerSocket（用 keytool 生成的私钥与证书链），
+客户端只信任我们的 root，并且打开 HTTPS 式的主机名校验
+（SSLParameters.setEndpointIdentificationAlgorithm("HTTPS")）。
+失败原因从握手异常的 cause 链里抠出来，连 JDK 自己的原话一起打印。
+
+  [通过] 【场景 1】证书链完整 + SAN 有 localhost -> 握手成功
+  结果：握手成功，之后可以开始传数据
+  [通过] 【场景 2】证书 SAN 是 shop.example.com，却去连 localhost -> 主机名不匹配，拒绝
+  结果：SSLHandshakeException: No subject alternative DNS name matching localhost found.  <-  CertificateException: No subject alternative DNS name matching localhost found.
+  [通过] 【场景 3】服务器证书已过期 -> 拒绝
+  结果：SSLHandshakeException: PKIX path validation failed: java.security.cert.CertPathValidatorException: validity check failed  <-  ValidatorException: PKIX path validation failed: java.security.cert.CertP…
+  [通过] 【场景 4】服务器证书由另一家根 CA 签发，客户端不信任 -> 找不到信任路径，拒绝
+  结果：SSLHandshakeException: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target  <-  ValidatorException: PKIX…
+
+【场景 5】证书只写了 CN=localhost、没有 SAN（不预设结论，实测 JDK 的行为）：
+  结果：握手成功 —— JDK 的 HTTPS 校验在 SAN 缺失时仍回退到 CN（RFC 2818 的老规矩）。
+  但这不代表可以依赖它：浏览器对公开 CA 的证书只认 SAN，CA/B Forum 2017 年起
+  就不再签发"只有 CN"的证书。自己给自己签测试证书时，务必带上 SAN。
+
+这 5 个场景全部由客户端默认校验器自动完成，应用代码只是连了一下：
+链拼接、签名、有效期、CA 资格、用途、主机名，六道里错了任何一道都握手失败。
+
+==================================================================
+【5】小结：证书在 TLS 里干了什么
+==================================================================
+1) 服务器把 证书链（不是公钥）发给客户端；
+2) 客户端用预置的根证书验证这条链 -> 确认"这个公钥确实属于这个域名"；
+3) 用握手过程临时协商出的对称密钥保护后续数据；
+4) 证书只在"证明身份"这一步用到，它不参与加密业务数据。
+
+所以整个 HTTPS 的安全感，建立在两种东西上：
+  - 数学：签名/密钥交换无法伪造；
+  - 信任：那一百多张预置根证书背后的组织不会乱签。
+后者是运营与审计问题，不是密码学问题——证书体系把这两件事强行绑在了一起。
+
+自检：通过 16 项，失败 0 项

@@ -1,0 +1,275 @@
+JDK 版本: 17.0.12，证书解析器: SUN
+本演示全程离线，不访问任何网络。
+
+==================================================================
+【1】信任缺口：为什么签名还不够
+==================================================================
+场景：Bob 要在网上证明"这条转账指令是我发的"。
+Alice 需要 Bob 的公钥才能验签，而公钥要么随消息一起传、要么去某个地方下载——
+这条路上的任何一跳都能把公钥换掉。
+
+Mallory 截获了 Bob 发布的公钥，换成自己的公钥，再用自己的私钥签一条指令。
+  [通过] 用真正的 Bob 公钥验 Mallory 的签名 -> 拒绝（签名算法工作正常）
+  [通过] 用"被换进来的那把公钥"验签 -> 通过（Alice 以为这是 Bob 的公钥）
+
+所以：签名能证明"持有某私钥的人发的、内容没被改"，但它回答不了
+      "这把公钥属于谁"。这一步必须由第三方担保，这就是 CA 与证书的由来。
+
+CA 的做法：把"身份 + 公钥"写成一段结构化数据，用 CA 自己的私钥签个名。
+  Bob 的证书 subject = CN=Bob 的签名密钥,O=Alg4 Demo,C=CN
+  [通过] 用事先装好的 CA 公钥验证书 -> 通过：CA 担保这把公钥属于 Bob
+  [通过] Mallory 自己签一张写着 CA 名字的证书 -> 用 CA 公钥验签被拒绝
+         实际抛出 SignatureException: Signature does not match.
+
+结论：证书把"公钥属于谁"变成了一个签名问题；而验签只需要一把
+      事先就信任的公钥（CA 的公钥）。链条到此为止——那把根公钥怎么来的，
+      见第 8 段（预装在操作系统 / 浏览器 / JDK 里）。
+
+==================================================================
+【2】手搓一张 X.509 证书：它只是"一段被签名的 DER 字节"
+==================================================================
+X.509 v3 证书的三段结构：
+  Certificate ::= SEQUENCE {
+      tbsCertificate      -- 待签名数据：版本、序列号、签发者、有效期、主体、公钥、扩展
+      signatureAlgorithm  -- 用什么算法签的（必须与 tbs 里那个字段一致）
+      signatureValue      -- 对 tbsCertificate 整个字节串的签名
+  }
+
+tbsCertificate 共 637 字节，开头 32 字节：30820279a00302010202082f49f49cae942244300d06092a864886f70d01010b ...
+
+把它按 TLV 一层层拆开（缩进 = 嵌套层级）：
+30820279     SEQUENCE (633 字节)
+  a003         [0] (3 字节)
+    0201         INTEGER = 2
+  0208         INTEGER = 3407523546863510084
+  300d         SEQUENCE (13 字节)
+    0609         OID = 1.2.840.113549.1.1.11（sha256WithRSAEncryption）
+    0500         NULL = (空)
+  303d         SEQUENCE (61 字节)
+    310b         SET (11 字节)
+      3009         SEQUENCE (9 字节)
+        0603         OID = 2.5.4.6（C 国家）
+        1302         PrintableString = "CN"
+    3112         SET (18 字节)
+      3010         SEQUENCE (16 字节)
+        0603         OID = 2.5.4.10（O 组织）
+        0c09         UTF8String = "Alg4 Demo"
+    311a         SET (26 字节)
+      3018         SEQUENCE (24 字节)
+        0603         OID = 2.5.4.3（CN 通用名）
+        0c11         UTF8String = "Alg4 Demo Root CA"
+  301e         SEQUENCE (30 字节)
+    170d         UTCTime = "261101063402Z"
+    170d         UTCTime = "271101073402Z"
+  304c         SEQUENCE (76 字节)
+    310b         SET (11 字节)
+      3009         SEQUENCE (9 字节)
+        0603         OID = 2.5.4.6（C 国家）
+        1302         PrintableString = "CN"
+    3112         SET (18 字节)
+      3010         SEQUENCE (16 字节)
+        0603         OID = 2.5.4.10（O 组织）
+        0c09         UTF8String = "Alg4 Demo"
+    310c         SET (12 字节)
+      300a         SEQUENCE (10 字节)
+        0603         OID = 2.5.4.11（OU 部门）
+        0c03         UTF8String = "Web"
+    311b         SET (27 字节)
+      3019         SEQUENCE (25 字节)
+        0603         OID = 2.5.4.3（CN 通用名）
+        0c12         UTF8String = "server.example.com"
+  30820122     SEQUENCE (290 字节)
+    300d         SEQUENCE (13 字节)
+      0609         OID = 1.2.840.113549.1.1.1（rsaEncryption）
+      0500         NULL = (空)
+    0382010f     BIT STRING = 未用位 0，位串 3082010a0282010100aa60b6...（共 270 字节）
+  a38185       [3] (133 字节)
+    308182       SEQUENCE (130 字节)
+      300c         SEQUENCE (12 字节)
+        0603         OID = 2.5.29.19（basicConstraints 基本约束）
+        0101         BOOLEAN = TRUE
+        0402         OCTET STRING = 3000
+      300e         SEQUENCE (14 字节)
+        0603         OID = 2.5.29.15（keyUsage 密钥用途）
+        0101         BOOLEAN = TRUE
+        0404         OCTET STRING = 03020780
+      302e         SEQUENCE (46 字节)
+        0603         OID = 2.5.29.17（subjectAltName 主体备用名）
+        0427         OCTET STRING = 302582127365727665722e65...（共 39 字节）
+      3013         SEQUENCE (19 字节)
+        0603         OID = 2.5.29.37（extKeyUsage 扩展密钥用途）
+        040c         OCTET STRING = 300a06082b06010505070301
+      301d         SEQUENCE (29 字节)
+        0603         OID = 2.5.29.14（subjectKeyIdentifier 主体密钥标识）
+        0416         OCTET STRING = 0414fd37f4245f3cf22bf98e...（共 22 字节）
+
+整张证书刚好三段：tbsCertificate 637 字节 / signatureAlgorithm 15 字节 / signatureValue 261 字节。
+注意扩展的 extnValue 是 OCTET STRING，里面**又套了一段 DER**（扩展值本身也是 ASN.1 结构）：
+3025         SEQUENCE (37 字节)
+  8212         [2] implicit = "server.example.com"
+  820f         [2] implicit = "www.example.com"
+
+CertificateFactory 解析结果：X.509，版本 v3，签名算法 SHA256withRSA
+  [通过] 手拼的字节被 JDK 当成合法的 v3 证书
+  [通过] subject 解析回 CN=server.example.com
+  [通过] 用 CA 公钥验签通过：签名覆盖的正是 tbsCertificate 那一整段字节
+  [通过] 证书重新编码后与手拼的字节逐字节相同 -> 我们造的就是标准 X.509
+
+所以"证书"没有任何魔法：它就是一段按 ASN.1 排好版的字节，
+被 CA 的私钥用 SHA256withRSA 签了名。X.509 只是大家约好的字段排布。
+
+==================================================================
+【3】字段解剖：每个字段各防什么
+==================================================================
+字段                  值                                           作用（防什么）
+------------------------------------------------------------------------------------------
+version             v3                                          扩展只有 v3 才能带，现代证书一律 v3
+serialNumber        0x572a88847fe48c2                           证书的唯一编号，吊销时按它指名（CRL/OCSP 都用它）
+signature           SHA256withRSA                               签发用的算法，篡改它会让验签失败
+issuer              CN=Alg4 Demo Root CA,O=Alg4 Demo,C=CN       谁签的；验签时用它去找上级公钥
+validity            2026-11-01 06:34 ~ 2027-11-01 07:34         有效期：过期/未生效一律拒绝（见第 5 段）
+subject             CN=server.example.com,OU=Web,O=Alg4 Demo,…  证书给谁；TLS 里还要和你要连的主机名核对（见第 7 段）
+publicKey           RSA-2048                                    被绑定的公钥本体——整张证书就是为了它
+signatureValue      256B                                        CA 私钥对上面全部字段的签名
+extensions          basicConstraints / keyUsage                 约束"这张证书能干什么"（见下）
+                    / SAN / EKU / SKI                           
+
+扩展里最关键的三条：
+  basicConstraints CA=false  —— false 表示这是"终端证书"，不能用来签下一代证书；
+                       能签证书的 CA 证书必须写 CA:true（见第 6 段）
+  keyUsage         digitalSignature  —— 只允许干这些事，越权即拒
+  subjectAltName   DNS:server.example.com, DNS:www.example.com  —— 证书真正覆盖哪些域名/IP（现代客户端只认它）
+  [通过] 终端证书的 basicConstraints 是 CA:false（getBasicConstraints 返回 -1）
+  [通过] keyUsage 里有 digitalSignature 位
+  [通过] SAN 里有两个 dNSName
+
+注意 issuer 与 subject 都是"目录名"（DN），格式是 C=..,O=..,CN=..；
+DN 只是文字，谁都可以写成任何样子——它的可信度完全来自"谁签的"。
+
+==================================================================
+【4】篡改：签名到底盖住了哪些字节
+==================================================================
+  [通过] 把 subject 改成 evil.example.com，签名不动 -> 验签拒绝
+         实际抛出 SignatureException: Signature does not match.
+  [通过] 把公钥换成攻击者的公钥，签名不动 -> 验签拒绝（公钥被签名保护）
+         实际抛出 SignatureException: Signature does not match.
+  [通过] 用另一把 CA 私钥签同一段 tbs -> 用真 CA 公钥验签拒绝
+         实际抛出 SignatureException: Signature does not match.
+  [通过] 只翻转 tbs 最后一个字节的 1 个 bit -> 验签拒绝
+         实际抛出 SignatureException: Signature does not match.
+  [通过] 对照组：原始证书验签通过
+
+结论：签名覆盖的是 tbsCertificate 的**全部字节**，改一个 bit 都不行。
+      所以攻击者改不了 subject 也换不了公钥——他只能做另一件事：
+      去找一个客户端本来就信任的 CA，让它来签。这就是第 6、8 段要防的。
+
+==================================================================
+【5】有效期：过期、未生效、以及 2050 年的两位年份陷阱
+==================================================================
+过期证书：notAfter = 2026-10-31 07:34:03 UTC（昨天）
+  [通过] checkValidity() -> 抛 CertificateExpiredException
+         实际抛出 CertificateExpiredException: NotAfter: Sat Oct 31 15:34:03 CST 2026
+未生效证书：notBefore = 2026-11-02 07:34:03 UTC（明天）
+  [通过] checkValidity() -> 抛 CertificateNotYetValidException
+         实际抛出 CertificateNotYetValidException: NotBefore: Mon Nov 02 15:34:03 CST 2026
+
+--- UTCTime 的两位年份陷阱 ---
+想表达"2050-12-31 到期"，按规则用 GeneralizedTime("20501231235959Z")：
+  解析回来 notAfter = 2050-12-31 23:59:59 UTC  <- 正确
+  [通过] 这张证书现在有效（2050 年还没到）
+同一个日期，若有人用两位年份写成 UTCTime("501231235959Z")：
+  解析回来 notAfter = 1950-12-31 23:59:59 UTC  <- 变成 1950 年了
+  [通过] → 这张证书被判为早已过期（CertificateExpiredException）
+         实际抛出 CertificateExpiredException: NotAfter: Mon Jan 01 07:59:59 CST 1951
+
+规则来自 RFC 5280：UTCTime 的 YY≥50 视为 19YY，YY<50 视为 20YY。
+所以 2050 年及以后必须用 GeneralizedTime，四位年份，不给自己挖坑。
+
+==================================================================
+【6】CA 约束：basicConstraints / keyUsage / pathLen 拦住"自己给自己发证"
+==================================================================
+正常链：root（CA:true） -> intermediate（CA:true, pathLen=0） -> server.example.com
+  [通过] PKIX 校验通过：链走到预置的根，且每一级都是合格的 CA
+
+攻击链：普通证书（CA:false）用它的私钥去签一张"Bob 的证书"，再把它当中间 CA 拼进链里。
+  [通过] PKIX 校验 -> 拒绝（普通证书不是 CA，不能签发下一级）
+  被拒原因：CertPathValidatorException: CA key usage check failed: keyCertSign bit is not set
+
+这就是为什么 basicConstraints 与 keyUsage 是**关键扩展（critical）**：
+  basicConstraints: CA:true + pathLen:0  —— 我能签证书，但只能签终端证书；
+  keyUsage: keyCertSign                  —— 只允许做"签发证书"这一件事；
+两者缺一，校验器就不让你当中间 CA。攻击者只能去偷 CA 的私钥，不能自己声明是 CA。
+
+==================================================================
+【7】主机名：SAN 里的名字怎么和你要连的主机对上
+==================================================================
+证书 A 的 SAN: DNS:www.example.com
+证书 B 的 SAN: DNS:*.example.com
+
+规则：先看 SAN（Subject Alternative Name）；通配符只允许出现在最左一个标签，且只顶一层。
+
+  [通过] A vs www.example.com -> 匹配
+  [通过] A vs www.example.com.evil.cn -> 不匹配（后缀不同）
+  [通过] A vs example.com -> 不匹配（少了 www 这一层）
+  [通过] B vs a.example.com -> 匹配（* 顶一层）
+  [通过] B vs a.b.example.com -> 不匹配（* 不能跨层）
+  [通过] B vs example.com -> 不匹配（* 必须至少顶一层）
+  [通过] B vs evilexample.com -> 不匹配（必须有点号边界）
+
+常见误解：
+  1) "证书里写了 CN=www.example.com 就够了" —— 不。现代客户端只认 SAN；
+     CA/Browser Forum 2017 年起要求公开 CA 签发的证书必须带 SAN。
+  2) "*.example.com 能匹配 a.b.example.com" —— 不能，* 只顶一层标签；
+     它也不能匹配 example.com 本身。
+  3) "证书配了就能用" —— 证书覆盖的是"名字"，你连的地址必须和 SAN 对得上。
+  [通过] 不写 SAN 的证书：getSubjectAlternativeNames() 返回 null
+  [通过] 按现代规则，只有 CN 没有 SAN -> 不匹配（CN 只是给人看的）
+
+（JDK 17 的 TLS 校验在 SAN 缺失时仍会回退去比 CN——CertChainDemo 场景 5 实测握手成功；
+  浏览器对公开 CA 签发的证书只认 SAN。要兼容老客户端才需要留 CN。）
+
+==================================================================
+【8】信任锚：你凭什么是"可信"的
+==================================================================
+验签总得有一把"一开始就信"的公钥。它来自操作系统 / 浏览器 / 运行时预装的根证书库。
+下面打开 JDK 自带的 cacerts（口令 changeit）看真实数据：
+  C:\Program Files\Java\jdk-17\lib\security\cacerts
+  共 110 张预置根证书（去重后的信任锚）。前 3 张：
+  - actalisauthenticationrootca [jdk]
+      subject : CN=Actalis Authentication Root CA,O=Actalis S.p.A./03358520967,L=Milan,C=IT
+      有效期  : 2011-09-22 11:22:02 UTC ~ 2030-09-22 11:22:02 UTC，算法 SHA256withRSA
+      SHA-256 : 55:92:60:84:EC:96:3A:64:B9:6E:2A:BE:01:CE:0B:A8:6A:64:FB:FE:BC:C7:AA:B5:AF:C1:55:B3:7F:D7:60:66
+  - addtrustexternalca [jdk]
+      subject : CN=AddTrust External CA Root,OU=AddTrust External TTP Network,O=AddTrust AB,C=SE
+      有效期  : 2000-05-30 10:48:38 UTC ~ 2020-05-30 10:48:38 UTC，算法 SHA1withRSA
+      SHA-256 : 68:7F:A4:51:38:22:78:FF:F0:C8:B1:1F:8D:43:D5:76:67:1C:6E:B2:BC:EA:B4:13:FB:83:D9:65:D0:6D:2F:F2
+  - addtrustqualifiedca [jdk]
+      subject : CN=AddTrust Qualified CA Root,OU=AddTrust TTP Network,O=AddTrust AB,C=SE
+      有效期  : 2000-05-30 10:44:50 UTC ~ 2020-05-30 10:44:50 UTC，算法 SHA1withRSA
+      SHA-256 : 80:95:21:08:05:DB:4B:BC:35:5E:44:28:D8:FD:6E:C2:CD:E3:AB:5F:B9:7A:99:42:98:8E:B8:F4:DC:D0:60:16
+  [通过] JDK 预置的根证书数量 > 50（这就是默认信任集合）
+
+要点：
+  - 信任是**传递**的：你信根，根签中间，中间签站点，于是你信站点；
+  - 根证书的私钥对应着"签发能力"，所以必须离线保管、多年才轮换一次；
+  - 企业做 HTTPS 解密（MITM 代理）时，就是往客户端塞一张自制根证书——
+    客户端从此信任它签发的所有站点证书。这也解释了为什么"装根证书"是敏感操作。
+
+==================================================================
+【9】小结：一张证书到手后要过的六道检查
+==================================================================
+  1. 签名    ：用签发者（issuer）的公钥验 tbsCertificate 的签名 —— 内容没被改；
+  2. 签发者  ：issuer 的证书是否可信？往上递归，直到撞上预置的信任锚（根证书）；
+  3. 有效期  ：notBefore <= 现在 <= notAfter；
+  4. CA 资格 ：链上每一级（除了叶子）必须是 CA:true 且带 keyCertSign，pathLen 不越界；
+  5. 用途    ：keyUsage / extendedKeyUsage 允许这次用途（如 serverAuth）；
+  6. 主机名  ：SAN 里有没有你要连的那个名字（或 IP）。
+  另外还有第 7 道：吊销（CRL / OCSP）—— 证书没过期但私钥泄露了，得能让它立刻失效。
+
+一句话：证书 = "身份 + 公钥 + 用途 + 有效期" 的一段数据，被 CA 的私钥签过名；
+        验证证书 = 一路把签名验到某张你本来就信的根证书上，再逐条查那些约束。
+
+真实世界里这套流程由 TLS 握手自动完成，下一段演示（CertChainDemo）会用 keytool
+生成 root -> intermediate -> server 的证书链，并真跑一次 TLS 握手看它怎么被拒。
+
+自检：通过 32 项，失败 0 项

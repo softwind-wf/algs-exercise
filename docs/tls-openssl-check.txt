@@ -1,0 +1,36 @@
+openssl: D:\OpenSSL-Win64\bin\openssl.exe
+OpenSSL 3.2.0 23 Nov 2023 (Library: OpenSSL 3.2.0 23 Nov 2023)
+
+=== a.example.com 的证书约束（openssl x509 -ext） ===
+subject=C=CN, O=Alg4 Demo, CN=a.example.com
+issuer=C=CN, O=Alg4 Demo, CN=TLS Demo Intermediate CA
+notBefore=Nov  1 13:30:01 2026 GMT
+notAfter=Feb  3 13:30:01 2029 GMT
+X509v3 Key Usage: 
+    Digital Signature, Key Encipherment
+X509v3 Subject Alternative Name: 
+    DNS:a.example.com, IP Address:127.0.0.1
+X509v3 Extended Key Usage: 
+    TLS Web Server Authentication
+
+a-chain.pem 里有 3 张证书（叶子 + 中间 + 根）
+
+=== 场景 A：服务端发【叶子 + 中间证书】（= Nginx 用 fullchain.pem） ===
+Connecting to 127.0.0.1
+CONNECTION ESTABLISHED
+Protocol version: TLSv1.3
+Ciphersuite: TLS_AES_256_GCM_SHA384
+Peer certificate: C=CN, O=Alg4 Demo, CN=a.example.com
+Hash used: SHA256
+Signature type: RSA-PSS
+Verification: OK
+Server Temp Key: X25519, 253 bits
+DONE
+[exit code: 0]
+
+=== 场景 B：服务端只发【叶子证书】（= 漏配中间证书的线上事故） ===
+Connecting to 127.0.0.1
+depth=0 C=CN, O=Alg4 Demo, CN=a.example.com
+verify error:num=20:unable to get local issuer certificate
+F0120000:error:0A000086:SSL routines:tls_post_process_server_certificate:certificate verify failed:ssl\statem\statem_clnt.c:2092:
+[exit code: 1]

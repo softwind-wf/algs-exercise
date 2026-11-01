@@ -1,0 +1,22 @@
+# ============================================================
+# Caddy：自动申请 + 自动续期证书（比 certbot + nginx 少一半配置）
+#
+# 用法（docker compose）：见 deploy/docker-compose.tls.yml
+# Caddy 启动时自己走 ACME：域名解析到本机、80/443 可达即可，无需手动申请。
+#
+# 要改的只有域名和上游端口。
+# ============================================================
+
+university.example.edu.cn {
+	encode zstd gzip
+
+	# 与 application.yml 的 multipart 上限对齐（5MB 文件 / 6MB 请求）
+	request_body {
+		max_size 6MB
+	}
+
+	# 上游是 compose 里的 app 服务；本机直接跑应用时改成 127.0.0.1:8080
+	reverse_proxy app:8080
+
+	# WebSocket（聊天）由 Caddy 自动透传 Upgrade / Connection，不需要额外配置
+}
