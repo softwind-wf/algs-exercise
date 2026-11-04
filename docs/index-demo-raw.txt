@@ -1,0 +1,236 @@
+===== 0. 实例提供的索引访问方法（同一个“索引”名词，六种不同实现）=====
+ access_method |                what_for                 
+---------------+-----------------------------------------
+ brin          | 块级摘要：超大且物理有序的表
+ btree         | B 树家族：等值+范围+排序+前缀，默认选项
+ gin           | 倒排：数组、JSONB、全文检索（多值字段）
+ gist          | 通用搜索树：几何、范围、近邻
+ hash          | 哈希表：只支持等值
+ spgist        | 空间分区树：点、文本前缀
+(6 rows)
+
+BEGIN
+===== 1. 建 2 万行演示表；PRIMARY KEY 自动带一个 btree 唯一索引 =====
+CREATE TABLE
+INSERT 0 20000
+ANALYZE
+               Table "public.idx_demo"
+ Column  |   Type    | Collation | Nullable | Default 
+---------+-----------+-----------+----------+---------
+ id      | integer   |           | not null | 
+ name    | text      |           | not null | 
+ tags    | text[]    |           |          | 
+ created | date      |           | not null | 
+ period  | int4range |           |          | 
+Indexes:
+    "idx_demo_pkey" PRIMARY KEY, btree (id)
+
+===== 2. 同一张表上并存 6 种结构的索引（describe 会打出每个索引的类型）=====
+--- 2.1 btree：不写 USING 就是它 ---
+CREATE INDEX
+Index "public.idx_demo_name_btree"
+ Column | Type | Key? | Definition 
+--------+------+------+------------
+ name   | text | yes  | name
+btree, for table "public.idx_demo"
+
+--- 2.2 hash ---
+CREATE INDEX
+  Index "public.idx_demo_name_hash"
+ Column |  Type   | Key? | Definition 
+--------+---------+------+------------
+ name   | integer | yes  | name
+hash, for table "public.idx_demo"
+
+--- 2.3 gin：数组列，服务 @> 包含查询 ---
+CREATE INDEX
+ Index "public.idx_demo_tags_gin"
+ Column | Type | Key? | Definition 
+--------+------+------+------------
+ tags   | text | yes  | tags
+gin, for table "public.idx_demo"
+
+--- 2.4 gist：范围类型，服务 && 重叠查询 ---
+CREATE INDEX
+  Index "public.idx_demo_period_gist"
+ Column |   Type    | Key? | Definition 
+--------+-----------+------+------------
+ period | int4range | yes  | period
+gist, for table "public.idx_demo"
+
+--- 2.5 spgist：文本前缀 ---
+CREATE INDEX
+Index "public.idx_demo_name_spgist"
+ Column | Type | Key? | Definition 
+--------+------+------+------------
+ name   | text | yes  | name
+spgist, for table "public.idx_demo"
+
+--- 2.6 brin：块级摘要，适合 append-only 大表 ---
+CREATE INDEX
+Index "public.idx_demo_created_brin"
+ Column  | Type | Key? | Definition 
+---------+------+------+------------
+ created | date | yes  | created
+brin, for table "public.idx_demo"
+
+--- 2.7 六种索引同时可见 ---
+               Table "public.idx_demo"
+ Column  |   Type    | Collation | Nullable | Default 
+---------+-----------+-----------+----------+---------
+ id      | integer   |           | not null | 
+ name    | text      |           | not null | 
+ tags    | text[]    |           |          | 
+ created | date      |           | not null | 
+ period  | int4range |           |          | 
+Indexes:
+    "idx_demo_pkey" PRIMARY KEY, btree (id)
+    "idx_demo_created_brin" brin (created)
+    "idx_demo_name_btree" btree (name)
+    "idx_demo_name_hash" hash (name)
+    "idx_demo_name_spgist" spgist (name)
+    "idx_demo_period_gist" gist (period)
+    "idx_demo_tags_gin" gin (tags)
+
+===== 3. 优化器怎么选：同一条查询，索引不同计划就不同 =====
+--- 3.1 只留 btree：等值查询走 btree Index Scan（cost 8.30）---
+DROP INDEX
+DROP INDEX
+                                                          QUERY PLAN                                                           
+-------------------------------------------------------------------------------------------------------------------------------
+ Index Scan using idx_demo_name_btree on idx_demo  (cost=0.29..8.30 rows=1 width=69) (actual time=0.036..0.036 rows=1 loops=1)
+   Index Cond: (name = 'user_19999'::text)
+   Buffers: shared hit=1 read=2
+ Planning:
+   Buffers: shared hit=20 read=1
+ Planning Time: 0.333 ms
+ Execution Time: 0.048 ms
+(7 rows)
+
+--- 3.2 再加一个 hash：同一条查询，优化器改挑 hash（cost 8.02 < 8.30）---
+CREATE INDEX
+                                                          QUERY PLAN                                                          
+------------------------------------------------------------------------------------------------------------------------------
+ Index Scan using idx_demo_name_hash on idx_demo  (cost=0.00..8.02 rows=1 width=69) (actual time=0.022..0.023 rows=1 loops=1)
+   Index Cond: (name = 'user_19999'::text)
+   Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=4
+ Planning Time: 0.324 ms
+ Execution Time: 0.042 ms
+(7 rows)
+
+--- 3.3 删掉 btree 后做范围查询：hash 只认等值，退化为 Seq Scan ---
+DROP INDEX
+                                                QUERY PLAN                                                 
+-----------------------------------------------------------------------------------------------------------
+ Seq Scan on idx_demo  (cost=0.00..497.00 rows=9000 width=69) (actual time=0.016..7.871 rows=8889 loops=1)
+   Filter: (name > 'user_19999'::text)
+   Rows Removed by Filter: 11111
+   Buffers: shared hit=247
+ Planning:
+   Buffers: shared hit=9
+ Planning Time: 0.273 ms
+ Execution Time: 8.140 ms
+(8 rows)
+
+--- 3.4 GIN：数组包含 ---
+                                                           QUERY PLAN                                                            
+---------------------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on idx_demo  (cost=19.02..291.02 rows=2000 width=69) (actual time=0.297..0.691 rows=2000 loops=1)
+   Recheck Cond: (tags @> '{tag3}'::text[])
+   Heap Blocks: exact=247
+   Buffers: shared hit=250
+   ->  Bitmap Index Scan on idx_demo_tags_gin  (cost=0.00..18.52 rows=2000 width=0) (actual time=0.247..0.247 rows=2000 loops=1)
+         Index Cond: (tags @> '{tag3}'::text[])
+         Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=7
+ Planning Time: 0.182 ms
+ Execution Time: 0.788 ms
+(11 rows)
+
+--- 3.5 GiST：范围重叠 ---
+                                                          QUERY PLAN                                                          
+------------------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on idx_demo  (cost=4.35..38.44 rows=10 width=69) (actual time=0.042..0.043 rows=9 loops=1)
+   Recheck Cond: (period && '[1000,1010)'::int4range)
+   Heap Blocks: exact=1
+   Buffers: shared hit=3
+   ->  Bitmap Index Scan on idx_demo_period_gist  (cost=0.00..4.35 rows=10 width=0) (actual time=0.037..0.037 rows=9 loops=1)
+         Index Cond: (period && '[1000,1010)'::int4range)
+         Buffers: shared hit=2
+ Planning:
+   Buffers: shared hit=3
+ Planning Time: 0.087 ms
+ Execution Time: 0.055 ms
+(11 rows)
+
+--- 3.6 BRIN：日期范围。2 万行小表上不被选（顺序扫描本来就便宜）---
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Seq Scan on idx_demo  (cost=0.00..547.00 rows=221 width=69) (actual time=0.012..1.966 rows=165 loops=1)
+   Filter: ((created >= '2024-03-01'::date) AND (created <= '2024-03-03'::date))
+   Rows Removed by Filter: 19835
+   Buffers: shared hit=247
+ Planning:
+   Buffers: shared hit=13
+ Planning Time: 0.084 ms
+ Execution Time: 1.981 ms
+(8 rows)
+
+--- 3.7 关掉 seqscan 后 BRIN 被“逼”出来，但代价反而更高，且按块命中是 lossy 的 ---
+SET
+                                                              QUERY PLAN                                                              
+--------------------------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on idx_demo  (cost=12.12..559.12 rows=221 width=69) (actual time=0.081..2.525 rows=165 loops=1)
+   Recheck Cond: ((created >= '2024-03-01'::date) AND (created <= '2024-03-03'::date))
+   Rows Removed by Index Recheck: 19835
+   Heap Blocks: lossy=247
+   Buffers: shared hit=255
+   ->  Bitmap Index Scan on idx_demo_created_brin  (cost=0.00..12.06 rows=20000 width=0) (actual time=0.057..0.058 rows=2470 loops=1)
+         Index Cond: ((created >= '2024-03-01'::date) AND (created <= '2024-03-03'::date))
+         Buffers: shared hit=8
+ Planning:
+   Buffers: shared hit=1
+ Planning Time: 0.133 ms
+ Execution Time: 2.553 ms
+(12 rows)
+
+RESET
+===== 4. 能不能“指定用哪个索引”？ =====
+--- 4.1 写 hint 注释：PostgreSQL 当注释忽略，不报错也不生效（仍是 Seq Scan）---
+                                                  QUERY PLAN                                                  
+--------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=547.55..547.56 rows=1 width=8) (actual time=2.854..2.855 rows=1 loops=1)
+   Buffers: shared hit=247
+   ->  Seq Scan on idx_demo  (cost=0.00..547.00 rows=221 width=0) (actual time=0.051..2.838 rows=165 loops=1)
+         Filter: ((created >= '2024-03-01'::date) AND (created <= '2024-03-03'::date))
+         Rows Removed by Filter: 19835
+         Buffers: shared hit=247
+ Planning:
+   Buffers: shared hit=4
+ Planning Time: 0.153 ms
+ Execution Time: 2.880 ms
+(10 rows)
+
+--- 4.2 能写 hint 的扩展：pg_hint_plan（本机未安装，故为 NULL）---
+    name    | default_version | installed_version 
+------------+-----------------+-------------------
+ btree_gist | 1.7             | 1.7
+ pg_trgm    | 1.6             | 
+(2 rows)
+
+--- 4.3 官方批准的“变通”：enable_*scan 系列 GUC 开关计划形态 ---
+         name         | setting |           short_desc            
+----------------------+---------+---------------------------------
+ enable_bitmapscan    | on      | 启用查询计划器的位图扫描计划.
+ enable_indexonlyscan | on      | 启用查询计划器的仅索引扫描计划.
+ enable_indexscan     | on      | 启用查询计划器的索引扫描计划.
+ enable_seqscan       | on      | 启用查询计划器的顺序扫描计划.
+ enable_tidscan       | on      | 启用查询计划器的TID扫描计划.
+(5 rows)
+
+===== 5. 收尾：回滚，表与索引都不留 =====
+ROLLBACK
+===== done =====
