@@ -1,0 +1,351 @@
+查询优化全过程演示 —— 真实运行输出
+生成时间: 2026-11-09 21:07:44
+PostgreSQL: 17.11
+演示库: query_opt_demo
+规模: instructor 20000 / course 4000 / teaches 200000
+复现: .\scripts\run-query-optimizer-demo.ps1
+===== 0. 建表与造数(同构于 university,只是放大到 20000/4000/200000) =====
+ setseed 
+---------
+ 
+(1 row)
+
+     表     |  行数  
+------------+--------
+ instructor |  20000
+ course     |   4000
+ teaches    | 199749
+(3 rows)
+
+
+===== 1. 统计值:优化器眼里的世界(它不认识数据,只认识这些数字) =====
+     表     | 估算行数 | 数据页数 |  表大小  
+------------+----------+----------+----------
+ course     |     4000 |       34 | 272 kB
+ instructor |    20000 |      148 | 1184 kB
+ teaches    |   199749 |     1273 | 10184 kB
+(3 rows)
+
+--- pg_stats:列的统计值(dept_name 只有 20 个不同值 -> 选择率估算 1/20) ---
+     表     |    列     | 空值比例 | 不同值个数  |                                          最常见值                                          |                           对应频率                           
+------------+-----------+----------+-------------+--------------------------------------------------------------------------------------------+--------------------------------------------------------------
+ course     | course_id |        0 |          -1 |                                                                                            | 
+ course     | dept_name |        0 |          20 | {dept01,dept02,dept03,dept04,dept05,dept06,dept07,dept08,dept09,dept10,dept11,dept12,dept1 | {0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05
+ instructor | dept_name |        0 |          20 | {dept01,dept02,dept03,dept04,dept05,dept06,dept07,dept08,dept09,dept10,dept11,dept12,dept1 | {0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05
+ instructor | id        |        0 |          -1 |                                                                                            | 
+ teaches    | course_id |        0 |        3999 | {c0939,c2175,c0995,c1717,c1964,c2666,c0404,c0900,c0932,c1855,c2789,c3295,c3385,c3946}      | {0.0006,0.0006,0.00056666665,0.00056666665,0.00056666665,0.0
+ teaches    | id        |        0 | -0.10018573 | {07160,11191,12419,15525,16203,17986}                                                      | {0.00023333334,0.00023333334,0.00023333334,0.00023333334,0.0
+(6 rows)
+
+
+--- 优化器据此算出来的选择率:dept_name = Music 应该是 1/20 = 5% ---
+ 实际 Music 教师数 | 实际占比百分比 
+-------------------+----------------
+              1000 |            5.0
+(1 row)
+
+ 实际 Music 课程数 | 实际占比百分比 
+-------------------+----------------
+               200 |            5.0
+(1 row)
+
+
+===== 2. 逻辑优化:选择和投影被下推到哪里(看 Filter 落在哪一层) =====
+--- 逻辑计划(不估算代价):注意 Filter 挂在 instructor 扫描上,而不是在最顶层 ---
+--- 这就是教材说的"把 sigma 尽可能往下推":先筛出 Music 的教师,再连接 ---
+                              QUERY PLAN                               
+-----------------------------------------------------------------------
+ Hash Join
+   Output: i.name, c.title
+   Inner Unique: true
+   Hash Cond: ((t.course_id)::text = (c.course_id)::text)
+   ->  Hash Join
+         Output: i.name, t.course_id
+         Inner Unique: true
+         Hash Cond: ((t.id)::text = (i.id)::text)
+         ->  Seq Scan on public.teaches t
+               Output: t.id, t.course_id, t.sec_id, t.semester, t.year
+         ->  Hash
+               Output: i.name, i.id
+               ->  Seq Scan on public.instructor i
+                     Output: i.name, i.id
+                     Filter: ((i.dept_name)::text = 'dept01'::text)
+   ->  Hash
+         Output: c.title, c.course_id
+         ->  Seq Scan on public.course c
+               Output: c.title, c.course_id
+(19 rows)
+
+
+--- 投影下推:计划里 instructor 只输出 id/name/dept_name,teaches 只输出 id/course_id ---
+--- 书上 Pi_{course_id,title}(course) 的作用在这里体现:course 只带出要用的列 ---
+
+===== 3. 物理计划:优化器最终选的那一个(EXPLAIN ANALYZE,真跑) =====
+                                                           QUERY PLAN                                                            
+---------------------------------------------------------------------------------------------------------------------------------
+ Hash Join  (cost=534.50..4355.66 rows=9981 width=30) (actual time=3.407..37.606 rows=9989 loops=1)
+   Hash Cond: ((t.course_id)::text = (c.course_id)::text)
+   Buffers: shared hit=1455
+   ->  Hash Join  (cost=410.50..4205.44 rows=9981 width=19) (actual time=2.365..33.108 rows=9989 loops=1)
+         Hash Cond: ((t.id)::text = (i.id)::text)
+         Buffers: shared hit=1421
+         ->  Seq Scan on teaches t  (cost=0.00..3270.49 rows=199749 width=12) (actual time=0.017..11.812 rows=199749 loops=1)
+               Buffers: shared hit=1273
+         ->  Hash  (cost=398.00..398.00 rows=1000 width=19) (actual time=2.289..2.291 rows=1000 loops=1)
+               Buckets: 1024  Batches: 1  Memory Usage: 58kB
+               Buffers: shared hit=148
+               ->  Seq Scan on instructor i  (cost=0.00..398.00 rows=1000 width=19) (actual time=0.015..2.099 rows=1000 loops=1)
+                     Filter: ((dept_name)::text = 'dept01'::text)
+                     Rows Removed by Filter: 19000
+                     Buffers: shared hit=148
+   ->  Hash  (cost=74.00..74.00 rows=4000 width=23) (actual time=1.022..1.023 rows=4000 loops=1)
+         Buckets: 4096  Batches: 1  Memory Usage: 250kB
+         Buffers: shared hit=34
+         ->  Seq Scan on course c  (cost=0.00..74.00 rows=4000 width=23) (actual time=0.020..0.385 rows=4000 loops=1)
+               Buffers: shared hit=34
+ Planning:
+   Buffers: shared hit=20
+ Planning Time: 0.458 ms
+ Execution Time: 37.982 ms
+(24 rows)
+
+Time: 39.021 ms
+
+--- 结果行数(和上面计划里的 actual rows 对得上) ---
+ 结果行数 
+----------
+     9989
+(1 row)
+
+
+===== 4. 备选计划:优化器在搜索的空间里还有哪些方案 =====
+--- 基准(第 3 节)是 hash join,总代价约 4300 ---
+--- 下面用开关禁掉某类连接算法,逼它走别的路,看代价和真实耗时怎么变 ---
+[4a] 禁掉 hash join,只能 merge join / nested loop:代价涨到约 8600,比 hash 贵近一倍
+                                                                     QUERY PLAN                                                                      
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+ Merge Join  (cost=8271.52..8580.23 rows=9981 width=30) (actual time=54.483..60.765 rows=9989 loops=1)
+   Merge Cond: ((c.course_id)::text = (t.course_id)::text)
+   Buffers: shared hit=4259
+   ->  Index Scan using course_pkey on course c  (cost=0.28..149.28 rows=4000 width=23) (actual time=0.007..0.738 rows=4000 loops=1)
+         Buffers: shared hit=46
+   ->  Sort  (cost=8271.24..8296.19 rows=9981 width=19) (actual time=54.454..55.152 rows=9989 loops=1)
+         Sort Key: t.course_id
+         Sort Method: quicksort  Memory: 775kB
+         Buffers: shared hit=4213
+         ->  Nested Loop  (cost=0.42..7608.25 rows=9981 width=19) (actual time=0.034..16.851 rows=9989 loops=1)
+               Buffers: shared hit=4213
+               ->  Seq Scan on instructor i  (cost=0.00..398.00 rows=1000 width=19) (actual time=0.016..2.597 rows=1000 loops=1)
+                     Filter: ((dept_name)::text = 'dept01'::text)
+                     Rows Removed by Filter: 19000
+                     Buffers: shared hit=148
+               ->  Index Only Scan using teaches_pkey on teaches t  (cost=0.42..7.11 rows=10 width=12) (actual time=0.010..0.013 rows=10 loops=1000)
+                     Index Cond: (id = (i.id)::text)
+                     Heap Fetches: 9989
+                     Buffers: shared hit=4065
+ Planning:
+   Buffers: shared hit=20
+ Planning Time: 0.406 ms
+ Execution Time: 61.230 ms
+(23 rows)
+
+[4b] 再禁掉 merge join,只剩 nested loop:这是教材里最朴素的执行方式
+                                                                  QUERY PLAN                                                                   
+-----------------------------------------------------------------------------------------------------------------------------------------------
+ Nested Loop  (cost=0.71..9051.37 rows=9981 width=30) (actual time=0.207..43.590 rows=9989 loops=1)
+   Buffers: shared hit=15193
+   ->  Nested Loop  (cost=0.42..7608.25 rows=9981 width=19) (actual time=0.083..16.361 rows=9989 loops=1)
+         Buffers: shared hit=4213
+         ->  Seq Scan on instructor i  (cost=0.00..398.00 rows=1000 width=19) (actual time=0.025..2.505 rows=1000 loops=1)
+               Filter: ((dept_name)::text = 'dept01'::text)
+               Rows Removed by Filter: 19000
+               Buffers: shared hit=148
+         ->  Index Only Scan using teaches_pkey on teaches t  (cost=0.42..7.11 rows=10 width=12) (actual time=0.010..0.013 rows=10 loops=1000)
+               Index Cond: (id = (i.id)::text)
+               Heap Fetches: 9989
+               Buffers: shared hit=4065
+   ->  Memoize  (cost=0.29..0.31 rows=1 width=23) (actual time=0.002..0.002 rows=1 loops=9989)
+         Cache Key: t.course_id
+         Cache Mode: logical
+         Hits: 6329  Misses: 3660  Evictions: 0  Overflows: 0  Memory Usage: 450kB
+         Buffers: shared hit=10980
+         ->  Index Scan using course_pkey on course c  (cost=0.28..0.30 rows=1 width=23) (actual time=0.005..0.005 rows=1 loops=3660)
+               Index Cond: ((course_id)::text = (t.course_id)::text)
+               Buffers: shared hit=10980
+ Planning Time: 0.233 ms
+ Execution Time: 44.216 ms
+(22 rows)
+
+
+===== 5. 索引的影响:建了索引,优化器就一定会用吗? =====
+--- dept_name 的选择率是 5%,先看没有索引时的代价 ---
+                                                           QUERY PLAN                                                            
+---------------------------------------------------------------------------------------------------------------------------------
+ Hash Join  (cost=534.50..4355.66 rows=9981 width=30) (actual time=4.061..44.071 rows=9989 loops=1)
+   Hash Cond: ((t.course_id)::text = (c.course_id)::text)
+   Buffers: shared hit=1455
+   ->  Hash Join  (cost=410.50..4205.44 rows=9981 width=19) (actual time=2.641..37.992 rows=9989 loops=1)
+         Hash Cond: ((t.id)::text = (i.id)::text)
+         Buffers: shared hit=1421
+         ->  Seq Scan on teaches t  (cost=0.00..3270.49 rows=199749 width=12) (actual time=0.032..13.838 rows=199749 loops=1)
+               Buffers: shared hit=1273
+         ->  Hash  (cost=398.00..398.00 rows=1000 width=19) (actual time=2.541..2.543 rows=1000 loops=1)
+               Buckets: 1024  Batches: 1  Memory Usage: 58kB
+               Buffers: shared hit=148
+               ->  Seq Scan on instructor i  (cost=0.00..398.00 rows=1000 width=19) (actual time=0.020..2.301 rows=1000 loops=1)
+                     Filter: ((dept_name)::text = 'dept01'::text)
+                     Rows Removed by Filter: 19000
+                     Buffers: shared hit=148
+   ->  Hash  (cost=74.00..74.00 rows=4000 width=23) (actual time=1.399..1.399 rows=4000 loops=1)
+         Buckets: 4096  Batches: 1  Memory Usage: 250kB
+         Buffers: shared hit=34
+         ->  Seq Scan on course c  (cost=0.00..74.00 rows=4000 width=23) (actual time=0.024..0.526 rows=4000 loops=1)
+               Buffers: shared hit=34
+ Planning:
+   Buffers: shared hit=20
+ Planning Time: 0.476 ms
+ Execution Time: 44.478 ms
+(24 rows)
+
+--- 建了 idx_instructor_dept 并 ANALYZE 之后:优化器换计划了吗? ---
+                                                                     QUERY PLAN                                                                      
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+ Hash Join  (cost=309.04..4130.20 rows=9981 width=30) (actual time=2.534..57.491 rows=9989 loops=1)
+   Hash Cond: ((t.course_id)::text = (c.course_id)::text)
+   Buffers: shared hit=1455 read=2
+   ->  Hash Join  (cost=185.04..3979.98 rows=9981 width=19) (actual time=0.831..49.497 rows=9989 loops=1)
+         Hash Cond: ((t.id)::text = (i.id)::text)
+         Buffers: shared hit=1421 read=2
+         ->  Seq Scan on teaches t  (cost=0.00..3270.49 rows=199749 width=12) (actual time=0.035..19.287 rows=199749 loops=1)
+               Buffers: shared hit=1273
+         ->  Hash  (cost=172.54..172.54 rows=1000 width=19) (actual time=0.732..0.734 rows=1000 loops=1)
+               Buckets: 1024  Batches: 1  Memory Usage: 58kB
+               Buffers: shared hit=148 read=2
+               ->  Bitmap Heap Scan on instructor i  (cost=12.04..172.54 rows=1000 width=19) (actual time=0.148..0.490 rows=1000 loops=1)
+                     Recheck Cond: ((dept_name)::text = 'dept01'::text)
+                     Heap Blocks: exact=148
+                     Buffers: shared hit=148 read=2
+                     ->  Bitmap Index Scan on idx_instructor_dept  (cost=0.00..11.79 rows=1000 width=0) (actual time=0.120..0.121 rows=1000 loops=1)
+                           Index Cond: ((dept_name)::text = 'dept01'::text)
+                           Buffers: shared read=2
+   ->  Hash  (cost=74.00..74.00 rows=4000 width=23) (actual time=1.662..1.663 rows=4000 loops=1)
+         Buckets: 4096  Batches: 1  Memory Usage: 250kB
+         Buffers: shared hit=34
+         ->  Seq Scan on course c  (cost=0.00..74.00 rows=4000 width=23) (actual time=0.033..0.631 rows=4000 loops=1)
+               Buffers: shared hit=34
+ Planning:
+   Buffers: shared hit=37 read=1
+ Planning Time: 0.673 ms
+ Execution Time: 57.998 ms
+(27 rows)
+
+--- 单表查询同一条件:看起来更像"该走索引",但它算的仍是代价 ---
+                                                            QUERY PLAN                                                             
+-----------------------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on instructor  (cost=12.04..172.54 rows=1000 width=19) (actual time=0.098..0.474 rows=1000 loops=1)
+   Recheck Cond: ((dept_name)::text = 'dept01'::text)
+   Heap Blocks: exact=148
+   Buffers: shared hit=150
+   ->  Bitmap Index Scan on idx_instructor_dept  (cost=0.00..11.79 rows=1000 width=0) (actual time=0.069..0.069 rows=1000 loops=1)
+         Index Cond: ((dept_name)::text = 'dept01'::text)
+         Buffers: shared hit=2
+ Planning Time: 0.177 ms
+ Execution Time: 0.549 ms
+(9 rows)
+
+
+===== 6. 书上那句"course 上的投影是必需的":省掉投影会算错 =====
+--- 正确写法:只按 course_id 连接,Music 系的教师可以教别的系的课 ---
+ 正确行数 
+----------
+     9989
+(1 row)
+
+--- 相当于没做 Pi_{course_id,title}:自然连接会连 dept_name 一起匹配 ---
+--- 结果只剩"音乐系教师教的音乐系课程",行数变少,静默算错 ---
+ 错误行数_少了 
+---------------
+           446
+(1 row)
+
+
+===== 7. 统计值失真:估算错,计划就错 =====
+--- 真实分布变成 Music 占 50%,但不 ANALYZE,优化器还以为是 5% ---
+              指标               | 百分比 
+---------------------------------+--------
+ 实际 Music 教师占比(未 ANALYZE) |   52.5
+(1 row)
+
+--- 优化器的估算行数(来自旧统计值) vs 真实行数 ---
+                                                             QUERY PLAN                                                             
+------------------------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on instructor  (cost=19.86..259.52 rows=1493 width=19) (actual time=0.430..1.845 rows=10500 loops=1)
+   Recheck Cond: ((dept_name)::text = 'dept01'::text)
+   Heap Blocks: exact=221
+   Buffers: shared hit=231
+   ->  Bitmap Index Scan on idx_instructor_dept  (cost=0.00..19.48 rows=1493 width=0) (actual time=0.320..0.320 rows=11000 loops=1)
+         Index Cond: ((dept_name)::text = 'dept01'::text)
+         Buffers: shared hit=10
+ Planning Time: 0.136 ms
+ Execution Time: 2.271 ms
+(9 rows)
+
+--- 失真会顺着计划往上放大:同一个两表连接,对比估算行数与 actual rows ---
+                                                                   QUERY PLAN                                                                   
+------------------------------------------------------------------------------------------------------------------------------------------------
+ Hash Join  (cost=278.18..4073.09 rows=9986 width=19) (actual time=4.021..58.130 rows=104864 loops=1)
+   Hash Cond: ((t.id)::text = (i.id)::text)
+   Buffers: shared hit=1504
+   ->  Seq Scan on teaches t  (cost=0.00..3270.49 rows=199749 width=12) (actual time=0.016..13.825 rows=199749 loops=1)
+         Buffers: shared hit=1273
+   ->  Hash  (cost=259.52..259.52 rows=1493 width=19) (actual time=3.994..3.996 rows=10500 loops=1)
+         Buckets: 16384 (originally 2048)  Batches: 1 (originally 1)  Memory Usage: 651kB
+         Buffers: shared hit=231
+         ->  Bitmap Heap Scan on instructor i  (cost=19.86..259.52 rows=1493 width=19) (actual time=0.315..1.816 rows=10500 loops=1)
+               Recheck Cond: ((dept_name)::text = 'dept01'::text)
+               Heap Blocks: exact=221
+               Buffers: shared hit=231
+               ->  Bitmap Index Scan on idx_instructor_dept  (cost=0.00..19.48 rows=1493 width=0) (actual time=0.254..0.254 rows=11000 loops=1)
+                     Index Cond: ((dept_name)::text = 'dept01'::text)
+                     Buffers: shared hit=10
+ Planning:
+   Buffers: shared hit=15
+ Planning Time: 0.542 ms
+ Execution Time: 61.636 ms
+(19 rows)
+
+--- ANALYZE 之后:估算行数对上了,访问路径也跟着从位图扫描换成顺序扫描 ---
+                                                  QUERY PLAN                                                   
+---------------------------------------------------------------------------------------------------------------
+ Seq Scan on instructor  (cost=0.00..471.00 rows=10500 width=19) (actual time=0.069..3.378 rows=10500 loops=1)
+   Filter: ((dept_name)::text = 'dept01'::text)
+   Rows Removed by Filter: 9500
+   Buffers: shared hit=221
+ Planning:
+   Buffers: shared hit=28
+ Planning Time: 0.333 ms
+ Execution Time: 3.780 ms
+(8 rows)
+
+--- 同样的连接,现在估算与真实一致 ---
+                                                         QUERY PLAN                                                          
+-----------------------------------------------------------------------------------------------------------------------------
+ Hash Join  (cost=602.25..4397.19 rows=104805 width=19) (actual time=5.910..60.976 rows=104864 loops=1)
+   Hash Cond: ((t.id)::text = (i.id)::text)
+   Buffers: shared hit=1494
+   ->  Seq Scan on teaches t  (cost=0.00..3270.49 rows=199749 width=12) (actual time=0.014..13.784 rows=199749 loops=1)
+         Buffers: shared hit=1273
+   ->  Hash  (cost=471.00..471.00 rows=10500 width=19) (actual time=5.841..5.841 rows=10500 loops=1)
+         Buckets: 16384  Batches: 1  Memory Usage: 651kB
+         Buffers: shared hit=221
+         ->  Seq Scan on instructor i  (cost=0.00..471.00 rows=10500 width=19) (actual time=0.065..3.401 rows=10500 loops=1)
+               Filter: ((dept_name)::text = 'dept01'::text)
+               Rows Removed by Filter: 9500
+               Buffers: shared hit=221
+ Planning:
+   Buffers: shared hit=15
+ Planning Time: 0.419 ms
+ Execution Time: 64.954 ms
+(16 rows)
+
+
